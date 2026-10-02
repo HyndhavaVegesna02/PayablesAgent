@@ -1,0 +1,18 @@
+# Every change, ever. Entries are never deleted -- done and rejected are history.
+# Status is a field, never a folder.
+next_id: 1
+changes: []
+
+# Shape of an entry:
+#   - id: CHG-001
+#     title: Daily habit check-off
+#     file: docs/changes/CHG-001-daily-checkoff.md
+#     status: draft            # draft | ready | done | rejected
+#     priority: 2              # human-ordered, 1 = highest
+#     type: feature            # feature | defect | chore
+#     lane: null               # direct | planned | sliced -- set by the router at plan time
+#     expected_paths: []       # required above lane `direct`
+#     depends_on: null         # an id that must land first
+#     batch: null              # set when pulled into a batch
+#
+# `ready` requires: approved criteria + named expected paths + zero open questions.

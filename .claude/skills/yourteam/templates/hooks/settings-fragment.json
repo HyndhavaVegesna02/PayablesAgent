@@ -1,0 +1,17 @@
+{
+  "//": "MERGE this hooks block into the project's .claude/settings.json at setup; never overwrite an existing file. If a PreToolUse array already exists, append the matcher entry.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/yt_git_guard.py",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

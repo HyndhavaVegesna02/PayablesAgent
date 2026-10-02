@@ -1,0 +1,4 @@
+# YourTeam project config. Read by scripts; keep it flat (key: value).
+default_branch: main          # repo already initialized on main, no commits yet
+test_glob: tests/**,**/test_*.py,**/*_test.py
+test_command: python -m pytest {files} -q

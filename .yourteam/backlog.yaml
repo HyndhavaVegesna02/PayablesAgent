@@ -1,0 +1,140 @@
+# Every change, ever. Entries are never deleted -- done and rejected are history.
+# Status is a field, never a folder.
+next_id: 11
+changes:
+  - id: CHG-001
+    title: Repo skeleton — layout, config, schema, Clock, tracer, job table, CI
+    file: docs/changes/CHG-001-skeleton.md
+    status: ready
+    priority: 1
+    type: feature
+    lane: planned
+    expected_paths:
+      - Makefile
+      - pyproject.toml
+      - .env.example
+      - .gitignore
+      - app/main.py
+      - app/config.py
+      - app/clock.py
+      - app/db/schema.sql
+      - app/db/migrations/0001_init.sql
+      - app/db/read.py
+      - app/trace/tracer.py
+      - app/trace/view.py
+      - app/jobs/queue.py
+      - app/domain/
+      - fixtures/seed.py
+      - .github/workflows/ci.yml
+      - tests/test_schema.py
+      - tests/test_clock.py
+      - tests/test_jobs_queue.py
+      - tests/test_health.py
+      - config.yaml
+      - CLAUDE.md
+    depends_on: null
+    batch: 0
+  - id: CHG-002
+    title: Ledger core — domain models, ledger writer, transition table, event triggers
+    file: docs/changes/CHG-002-ledger-core.md
+    status: draft
+    priority: 2
+    type: feature
+    lane: null
+    expected_paths: []
+    depends_on: CHG-001
+    batch: null
+  - id: CHG-003
+    title: Planner — plan(), options(), diff(), snapshot builder
+    file: docs/changes/CHG-003-planner.md
+    status: draft
+    priority: 3
+    type: feature
+    lane: null
+    expected_paths: []
+    depends_on: CHG-002
+    batch: null
+  - id: CHG-004
+    title: Alert ingestion — MailSource, test inbox, ai.client, sort/extract/validate
+    file: docs/changes/CHG-004-alert-ingestion.md
+    status: draft
+    priority: 4
+    type: feature
+    lane: null
+    expected_paths: []
+    depends_on: CHG-001
+    batch: null
+  - id: CHG-005
+    title: Reconciliation — matching, failures, reversals, drift check
+    file: docs/changes/CHG-005-reconciliation.md
+    status: draft
+    priority: 5
+    type: feature
+    lane: null
+    expected_paths: []
+    depends_on: CHG-004
+    batch: null
+  - id: CHG-006
+    title: Owner web app — five screens, roles, stale-plan refusal
+    file: docs/changes/CHG-006-web-app.md
+    status: draft
+    priority: 6
+    type: feature
+    lane: null
+    expected_paths: []
+    depends_on: CHG-003
+    batch: null
+  - id: CHG-007
+    title: Bills and uploads — photos, PDF unlock, voice notes, duplicates
+    file: docs/changes/CHG-007-bills-uploads.md
+    status: draft
+    priority: 7
+    type: feature
+    lane: null
+    expected_paths: []
+    depends_on: CHG-004
+    batch: null
+  - id: CHG-008
+    title: Exception agent — loop, tools, case file, escalation
+    file: docs/changes/CHG-008-exception-agent.md
+    status: draft
+    priority: 8
+    type: feature
+    lane: null
+    expected_paths: []
+    depends_on: CHG-005
+    batch: null
+  - id: CHG-009
+    title: Live connections — Gmail OAuth, GmailSource, SMTP alerts
+    file: docs/changes/CHG-009-live-connections.md
+    status: draft
+    priority: 9
+    type: feature
+    lane: null
+    expected_paths: []
+    depends_on: CHG-004
+    batch: null
+  - id: CHG-010
+    title: Evidence — scenario runs, harness comparison, attack, traces, demo
+    file: docs/changes/CHG-010-evidence.md
+    status: draft
+    priority: 10
+    type: feature
+    lane: null
+    expected_paths: []
+    depends_on: CHG-008
+    batch: null
+
+# Shape of an entry:
+#   - id: CHG-001
+#     title: Daily habit check-off
+#     file: docs/changes/CHG-001-daily-checkoff.md
+#     status: draft            # draft | ready | done | rejected
+#     priority: 2              # human-ordered, 1 = highest
+#     type: feature            # feature | defect | chore
+#     lane: null               # direct | planned | sliced -- set by the router at plan time
+#     expected_paths: []       # required above lane `direct`
+#     depends_on: null         # an id that must land first
+#     batch: null              # set when pulled into a batch
+#
+# `ready` requires: approved criteria + named expected paths + zero open questions.
