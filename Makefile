@@ -1,4 +1,4 @@
-.PHONY: setup db seed reseed run worker test evals ablation
+.PHONY: setup db seed reseed run worker test smoke-gemini evals ablation
 
 setup:
 	uv sync --all-groups
@@ -22,6 +22,10 @@ worker:
 test:
 	uv run pytest -q
 	uv run lint-imports
+
+# Live and billed: at most 3 Gemini calls. Never part of `make test`; run only when authorised.
+smoke-gemini:
+	uv run python -m app.ai.smoke --yes-call-gemini
 
 evals:
 	@echo "make evals: not yet implemented (lands with Phase 9)" >&2

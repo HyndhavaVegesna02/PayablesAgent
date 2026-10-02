@@ -33,12 +33,13 @@ from email.message import EmailMessage
 from typing import TYPE_CHECKING, Any
 
 from app.ai.client import AIResult, AIUnavailable, Backend
+from app.ai.email_text import email_text
 from app.ai.extract import extract_document, prompt_version
 from app.ai.sort import sort_document
 from app.clock import TIMEZONE
 from app.config import Settings
 from app.domain.models import BankTxnNew
-from app.ingest.eml_folder import EmlFolderSource, body_text, parse_message, sender_address, sent_at
+from app.ingest.eml_folder import EmlFolderSource, parse_message, sender_address, sent_at
 from app.ingest.mail_source import MailSource
 from app.ingest.store import DocumentStore, StoreKeyError
 from app.jobs import queue
@@ -157,14 +158,6 @@ def handle_poll_mail(ctx: JobContext, *, source: MailSource | None = None) -> No
 # --- process_document ---------------------------------------------------------------
 
 
-def ai_text(msg: EmailMessage) -> str:
-    """What Gemini sees: the three headers that matter, then the text."""
-    return (
-        f"From: {msg.get('From', '')}\nDate: {msg.get('Date', '')}\nSubject: {msg.get('Subject', '')}\n\n"
-        f"{body_text(msg).strip()}\n"
-    )
-
-
 @dataclass
 class Attempt:
     thinking: str
@@ -227,7 +220,7 @@ def handle_process_document(ctx: JobContext, *, backend: Backend) -> None:
         return
     input_ref = f"source_document:{doc['id']}"
     msg = parse_message(document_store(ctx.settings).get(doc["storage_path"]))
-    text = ai_text(msg)
+    text = email_text(msg)
 
     try:
         sorted_ = sort_document(text, backend=backend, app_config=ctx.app_config, tracer=ctx.tracer,

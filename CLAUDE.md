@@ -31,6 +31,7 @@ no float ever holds an amount.
 - `make run` — starts the FastAPI web process on port 8000 (`GET /api/health`)
 - `make test` — runs pytest (incl. Hypothesis properties) and import-linter
 - `make worker` — runs the job worker and the scheduler (`python -m app.worker`); it writes a heartbeat that `/api/health` reports
+- `make smoke-gemini` — live and billed: at most 3 Gemini calls (sort and extract on two test-inbox fixtures) to check the prompts on Gemini itself; never part of `make test`, and run only when the PO authorises it
 - `make evals`, `make ablation` — intentional stub failures until Phase 9 implements them — they exist in the Makefile so nothing is silently green
 
 ## Invariants that hold across every change

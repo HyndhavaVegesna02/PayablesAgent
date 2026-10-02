@@ -64,3 +64,10 @@ None. PO accepted every default on 2026-10-02 (see the plan's PO decisions).
 - 2026-10-02: drafted from TDD v2.0 Part 2, Phase 3
 - 2026-10-02: planned for batch 2 (lane planned, cap: Gemini SDK and RFC 2822). ACs rewritten in the plan: scoped to bank alerts and failure notices; GSTIN, invoice and statement checks recorded not_applicable and built in CHG-007 (Q3); amounts come back as text and code parses them (Q4).
 - 2026-10-02: PO approved the batch 2 plan; status ready, batch 2.
+- 2026-10-02: implementation notes for review.
+  - AC9 is enforced by tests/test_ai_boundary.py (an AST scan), not import-linter: import-linter squashes external packages to "google", so it cannot tell google.genai from google-auth.
+  - What Gemini sees of an email lives in app/ai/email_text.py, shared by the pipeline and smoke-gemini (app.ai must not import app.ingest, which reaches the ledger).
+  - A reply whose only failed check is "duplicates" is not re-extracted: reading it again cannot change that it repeats a stored transaction. The candidate is INVALID.
+  - Failure notices get a dedup key too (account, date, amount, original reference), checked against earlier VALID failure candidates.
+  - PermanentJobError lives in app/jobs/queue.py so handlers raise it without importing the worker.
+  - app/ai/client.py imports httpx, which is installed as a dependency of google-genai (no pin change, R002).
