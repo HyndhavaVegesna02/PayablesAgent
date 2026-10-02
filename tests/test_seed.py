@@ -126,12 +126,23 @@ def test_make_seed_is_a_harmless_no_op_the_second_time(tmp_path, monkeypatch, ca
     assert _counts(db_path) == first
 
 
-def test_fresh_recreates_the_file_instead_of_deleting_rows(tmp_path, monkeypatch):
+def test_fresh_recreates_the_file_instead_of_deleting_rows(tmp_path, monkeypatch, capsys):
     db_path = tmp_path / "cli.db"
     monkeypatch.setenv("DATABASE_PATH", str(db_path))
     assert seed_module.main([]) == 0
     first = _counts(db_path)
+    marker = write_connection(db_path)  # a row only the old file has
+    marker.execute("INSERT INTO party (business_id, kind, name) VALUES (1, 'vendor', 'MARKER')")
+    marker.commit()
+    marker.close()
+    capsys.readouterr()
+
     assert seed_module.main(["--fresh"]) == 0
+
+    assert "loaded the worked-example business" in capsys.readouterr().out
+    check = write_connection(db_path)
+    assert check.execute("SELECT COUNT(*) FROM party WHERE name = 'MARKER'").fetchone()[0] == 0
+    check.close()
     assert _counts(db_path) == first == {
         "business": 1, "payable": 5, "receivable": 2, "tax_obligation": 3, "event": 15,
     }

@@ -283,10 +283,18 @@ def create_tax_obligation(
     """Each obligation is backed by a statutory payable (Part 2, "Taxes as payables").
     With payable_id None it creates that payable (DRAFT, amount `payable_amount_paise`
     or the obligation's own); otherwise it links to an existing statutory payable,
-    e.g. PF and ESI sharing one combined bill. A MISSING amount creates no payable
-    yet, because a payable cannot exist without an amount."""
+    e.g. PF and ESI sharing one combined bill."""
     who = parse_actor(actor)
     _check_role(who, CREATE_RULES["payable"]["DRAFT"], "create a tax obligation")
+    if new.amount_status == "MISSING":
+        # A payable needs an amount, and the TDD has every obligation create one;
+        # how a MISSING amount is tracked is undecided (raised with the PO).
+        raise ValueError("a tax obligation with a MISSING amount cannot be recorded yet")
+    if payable_amount_paise is not None:
+        if payable_id is not None:
+            raise ValueError("payable_amount_paise only applies when a new payable is created")
+        if type(payable_amount_paise) is not int or payable_amount_paise <= 0:
+            raise TypeError("payable_amount_paise must be positive int paise")
     _require_fk(conn)
     clock = clock or SystemClock()
     kw = dict(actor=actor, reason=reason, source_ref=source_ref, trace_run_id=trace_run_id, clock=clock)
@@ -296,14 +304,16 @@ def create_tax_obligation(
             linked = _get(conn, "payable", payable_id)
             if linked["priority"] != "statutory" or linked["business_id"] != new.business_id:
                 raise ValueError(f"payable {payable_id} is not a statutory payable of this business")
-        elif new.amount_status != "MISSING":
+        else:
             payable = _create(
                 conn,
                 "payable",
                 {
                     "business_id": new.business_id,
                     "invoice_number": invoice_number or f"{new.tax_type}-{new.period}",
-                    "amount_paise": payable_amount_paise or new.amount_paise,
+                    "amount_paise": (
+                        new.amount_paise if payable_amount_paise is None else payable_amount_paise
+                    ),
                     "due_date": new.due_date,
                     "priority": "statutory",
                     "status": "DRAFT",
@@ -352,7 +362,7 @@ def _update_state(
 ) -> None:
     col = STATE_COLUMN[kind]  # type: ignore[index]
     assignments = [f"{c} = ?" for c in sets]
-    where = [f"id = ?", f"{col} = ?"]
+    where = ["id = ?", f"{col} = ?"]
     args = [_sql_value(v) for v in sets.values()]
     where_args: list[Any] = [before["id"], before[col]]
     if kind in _VERSIONED:
@@ -384,6 +394,8 @@ def transition(
     Bumps `version` and writes the event row in the same transaction."""
     who = parse_actor(actor)
     kind = entity.kind
+    if kind not in TRANSITIONS:
+        raise IllegalTransition(f"{kind} has no state machine")
     if kind == "payable" and to_state == "SPLIT":
         raise IllegalTransition("a split creates two child bills; use split_payable()")
     fields = dict(fields or {})

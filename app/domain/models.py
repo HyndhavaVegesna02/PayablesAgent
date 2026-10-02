@@ -40,6 +40,15 @@ class PayableNew(_Record):
     discount_by: date | None = None
     source_document_id: StrictInt | None = None
 
+    @model_validator(mode="after")
+    def _discount_is_coherent(self) -> "PayableNew":
+        # The planner reads discount_paise as paise saved if paid by discount_by.
+        if (self.discount_paise is None) != (self.discount_by is None):
+            raise ValueError("discount_paise and discount_by are set together or not at all")
+        if self.discount_paise is not None and self.discount_paise >= self.amount_paise:
+            raise ValueError("a discount must be smaller than the bill")
+        return self
+
 
 class Payable(PayableNew):
     id: StrictInt
@@ -113,17 +122,3 @@ class TaxObligation(TaxObligationNew):
     id: StrictInt
     payable_id: StrictInt | None
 
-
-class Event(_Record):
-    id: StrictInt
-    business_id: StrictInt
-    occurred_at: str
-    actor: str
-    event_type: str
-    entity: str
-    entity_id: StrictInt
-    before_json: str | None
-    after_json: str | None
-    reason: str | None
-    source_ref: str | None
-    trace_run_id: str | None

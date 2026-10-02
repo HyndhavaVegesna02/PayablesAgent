@@ -78,6 +78,11 @@ def test_parse_actor_refuses_agents(text):
         parse_actor(text)
 
 
+def test_parse_actor_refuses_non_strings():
+    with pytest.raises(InvalidActor):
+        parse_actor(None)
+
+
 @pytest.mark.parametrize(
     "text", ["Owner:1", "owner:", "owner:abc", "owner:0", "owner:01", "planner:1", "", "seed", " owner:1"]
 )

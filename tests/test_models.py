@@ -29,6 +29,21 @@ def test_amounts_must_be_positive(bad):
         _payable(amount_paise=bad)
 
 
+@pytest.mark.parametrize(
+    "discount, by",
+    [(18_000_000, date(2026, 10, 12)), (19_000_000, date(2026, 10, 12)),
+     (100, None), (None, date(2026, 10, 12))],
+)
+def test_discount_must_be_smaller_than_the_bill_and_dated(discount, by):
+    with pytest.raises(ValidationError):
+        _payable(discount_paise=discount, discount_by=by)
+
+
+def test_a_valid_discount_is_accepted():
+    p = _payable(discount_paise=200_000, discount_by=date(2026, 10, 12))
+    assert p.discount_paise == 200_000
+
+
 def test_unknown_priority_refused():
     with pytest.raises(ValidationError):
         _payable(priority="urgent")

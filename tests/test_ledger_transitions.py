@@ -19,7 +19,7 @@ from app.domain.states import (
 )
 from app.ledger import writer
 from app.ledger.writer import EntityRef
-from tests.ledger_helpers import events, fake_clock, make_ledger_db, payable_new
+from tests.ledger_helpers import events, fake_clock, make_ledger_db
 
 KW = dict(reason="test", source_ref="test:1")
 ROLES = {"owner": "owner:1", "planner": "planner", "reconciler": "reconciler", "pipeline": "pipeline"}
@@ -105,6 +105,12 @@ def test_split_is_not_reachable_through_transition(conn):
         writer.transition(ref, "SPLIT", "owner:1", "x", None, conn=conn, expected_version=1)
 
 
+def test_unknown_entity_kind_is_a_named_refusal(conn):
+    with pytest.raises(IllegalTransition):
+        writer.transition(EntityRef("tax_obligation", 1), "CONFIRMED", "owner:1", "x", None,
+                          conn=conn, expected_version=1)
+
+
 def test_missing_record(conn):
     with pytest.raises(RecordNotFound):
         writer.transition(EntityRef("payable", 999), "PLANNED", "planner", "x", None, conn=conn,
@@ -187,8 +193,11 @@ def test_owner_must_pass_the_version_they_saw(conn):
 def test_second_owner_action_on_the_same_version_is_refused(conn):
     ref = _payable_in(conn, "PLANNED")
     writer.transition(ref, "PAYMENT_EXPECTED", "owner:1", "x", None, conn=conn, expected_version=1)
-    with pytest.raises((StaleVersion, IllegalTransition)):
-        writer.transition(ref, "SPLIT", "owner:1", "x", None, conn=conn, expected_version=1)
+    before = _row(conn, ref)
+    with pytest.raises(StaleVersion):  # the owner's page still shows version 1
+        writer.transition(ref, "PAID", "owner:1", "x", None, conn=conn, expected_version=1)
+    assert _row(conn, ref) == before
+    assert len(events(conn)) == 1
 
 
 def test_system_actor_may_omit_version_but_not_pass_a_stale_one(conn):
@@ -327,9 +336,12 @@ def test_receivable_uncited_moves_are_refused(conn, start, to, actor):
         "INSERT INTO receivable (business_id, amount_paise, confidence) VALUES (1, 100, ?)", (start,)
     )
     conn.commit()
+    ref = EntityRef("receivable", cur.lastrowid)
+    before = _row(conn, ref)
     with pytest.raises(TransitionRefused):
-        writer.transition(EntityRef("receivable", cur.lastrowid), to, actor, "x", None,
-                          conn=conn, expected_version=1)
+        writer.transition(ref, to, actor, "x", None, conn=conn, expected_version=1)
+    assert _row(conn, ref) == before
+    assert events(conn) == []
 
 
 # --- S10: split ----------------------------------------------------------------
@@ -362,6 +374,36 @@ def test_split_refused_from_other_states(conn, start):
     with pytest.raises(IllegalTransition):
         writer.split_payable(ref, 100, date(2026, 10, 26), "owner:1", "x", None, conn=conn,
                              expected_version=1)
+
+
+def test_split_refuses_an_agent(conn):
+    ref = _payable_in(conn, "CONFIRMED")
+    with pytest.raises(AgentActorRefused):
+        writer.split_payable(ref, 100, date(2026, 10, 26), "agent:case:1", "x", None, conn=conn,
+                             expected_version=1)
+    assert _row(conn, ref)["status"] == "CONFIRMED"
+
+
+def test_split_is_atomic_when_the_second_child_fails(conn, monkeypatch):
+    ref = _payable_in(conn, "CONFIRMED")
+    real_create = writer._create
+    calls = []
+
+    def fail_on_second_child(conn_, table, values, **kw):
+        if table == "payable":
+            calls.append(values)
+            if len(calls) == 2:
+                raise RuntimeError("disk full")
+        return real_create(conn_, table, values, **kw)
+
+    monkeypatch.setattr(writer, "_create", fail_on_second_child)
+    with pytest.raises(RuntimeError, match="disk full"):
+        writer.split_payable(ref, 5_300_000, date(2026, 10, 26), "owner:1", "x", None, conn=conn,
+                             expected_version=1)
+    assert len(calls) == 2  # the parent move and the first child really were written
+    assert (_row(conn, ref)["status"], _row(conn, ref)["version"]) == ("CONFIRMED", 1)
+    assert conn.execute("SELECT COUNT(*) FROM payable").fetchone()[0] == 1
+    assert events(conn) == []
 
 
 @pytest.mark.parametrize("actor", ["planner", "reconciler", "pipeline", "owner:2"])

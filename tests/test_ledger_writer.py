@@ -158,12 +158,27 @@ def test_linking_refuses_a_non_statutory_or_foreign_payable(conn):
         )
 
 
-def test_missing_amount_obligation_has_no_payable_yet(conn):
-    t = writer.create_tax_obligation(
-        _tax(amount_paise=None, amount_status="MISSING"), actor="owner:1", conn=conn, **KW
-    )
-    assert t.payable_id is None
+def test_missing_amount_obligation_is_refused_until_the_po_decides(conn):
+    with pytest.raises(ValueError, match="MISSING"):
+        writer.create_tax_obligation(
+            _tax(amount_paise=None, amount_status="MISSING"), actor="owner:1", conn=conn, **KW
+        )
+    assert conn.execute("SELECT COUNT(*) FROM tax_obligation").fetchone()[0] == 0
+    assert events(conn) == []
+
+
+@pytest.mark.parametrize("bad", [4_500_000.5, 4_500_000.0, True, 0, -1, "4500000"])
+def test_combined_payable_amount_must_be_positive_int_paise(conn, bad):
+    with pytest.raises(TypeError):
+        writer.create_tax_obligation(_tax(), payable_amount_paise=bad, actor="owner:1", conn=conn, **KW)
     assert conn.execute("SELECT COUNT(*) FROM payable").fetchone()[0] == 0
+
+
+def test_combined_payable_amount_cannot_be_given_when_linking(conn):
+    first = writer.create_tax_obligation(_tax(), actor="owner:1", conn=conn, **KW)
+    with pytest.raises(ValueError):
+        writer.create_tax_obligation(_tax(tax_type="TDS"), payable_id=first.payable_id,
+                                     payable_amount_paise=100, actor="owner:1", conn=conn, **KW)
 
 
 def test_writer_refuses_a_connection_without_foreign_keys(tmp_path):

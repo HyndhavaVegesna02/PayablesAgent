@@ -62,6 +62,8 @@ _SYSTEM_ROLES: frozenset[str] = frozenset({"planner", "reconciler", "pipeline"})
 
 
 def parse_actor(actor: str) -> Actor:
+    if not isinstance(actor, str):
+        raise InvalidActor(f"actor must be a string, got {type(actor).__name__}")
     if actor.lower().startswith("agent"):
         raise AgentActorRefused(f"agent actors may not change ledger state: {actor!r}")
     if actor in _SYSTEM_ROLES:
@@ -94,14 +96,10 @@ PAYABLE_TRANSITIONS: dict[tuple[str, str], frozenset[Role]] = {
     ("PLANNED", "SPLIT"): frozenset({"owner"}),
 }
 
-BANK_TXN_STATES = ("UNMATCHED", "MATCHED", "EXPLAINED", "ADJUSTMENT", "REVERSED")
-
 BANK_TXN_TRANSITIONS: dict[tuple[str, str], frozenset[Role]] = {
     ("UNMATCHED", "MATCHED"): frozenset({"reconciler"}),
     ("MATCHED", "REVERSED"): frozenset({"reconciler"}),
 }
-
-RECEIVABLE_STATES = ("CONFIRMED", "COMMITTED", "EXPECTED", "UNKNOWN")
 
 RECEIVABLE_TRANSITIONS: dict[tuple[str, str], frozenset[Role]] = {
     ("COMMITTED", "CONFIRMED"): frozenset({"reconciler"}),
