@@ -1,6 +1,6 @@
 # Every change, ever. Entries are never deleted -- done and rejected are history.
 # Status is a field, never a folder.
-next_id: 21
+next_id: 22
 changes:
   - id: CHG-001
     title: Repo skeleton — layout, config, schema, Clock, tracer, job table, CI
@@ -147,8 +147,31 @@ changes:
     status: draft
     priority: 6
     type: feature
-    lane: null
-    expected_paths: []
+    lane: sliced
+    expected_paths:
+      - app/web/
+      - app/main.py
+      - app/config.py
+      - app/ledger/writer.py
+      - app/domain/states.py
+      - fixtures/seed.py
+      - fixtures/test_inbox/07-credit-nandi-foods.eml
+      - tests/fake_ai.py
+      - .env.example
+      - pyproject.toml
+      - CLAUDE.md
+      - tests/web_helpers.py
+      - tests/test_web_auth.py
+      - tests/test_web_roles.py
+      - tests/test_web_week.py
+      - tests/test_web_attention.py
+      - tests/test_web_add.py
+      - tests/test_web_accounts_settings.py
+      - tests/test_web_api.py
+      - tests/test_web_plain_text.py
+      - tests/test_phase5_exit.py
+      - tests/test_seed.py
+      - tests/test_states.py
     depends_on: CHG-003
     batch: null
   - id: CHG-007
@@ -312,6 +335,17 @@ changes:
       - app/trace/tracer.py
       - tests/test_ai_client.py
     depends_on: null
+    batch: null
+
+  - id: CHG-021
+    title: Planner honours the owner's authorise_breach and delay_flexible choices
+    file: docs/changes/CHG-021-planner-owner-overrides.md
+    status: draft
+    priority: 21
+    type: feature
+    lane: null
+    expected_paths: []
+    depends_on: CHG-006
     batch: null
 
 # Shape of an entry:
