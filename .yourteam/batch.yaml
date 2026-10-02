@@ -1,21 +1,18 @@
 # Active batch. status: none means no batch is running.
 batch: 0
-status: none      # none | active | review | closed | aborted
-goal: null
-branch: null
+status: active      # none | active | review | closed | aborted
+goal: "Repo skeleton: setup, db, seed, run and CI all green on a clean checkout. No AI calls, no ledger-writer logic yet."
+branch: batch-0
 start_tag: null
-started: null
-changes: []
+started: "2026-10-02T00:00:00Z"
+changes:
+  - id: CHG-001
+    lane: planned
+    board: todo
+    start_commit: 50e14c2ce204582e7e39b963dba0d0f5ab140c75
+    blocked_question: null
+    gate_evidence: []
+    prepatch: null
+    notes_resolved: true
 interrupts: []    # human requests captured mid-batch: {at, text, became_change}
 hotfixes: []      # {branch, reason, merged_sha, caused_by}
-
-# Shape of a change entry while a batch is active:
-#   - id: CHG-001
-#     lane: planned
-#     board: done            # todo | in-progress | blocked | done
-#     start_commit: 9f8e7d6  # the batch-branch commit this change started from
-#     blocked_question: null
-#     gate_evidence:
-#       - {command: "npm test", exit_code: 0, output_tail: "24 passed", commit: 9f8e7d6, at: 2026-09-05T14:32:00Z}
-#     prepatch: {exit_code: 0, tests: 2, at: 2026-09-05T14:30:00Z}
-#     notes_resolved: true   # notes this diff made stale were updated or flagged
