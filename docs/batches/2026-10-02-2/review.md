@@ -74,3 +74,9 @@ At 4ae3d45 (code e66e55b), `make test` passes 617 tests and the 4 import-linter 
 
 - `make smoke-gemini` (at most 3 live calls) has not been run. It is the only evidence that the prompts and the `response_json_schema` keywords (`pattern`, `format: date`, `additionalProperties: false`) work on Gemini 3.8 Flash itself.
 - Narrowing to note: CHG-004 AC4's "a failed check triggers one re-extract" does not apply to an uncertain field, which goes to the owner at once (plan rule and TDD).
+
+## PO verdict
+
+ACCEPT for all three changes, unconditional. The five deviations are PO-accepted (see plan.md, "PO verdict").
+
+Smoke: run once, 403 PERMISSION_DENIED (key/project config), deferred to the user. Run id smoke-gemini-20261003T041833; 1 call, no tokens. The code path behaved as designed: a permanent error became AIUnavailable, was traced, was not retried and leaked no key. Gap found: AIUnavailable dropped the SDK's error message. The fix is CHG-020, the first change of batch 3.

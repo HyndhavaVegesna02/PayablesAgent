@@ -1,6 +1,6 @@
 # Every change, ever. Entries are never deleted -- done and rejected are history.
 # Status is a field, never a folder.
-next_id: 20
+next_id: 21
 changes:
   - id: CHG-001
     title: Repo skeleton — layout, config, schema, Clock, tracer, job table, CI
@@ -86,7 +86,7 @@ changes:
   - id: CHG-004
     title: Alert ingestion — MailSource, test inbox, ai.client, sort/extract/validate
     file: docs/changes/CHG-004-alert-ingestion.md
-    status: ready
+    status: done
     priority: 4
     type: feature
     lane: planned
@@ -122,7 +122,7 @@ changes:
   - id: CHG-005
     title: Reconciliation — matching, failures, reversals, drift check
     file: docs/changes/CHG-005-reconciliation.md
-    status: ready
+    status: done
     priority: 5
     type: feature
     lane: planned
@@ -214,7 +214,7 @@ changes:
   - id: CHG-013
     title: Worker and replan — job runner loop, replan/monday_plan jobs, plan persistence
     file: docs/changes/CHG-013-replan-worker.md
-    status: ready
+    status: done
     priority: 13
     type: feature
     lane: planned
@@ -297,6 +297,20 @@ changes:
     type: chore
     lane: null
     expected_paths: []
+    depends_on: null
+    batch: null
+
+  - id: CHG-020
+    title: AIUnavailable and its trace step carry the SDK's error message, redacted
+    file: docs/changes/CHG-020-ai-error-message.md
+    status: draft
+    priority: 20
+    type: defect
+    lane: direct
+    expected_paths:
+      - app/ai/client.py
+      - app/trace/tracer.py
+      - tests/test_ai_client.py
     depends_on: null
     batch: null
 

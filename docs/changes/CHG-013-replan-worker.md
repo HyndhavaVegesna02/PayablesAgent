@@ -64,3 +64,4 @@ None. PO accepted every default on 2026-10-02 (see the plan's PO decisions).
 - 2026-10-02: planned for batch 2 (lane planned: consumes APScheduler CronTrigger and CHG-003's PlanResult). ACs and design in docs/batches/2026-10-02-2/plan.md; Q1, Q5, Q6, Q9, Q10 there.
 - 2026-10-02: PO approved the batch 2 plan; status ready, batch 2.
 - 2026-10-03: as built, after review rounds 1-2: the worker requeues a job left running (counting the attempt) at start and after a busy-database error; the loop survives a refused heartbeat; the rule check's projected minimum counts only the bills the plan pays (wording says so); the Monday plan has a 6h misfire grace.
+- 2026-10-03: PO accepted in batch 2 (deviations PO-accepted; see the batch 2 plan's "PO verdict").

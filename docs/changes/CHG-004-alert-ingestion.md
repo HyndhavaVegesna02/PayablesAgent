@@ -72,3 +72,4 @@ None. PO accepted every default on 2026-10-02 (see the plan's PO decisions).
   - PermanentJobError lives in app/jobs/queue.py so handlers raise it without importing the worker.
   - app/ai/client.py imports httpx, which is installed as a dependency of google-genai (no pin change, R002).
 - 2026-10-03: review round 1: a failed confidence check goes to the owner at once (AWAITING_OWNER) and is never re-extracted. This follows the plan's rule "uncertain_fields is empty, otherwise the candidate goes to the owner" and the TDD, and narrows AC4's generic "a failed check triggers one re-extract". Test-inbox fixtures are marked -text in .gitattributes so their bytes (and content hashes) match on every checkout.
+- 2026-10-03: PO accepted in batch 2 (deviations PO-accepted; see the batch 2 plan's "PO verdict").

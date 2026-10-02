@@ -434,3 +434,13 @@ It then queues `run_case`. That job stays queued until CHG-008 registers a handl
 - Q11: a statement mismatch is still acted on at once.
 - CHG-005 addition: re-delivering the same debit alert leaves one bank_txn and no double match (dedup_key, source_document unique keys). → CHG-005 AC9, step R7b.
 - `make smoke-gemini` stays unrun; the PO authorises it at review time once the batch is green.
+
+## PO verdict (2026-10-03)
+- ACCEPT for CHG-013, CHG-004 and CHG-005, unconditional. The PO verified 78ee267 independently in a separate worktree: 617 passed, 4 contracts kept.
+- PO-accepted deviations from this plan:
+  1. An uncertain field goes to the owner at once and is never re-extracted (narrows CHG-004 AC4's generic retry wording).
+  2. An unknown debit triggers a replan.
+  3. The PAYABLE_PLANNED reason reads "Projected minimum with the bills this plan pays ..." (escalated bills left out).
+  4. requeue_running counts the interrupted run as an attempt.
+  5. CHG-004 AC9 is enforced by an AST test (tests/test_ai_boundary.py), not an import-linter contract.
+- `make smoke-gemini`: run once with PO authorisation at 78ee267, trace run smoke-gemini-20261003T041833. Result: 403 PERMISSION_DENIED on the first call (key/project configuration), deferred to the user. 1 HTTP request, no tokens. The trace is not committed. The PO authorises one more run after the user fixes the key.

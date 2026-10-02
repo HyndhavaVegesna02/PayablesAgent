@@ -1,6 +1,6 @@
 # Active batch. status: none means no batch is running.
 batch: 2
-status: review      # none | active | review | closed | aborted
+status: closed      # none | active | review | closed | aborted
 goal: "TDD Phase 4: a test-inbox debit alert reconciles against a payment approved through the planner (PAID); a return email gives REOPENED and a replan; a missing alert gives CHECKING. Worker, replan, ingestion and reconciliation, Gemini faked in tests."
 branch: batch-2
 start_tag: null
@@ -44,9 +44,11 @@ changes:
       - {command: "make test", exit_code: 0, output_tail: "ports | --------- | Contracts | --------- | Analyzed 43 files, 82 dependencies. | ----------------------------------- | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | Contracts: 4 kept, 0 broken.", commit: 796e420, at: 2026-10-02T22:46:23+00:00}
     prepatch: {exit_code: 0, tests: 10, at: 2026-10-02T19:30:00+00:00, note: "at is approximate, entered by hand (yt_prepatch prints no timestamp; the run came just before the gate record); new files fail to import at b737f4f; the edited tests in test_ledger_transitions, test_pipeline and test_worker were masked and replayed separately at b737f4f: the new ones fail"}
     notes_resolved: true
-interrupts: []
+interrupts:
+  - {at: "2026-10-03", text: "PO: smoke-gemini run once, 403 PERMISSION_DENIED (key/project config), deferred to user; AIUnavailable message gap becomes CHG-020", became_change: CHG-020}
 review_rounds:
   - {round: 1, reviewers: ["ledger and jobs (CHG-013, CHG-005)", "AI and ingestion (CHG-004)"], verdicts: [FIX_REQUIRED, FIX_REQUIRED], fixes: [7f54ded, c0727b2]}
   - {round: 2, reviewers: ["ledger and jobs (CHG-013, CHG-005)", "AI and ingestion (CHG-004)"], verdicts: [FIX_REQUIRED, FIX_REQUIRED], fixes: [e66e55b], note: "ledger critical was a regression from the round-1 case dedup; ingestion critical was a CRLF-fragile test missed in round 1"}
   - {round: 3, reviewers: ["ledger and jobs (CHG-013, CHG-005)", "AI and ingestion (CHG-004)"], verdicts: [APPROVE, APPROVE], reviewed: 4ae3d45}
 hotfixes: []      # {branch, reason, merged_sha, caused_by}
+verdict: {by: payablesagent-ac (PO), at: "2026-10-03", result: "ACCEPT CHG-013, CHG-004, CHG-005 unconditionally", smoke: "run once, 403 PERMISSION_DENIED (key/project config), deferred to user; run id smoke-gemini-20261003T041833; 1 call, 0 tokens"}
