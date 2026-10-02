@@ -4,18 +4,20 @@ The worker claims one job at a time with UPDATE ... RETURNING; two claims
 racing for the same row never both succeed.
 
 Callers must set `conn.row_factory = sqlite3.Row` before using this module —
-mark_failed and claim_one's return value both rely on column-name access."""
+mark_failed and claim_one's return value both rely on column-name access.
+
+Time is read through the Clock interface (app/clock.py), never
+datetime.now() directly, so run_after/now are injectable in tests and the
+scenario suite can replay a fortnight in seconds (caught in batch-0 review:
+an earlier version called datetime.now(UTC) here directly)."""
 
 from __future__ import annotations
 
 import json
 import sqlite3
-from datetime import UTC, datetime
 from typing import Any
 
-
-def _utcnow_iso() -> str:
-    return datetime.now(UTC).replace(microsecond=0).isoformat()
+from app.clock import Clock, SystemClock
 
 
 def enqueue(
@@ -26,8 +28,9 @@ def enqueue(
     run_after: str | None = None,
     idempotency_key: str | None = None,
     max_attempts: int = 5,
+    clock: Clock | None = None,
 ) -> int:
-    run_after = run_after or _utcnow_iso()
+    run_after = run_after or (clock or SystemClock()).now().isoformat()
     cur = conn.execute(
         """
         INSERT INTO job (kind, payload_json, idempotency_key, status, run_after, max_attempts)
@@ -48,8 +51,9 @@ def claim_one(
     conn: sqlite3.Connection,
     kinds: list[str] | None = None,
     now: str | None = None,
+    clock: Clock | None = None,
 ) -> sqlite3.Row | None:
-    now = now or _utcnow_iso()
+    now = now or (clock or SystemClock()).now().isoformat()
     kind_filter = ""
     kind_params: list[str] = []
     if kinds:
