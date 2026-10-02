@@ -2,6 +2,7 @@
 
 setup:
 	uv sync --all-groups
+	@test -f .env || cp .env.example .env
 
 db:
 	uv run python -m app.db.migrate
