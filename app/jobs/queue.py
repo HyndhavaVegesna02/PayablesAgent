@@ -87,12 +87,17 @@ def mark_failed(
     job_id: int,
     error: str,
     retry_at: str | None = None,
+    *,
+    permanent: bool = False,
 ) -> None:
+    """Counts one failed attempt. The job goes back to `queued` (at `retry_at`)
+    until max_attempts, then `dead`. `permanent` means retrying cannot help
+    (bad payload, a refused request), so it goes `dead` at once."""
     row = conn.execute(
         "SELECT attempts, max_attempts, run_after FROM job WHERE id = ?", (job_id,)
     ).fetchone()
     attempts = row["attempts"] + 1
-    dead = attempts >= row["max_attempts"]
+    dead = permanent or attempts >= row["max_attempts"]
     conn.execute(
         """
         UPDATE job
@@ -107,3 +112,23 @@ def mark_failed(
             job_id,
         ),
     )
+
+
+def queued_job_id(conn: sqlite3.Connection, kind: str, business_id: int | None = None) -> int | None:
+    """The oldest still-queued job of this kind (for this business, when given).
+    Used to absorb repeat requests: a queued replan or poll already covers them."""
+    sql = "SELECT id FROM job WHERE kind = ? AND status = 'queued'"
+    args: list[Any] = [kind]
+    if business_id is not None:
+        sql += " AND json_extract(payload_json, '$.business_id') = ?"
+        args.append(business_id)
+    row = conn.execute(sql + " ORDER BY id LIMIT 1", args).fetchone()
+    return None if row is None else row[0]
+
+
+def requeue_running(conn: sqlite3.Connection) -> int:
+    """At worker start: a job left `running` was interrupted by a stopped worker
+    (there is one worker per installation), so it goes back to the queue.
+    The attempt is not counted, because the handler never reported a result."""
+    cur = conn.execute("UPDATE job SET status = 'queued', locked_at = NULL WHERE status = 'running'")
+    return cur.rowcount

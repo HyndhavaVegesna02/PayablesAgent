@@ -146,3 +146,31 @@ def test_fresh_recreates_the_file_instead_of_deleting_rows(tmp_path, monkeypatch
     assert _counts(db_path) == first == {
         "business": 1, "payable": 5, "receivable": 2, "tax_obligation": 3, "event": 15,
     }
+
+
+def test_the_seed_reads_database_path_through_settings_like_the_app(tmp_path, monkeypatch, capsys):
+    # A DATABASE_PATH only in a .env file: the app (Settings) uses it, so the seed must too.
+    monkeypatch.delenv("DATABASE_PATH", raising=False)
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("DATABASE_PATH=./from-dotenv.db\n", encoding="utf-8")
+    assert seed_module.main([]) == 0
+    assert (tmp_path / "from-dotenv.db").exists()
+    assert not (tmp_path / "data" / "cashflow.db").exists()
+
+
+def test_fresh_on_a_database_another_process_holds_exits_with_a_clear_message(
+    tmp_path, monkeypatch, capsys
+):
+    db_path = tmp_path / "cli.db"
+    monkeypatch.setenv("DATABASE_PATH", str(db_path))
+    assert seed_module.main([]) == 0
+    capsys.readouterr()
+
+    def locked(self, missing_ok=False):
+        raise PermissionError(32, "The process cannot access the file", str(self))
+
+    monkeypatch.setattr(seed_module.Path, "unlink", locked)  # what Windows does to an open file
+    assert seed_module.main(["--fresh"]) == 1
+    err = capsys.readouterr().err
+    assert "another process has it open" in err
+    assert "make reseed" in err

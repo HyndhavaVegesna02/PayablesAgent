@@ -1,13 +1,19 @@
+from datetime import datetime
+
 from fastapi.testclient import TestClient
+
+from app.clock import TIMEZONE, FakeClock
 
 from app.config import Settings
 from app.db.migrate import apply_migrations
 from app.jobs.queue import enqueue
 from app.main import create_app
+from app.worker import write_heartbeat
 
 
 def _client(db_path) -> TestClient:
-    settings = Settings(_env_file=None, database_path=str(db_path))
+    settings = Settings(_env_file=None, database_path=str(db_path),
+                        data_dir=str(db_path.parent / "files"))
     return TestClient(create_app(settings))
 
 
@@ -22,7 +28,7 @@ def test_health_reports_ok_and_zero_queue_depth_on_fresh_db(tmp_path):
     assert body["status"] == "ok"
     assert body["database"]["reachable"] is True
     assert body["queue_depth"] == 0
-    assert body["worker"] == "not yet implemented"
+    assert body["worker"] == {"last_heartbeat": None}  # the worker has never run
 
 
 def test_health_reports_queue_depth(tmp_path):
@@ -48,3 +54,14 @@ def test_health_reports_degraded_when_db_missing(tmp_path):
     body = resp.json()
     assert body["status"] == "degraded"
     assert body["database"]["reachable"] is False
+
+
+def test_health_reports_the_worker_heartbeat(tmp_path):
+    db_path = tmp_path / "health.db"
+    apply_migrations(db_path)
+    settings = Settings(_env_file=None, database_path=str(db_path), data_dir=str(tmp_path / "files"))
+    clock = FakeClock(datetime(2026, 10, 12, 9, 30, tzinfo=TIMEZONE))
+    write_heartbeat(settings, clock)
+
+    body = TestClient(create_app(settings)).get("/api/health").json()
+    assert body["worker"] == {"last_heartbeat": "2026-10-12T09:30:00+05:30"}

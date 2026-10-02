@@ -430,6 +430,47 @@ def transition(
     return _MODELS[kind].model_validate(after)
 
 
+def set_planned_date(
+    entity: EntityRef,
+    planned_date: date,
+    actor: str,
+    reason: str,
+    source_ref: str | None,
+    *,
+    conn: sqlite3.Connection,
+    expected_version: int | None = None,
+    trace_run_id: str | None = None,
+    clock: Clock | None = None,
+) -> Payable:
+    """A replan moves a PLANNED bill to a different pay day. The table has no
+    PLANNED -> PLANNED row, so this is its own write (batch 2 plan, Q5):
+    planner only, PLANNED only, version bump, PAYABLE_REPLANNED event."""
+    who = parse_actor(actor)
+    if entity.kind != "payable":
+        raise IllegalTransition("only payables have a planned date")
+    _check_role(who, frozenset({"planner"}), "move a planned date")
+    if type(planned_date) is not date:
+        raise TypeError("planned_date must be a date")
+    _require_fk(conn)
+    clock = clock or SystemClock()
+
+    with atomic(conn):
+        before = _get(conn, "payable", entity.id)
+        if before["status"] != "PLANNED":
+            raise IllegalTransition(f"payable {entity.id} is {before['status']}, not PLANNED")
+        if before["planned_date"] == planned_date.isoformat():
+            raise IllegalTransition(f"payable {entity.id} is already planned for {planned_date}")
+        _check_version("payable", who, before, expected_version)
+        _update_state(conn, "payable", before, {"planned_date": planned_date})
+        after = _get(conn, "payable", entity.id)
+        _insert_event(
+            conn, business_id=before["business_id"], event_type="PAYABLE_REPLANNED",
+            entity="payable", entity_id=entity.id, actor=actor, before=before, after=after,
+            reason=reason, source_ref=source_ref, trace_run_id=trace_run_id, clock=clock,
+        )
+    return Payable.model_validate(after)
+
+
 _SPLIT_COPIED = ("business_id", "party_id", "invoice_number", "invoice_date", "priority",
                  "grace_days", "source_document_id")
 

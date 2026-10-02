@@ -10,6 +10,7 @@ from fastapi import FastAPI
 
 from app.config import Settings
 from app.db.read import read_only_connection
+from app.worker import read_heartbeat
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -41,8 +42,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "status": "ok" if database["reachable"] else "degraded",
             "database": database,
             "queue_depth": queue_depth,
-            # The worker process (job runner, scheduler) lands in later phases.
-            "worker": "not yet implemented",
+            # The worker writes this file on every loop (batch 2 plan, Q1).
+            "worker": {"last_heartbeat": read_heartbeat(settings)},
         }
 
     return app

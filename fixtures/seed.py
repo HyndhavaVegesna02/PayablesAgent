@@ -13,13 +13,13 @@ it refuses a database that already has a business, and `--fresh`
 from __future__ import annotations
 
 import argparse
-import os
 import sqlite3
 import sys
 from datetime import date
 from pathlib import Path
 
 from app.clock import Clock
+from app.config import Settings
 from app.db.connection import write_connection
 from app.db.migrate import apply_migrations
 from app.domain.models import PayableNew, ReceivableNew, TaxObligationNew
@@ -148,10 +148,20 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--fresh", action="store_true",
                         help="delete the database file first, then migrate and seed")
     args = parser.parse_args(argv)
-    db_path = Path(os.environ.get("DATABASE_PATH", "./data/cashflow.db"))
+    # The same setting the app and worker read (.env or the environment), so
+    # `make reseed` replaces the database `make run` actually uses.
+    db_path = Path(Settings().database_path)
 
     if args.fresh:
-        _remove_database(db_path)
+        try:
+            _remove_database(db_path)
+        except PermissionError:
+            print(
+                f"seed: cannot delete {db_path}: another process has it open. "
+                "Stop `make run` and `make worker`, then run `make reseed` again.",
+                file=sys.stderr,
+            )
+            return 1
     apply_migrations(db_path)  # idempotent; seed.py can run standalone
     conn = write_connection(db_path)
     try:

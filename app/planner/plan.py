@@ -30,6 +30,10 @@ from typing import Any, Literal
 from app.domain.money import format_inr
 from app.planner.forecast import DayBalance, Movement, opening_cash, project
 
+# Stored in plan_run.planner_version. Bump it whenever plan() or options() can
+# give a different result for the same snapshot.
+PLANNER_VERSION = "2026-10-02.1"
+
 Priority = Literal["statutory", "critical", "normal", "flexible"]
 Decision = Literal["PAY", "WAIT", "ESCALATE"]
 PRIORITY_ORDER = {"statutory": 0, "critical": 1, "normal": 2, "flexible": 3}

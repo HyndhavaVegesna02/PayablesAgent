@@ -30,7 +30,8 @@ no float ever holds an amount.
 - `make reseed` — deletes the database file at `DATABASE_PATH`, then migrates and seeds from scratch
 - `make run` — starts the FastAPI web process on port 8000 (`GET /api/health`)
 - `make test` — runs pytest (incl. Hypothesis properties) and import-linter
-- `make worker`, `make evals`, `make ablation` — intentional stub failures until the phases that implement them (worker/scheduler: Phase 3+; evals/ablation: Phase 9) — they exist in the Makefile so nothing is silently green
+- `make worker` — runs the job worker and the scheduler (`python -m app.worker`); it writes a heartbeat that `/api/health` reports
+- `make evals`, `make ablation` — intentional stub failures until Phase 9 implements them — they exist in the Makefile so nothing is silently green
 
 ## Invariants that hold across every change
 

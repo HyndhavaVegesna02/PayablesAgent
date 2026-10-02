@@ -17,8 +17,7 @@ run:
 	uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 worker:
-	@echo "make worker: not yet implemented (lands with Phase 3's scheduler/job kinds)" >&2
-	@exit 1
+	uv run python -m app.worker
 
 test:
 	uv run pytest -q
