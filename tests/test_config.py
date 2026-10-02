@@ -23,6 +23,14 @@ def test_settings_fails_fast_on_blank_database_path(monkeypatch):
         Settings(_env_file=None, database_path="")
 
 
+def test_settings_treats_blank_smtp_port_as_unset(monkeypatch):
+    # .env.example ships SMTP_PORT= (blank) until the owner fills it in;
+    # a clean `make setup` must not fail parsing that as an int.
+    monkeypatch.setenv("SMTP_PORT", "")
+    settings = Settings(_env_file=None)
+    assert settings.smtp_port is None
+
+
 def test_settings_reads_env_override(monkeypatch):
     monkeypatch.setenv("DATABASE_PATH", "/tmp/custom.db")
     settings = Settings(_env_file=None)

@@ -55,6 +55,15 @@ class Settings(BaseSettings):
             raise ValueError(f"{info.field_name.upper()} must not be blank")
         return value
 
+    @field_validator("smtp_port", mode="before")
+    @classmethod
+    def _blank_port_is_none(cls, value):
+        # An unset SMTP_PORT in .env arrives as "" (not missing), which int
+        # parsing rejects outright. Blank means "not configured yet".
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
 
 class ModelThinking(BaseModel):
     sort: ThinkingLevel
