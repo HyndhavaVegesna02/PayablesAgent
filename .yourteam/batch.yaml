@@ -26,12 +26,13 @@ changes:
     notes_resolved: true
   - id: CHG-003
     lane: planned
-    board: in-progress
+    board: done
     start_commit: b617978
     blocked_question: null
-    gate_evidence: []
-    prepatch: null
-    notes_resolved: null
+    gate_evidence:
+      - {command: "make test", exit_code: 0, output_tail: "ports | --------- | Contracts | --------- | Analyzed 25 files, 13 dependencies. | ----------------------------------- | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | Contracts: 4 kept, 0 broken.", commit: 188d8c1, at: 2026-10-02T13:34:55+00:00}
+    prepatch: {exit_code: 0, tests: 9, at: 2026-10-02T14:50:00+00:00, note: "run via uv run (system python lacks hypothesis); every file errors at the start commit because app.planner.plan does not exist yet"}
+    notes_resolved: true
 interrupts:
   - {at: "2026-10-02", text: "PO dropped CHG-012 at plan approval", became_change: null}
 hotfixes: []      # {branch, reason, merged_sha, caused_by}
