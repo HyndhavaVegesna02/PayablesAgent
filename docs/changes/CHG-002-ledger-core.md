@@ -67,7 +67,13 @@ This change adds four modules:
 - tests/test_seed.py
 
 ## Open Questions
-Q1, Q2, Q5, Q6 and Q7 are in docs/batches/2026-10-02-1/plan.md. Each has a recommended default. All are pending PO approval of the plan.
+None. PO answered them on 2026-10-02:
+- Q1: the seed creates `app_user` 1, an owner whose sentinel hash can never verify.
+- Q2: one PFESI payable, linked to PF ₹36,000 and ESI ₹9,000. Both obligations are ESTIMATED, and the split is fixture-invented.
+- Q5/Q6: deferred to CHG-005. Those moves stay refused until then.
+- Q7: payables are created in DRAFT by the pipeline or the owner. Split children start CONFIRMED.
+- Event names: `<ENTITY>_<TO_STATE>`, `<ENTITY>_CREATED`, `PAYABLE_SPLIT`.
+- D10: the write guard also flags UPDATE and DELETE on bank_account outside writer.py. INSERT stays allowed for setup and seed.
 
 ## History
 - 2026-10-02: drafted from TDD v2.0 Part 2, Phase 1

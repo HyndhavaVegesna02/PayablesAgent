@@ -1,6 +1,6 @@
 # Every change, ever. Entries are never deleted -- done and rejected are history.
 # Status is a field, never a folder.
-next_id: 13
+next_id: 14
 changes:
   - id: CHG-001
     title: Repo skeleton — layout, config, schema, Clock, tracer, job table, CI
@@ -37,7 +37,7 @@ changes:
   - id: CHG-002
     title: Ledger core — domain models, ledger writer, transition table, event triggers
     file: docs/changes/CHG-002-ledger-core.md
-    status: draft
+    status: ready
     priority: 2
     type: feature
     lane: planned
@@ -59,11 +59,11 @@ changes:
       - tests/test_ledger_write_guard.py
       - tests/test_seed.py
     depends_on: CHG-001
-    batch: null
+    batch: 1
   - id: CHG-003
     title: Planner — plan(), options(), diff(), snapshot builder
     file: docs/changes/CHG-003-planner.md
-    status: draft
+    status: ready
     priority: 3
     type: feature
     lane: planned
@@ -82,7 +82,7 @@ changes:
       - tests/test_planner_diff.py
       - tests/test_snapshot_builder.py
     depends_on: CHG-002
-    batch: null
+    batch: 1
   - id: CHG-004
     title: Alert ingestion — MailSource, test inbox, ai.client, sort/extract/validate
     file: docs/changes/CHG-004-alert-ingestion.md
@@ -162,16 +162,26 @@ changes:
     lane: direct
     expected_paths: []
     depends_on: null
-    batch: null
+    batch: 1
   - id: CHG-012
     title: Dedupe queue.py's "(clock or SystemClock()).now().isoformat()" idiom
     file: docs/changes/CHG-012-queue-clock-default-helper.md
-    status: ready
+    status: rejected
     priority: 12
     type: chore
     lane: direct
     expected_paths: []
     depends_on: null
+    batch: 1
+  - id: CHG-013
+    title: Worker and replan — job runner loop, replan/monday_plan jobs, plan persistence
+    file: docs/changes/CHG-013-replan-worker.md
+    status: draft
+    priority: 13
+    type: feature
+    lane: null
+    expected_paths: []
+    depends_on: CHG-003
     batch: null
 
 # Shape of an entry:

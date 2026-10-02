@@ -44,6 +44,12 @@ Out of scope: persisting plan runs and applying the planner's transitions. The p
 - [ ] AC6: Every snapshot input row in the plan's contract grid has its empty, absent and failure behaviour driven by a test against a real migrated DB.
 - [ ] AC7: Seed → build_snapshot(today=2026-10-12) → plan() produces the same canonical bytes as the hand-built golden snapshot.
 - [ ] AC8: ESCALATE reasons include the breach day and the gap. Bills due after the horizon get WAIT. Overdue bills target the next payment day on or after today.
+- [ ] AC9 (D9): All three discount branches have tests:
+  - discount taken;
+  - discount skipped, so the bill pays on its due date;
+  - discount skipped and the due date also breaches, so the bill gets ESCALATE.
+
+  The fallback reason names the skipped discount.
 
 ## Expected paths
 - app/planner/plan.py
@@ -61,7 +67,13 @@ Out of scope: persisting plan runs and applying the planner's transitions. The p
 - tests/test_snapshot_builder.py
 
 ## Open Questions
-Q3 and Q4 are in docs/batches/2026-10-02-1/plan.md, each with a recommended default. Both are pending PO approval of the plan.
+None. PO answered both on 2026-10-02:
+- **D8 (Q3):** `PlanSnapshot.uncounted_inflows` is added as a PO-approved extension of the TDD type.
+- **D9 (Q4 override):**
+  - `discount_paise` is the paise saved when the bill is paid by `discount_by`.
+  - If paying on the discount target would breach the safety amount, the bill falls back to its due-date target at the full amount. It is escalated only if that also breaches.
+  - The fallback reason says the discount was skipped because taking it would breach.
+  - Each branch gets one unit test.
 
 ## History
 - 2026-10-02: drafted from TDD v2.0 Part 2, Phase 2

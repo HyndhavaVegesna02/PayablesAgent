@@ -502,3 +502,23 @@ Each question blocks, but each has a recommended default. If you approve the pla
 | Q6 | Three receivable moves aren't in the TDD: the owner re-rating among COMMITTED/EXPECTED/UNKNOWN; creation by `pipeline`; any move out of CONFIRMED. | Defer to CHG-005/CHG-006; refused until then. The seed only needs creation by the owner. |
 | Q7 | The TDD doesn't name the payable creation actors (pipeline, owner) or the start state of split children. | Creation is DRAFT, by `pipeline` or `owner`. Split children start CONFIRMED: the owner's split is itself a confirmation, and Part 1 says each part "follows the same states". |
 | — | A flag rather than a question: no backlog entry owns the replan and monday_plan jobs, which persist plan runs and apply PLANNED↔CONFIRMED. | Add a new draft, CHG-013, sequenced before CHG-006. |
+
+---
+
+## PO approval (2026-10-02, payablesagent-ac) — binding; overrides the plan text above where they differ
+
+- **Q1 approved.** Seed creates `app_user` 1 `owner@example.test`, role owner, with a password hash that can never verify. CHG-006 adds a real demo login.
+- **Q2 approved.** One PFESI-OCT26 payable of ₹45,000, linked to two ESTIMATED `tax_obligation` rows: PF ₹36,000 and ESI ₹9,000. The seed comment marks this split as fixture-invented. The golden is untouched.
+- **D8 (Q3).** `PlanSnapshot.uncounted_inflows` is a PO-approved addition to the TDD type. `inflows` stays exactly as the TDD comment defines it.
+- **D9 (Q4 override).**
+  - `discount_paise` is the paise saved if the bill is paid by `discount_by`; the bill then pays `amount − discount`.
+  - If paying on the discount target would breach, the planner does not escalate. It falls back to the normal due-date target and pays the full amount, and only ESCALATEs if that also breaches.
+  - When the fallback fires, the reason says the discount was skipped because taking it would breach.
+  - Each branch gets one unit test: discount taken, fallback PAY, fallback ESCALATE.
+  - Placement step 6 changes accordingly. A discounted bill is tried at the discount target first, then the due-date target.
+- **Q5/Q6.** Deferred to CHG-005, and those moves stay refused until then. PO leanings are recorded in CHG-005's file.
+- **Q7 approved.**
+- **Event names.** `<ENTITY>_<TO_STATE>`, `<ENTITY>_CREATED` and `PAYABLE_SPLIT` are accepted. Where the TDD gives its own names, those win (e.g. GMAIL_CONNECTED later).
+- **D10.** The write guard also flags `UPDATE` and `DELETE` on `bank_account` outside writer.py. `INSERT INTO bank_account` stays allowed for setup and seed. This needs one more detector self-test.
+- **CHG-012 dropped.** It is marked rejected: "PO dropped: entry's own text says not worth it for two call sites".
+- **CHG-013** is created as a backlog draft for batch 2. It is not planned here.

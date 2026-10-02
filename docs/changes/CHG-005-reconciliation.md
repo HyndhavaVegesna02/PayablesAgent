@@ -29,3 +29,8 @@ Gmail, ask the owner).
 
 ## History
 - 2026-10-02: drafted from TDD v2.0 Part 2, Phase 4
+- 2026-10-02: PO leanings from batch 1's Q5/Q6. Settle these when CHG-005 is planned; until then the moves are refused.
+  - UNMATCHED→EXPLAINED: owner only. The TDD has the agent ask the owner what an unexpected transaction was.
+  - UNMATCHED→MATCHED: allowed for the owner when they resolve a REVIEW bill as paid against a specific transaction.
+  - UNMATCHED→REVERSED: reconciler only, for a failure email whose debit was never matched.
+  - Receivables: the owner may re-rate among COMMITTED/EXPECTED/UNKNOWN. Creation is by the owner only (via confirm_record), never by the pipeline. CONFIRMED→anything else is out of the MVP.

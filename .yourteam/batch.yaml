@@ -1,20 +1,35 @@
 # Active batch. status: none means no batch is running.
-batch: 0
-status: closed      # none | active | review | closed | aborted
-goal: "Repo skeleton: setup, db, seed, run and CI all green on a clean checkout. No AI calls, no ledger-writer logic yet."
-branch: batch-0
+batch: 1
+status: active      # none | active | review | closed | aborted
+goal: "Deterministic core: the ledger writer refuses agent actors and leaves an audit trail; the planner reproduces the worked example byte-for-byte from the seeded DB."
+branch: batch-1
 start_tag: null
-started: "2026-10-02T00:00:00Z"
+started: "2026-10-02T13:30:00+05:30"
 changes:
-  - id: CHG-001
-    lane: planned
-    board: done
-    start_commit: 50e14c2ce204582e7e39b963dba0d0f5ab140c75
+  - id: CHG-011
+    lane: direct
+    board: todo
+    start_commit: null
     blocked_question: null
-    gate_evidence:
-      - {command: "make test", exit_code: 0, output_tail: "ngs.html | 33 passed, 1 warning in 1.03s | uv run lint-imports | --------- | Contracts | --------- | Analyzed 15 files, 2 dependencies. | ---------------------------------- | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | ai never imports ledger, db or web KEPT | Contracts: 3 kept, 0 broken.", commit: 4d3e3c0, at: 2026-10-02T12:05:12+00:00}
-      - {command: "make test", exit_code: 0, output_tail: "ngs.html | 45 passed, 1 warning in 1.31s | uv run lint-imports | --------- | Contracts | --------- | Analyzed 16 files, 4 dependencies. | ---------------------------------- | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | ai never imports ledger, db or web KEPT | Contracts: 3 kept, 0 broken.", commit: ef07a54, at: 2026-10-02T12:20:09+00:00}
-    prepatch: {exit_code: 0, tests: 11, at: 2026-10-02T12:22:00+00:00}
-    notes_resolved: true
-interrupts: []    # human requests captured mid-batch: {at, text, became_change}
+    gate_evidence: []
+    prepatch: null
+    notes_resolved: null
+  - id: CHG-002
+    lane: planned
+    board: todo
+    start_commit: null
+    blocked_question: null
+    gate_evidence: []
+    prepatch: null
+    notes_resolved: null
+  - id: CHG-003
+    lane: planned
+    board: todo
+    start_commit: null
+    blocked_question: null
+    gate_evidence: []
+    prepatch: null
+    notes_resolved: null
+interrupts:
+  - {at: "2026-10-02", text: "PO dropped CHG-012 at plan approval", became_change: null}
 hotfixes: []      # {branch, reason, merged_sha, caused_by}

@@ -27,3 +27,4 @@ a third call site appears; not worth it for two.
 
 ## History
 - 2026-10-02: drafted from batch 0's re-review minor note
+- 2026-10-02: rejected — PO dropped: entry's own text says not worth it for two call sites
