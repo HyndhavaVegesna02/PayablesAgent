@@ -176,9 +176,10 @@ def enqueue_poll_mail(*, db_path: str | Path, clock: Clock) -> None:
 def default_handlers(backend=None) -> dict[str, Handler]:
     """Every job this build can run. Mail jobs need an AI backend; without one
     they are not registered, so their jobs wait in the queue (Q10)."""
-    from app.jobs import replan
+    from app.jobs import reconcile, replan
 
     out: dict[str, Handler] = {"replan": replan.handle_replan, "monday_plan": replan.handle_monday_plan}
+    out.update(reconcile.handlers())
     if backend is not None:
         from app.ingest import pipeline
 

@@ -279,12 +279,22 @@ def test_bank_txn_cited_moves(conn):
     ]
 
 
+def test_a_never_matched_debit_can_be_reversed_by_the_reconciler(conn):
+    ref = _txn(conn)
+    t = writer.transition(ref, "REVERSED", "reconciler", "returned", "candidate:3", conn=conn)
+    assert t.status == "REVERSED"
+    assert [e["event_type"] for e in events(conn, "bank_txn", ref.id)] == [
+        "BANK_TXN_CREATED", "BANK_TXN_REVERSED",
+    ]
+
+
 @pytest.mark.parametrize(
     "to, actor",
     [
         ("EXPLAINED", "owner:1"),    # Q5(a): deferred to CHG-005
         ("MATCHED", "owner:1"),      # Q5(b)
-        ("REVERSED", "reconciler"),  # Q5(c): UNMATCHED -> REVERSED
+        ("REVERSED", "pipeline"),    # UNMATCHED -> REVERSED is the reconciler's (batch 2, Q7)
+        ("REVERSED", "owner:1"),
         ("MATCHED", "pipeline"),
         ("ADJUSTMENT", "owner:1"),
     ],

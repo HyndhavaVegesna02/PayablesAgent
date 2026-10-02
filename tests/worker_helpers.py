@@ -36,3 +36,35 @@ def make_env(tmp_path: Path, *, seeded: bool = True) -> Env:
         trace_dir=str(tmp_path / "traces"),
     )
     return Env(conn, clock, settings, load_app_config(ROOT / "config.yaml"))
+
+
+def make_mail_env(tmp_path: Path) -> Env:
+    """A seeded env whose worker reads its own empty test inbox, with a fresh
+    Fernet key for the document store."""
+    from cryptography.fernet import Fernet
+
+    env = make_env(tmp_path)
+    inbox = tmp_path / "inbox"
+    inbox.mkdir()
+    env.settings = env.settings.model_copy(update={
+        "fernet_key": Fernet.generate_key().decode(), "test_inbox_path": str(inbox), "mail_source": "eml_folder",
+    })
+    return env
+
+
+def deliver(env: Env, *names: str) -> None:
+    import shutil
+
+    for name in names:
+        shutil.copy(ROOT / "fixtures" / "test_inbox" / name, env.settings.test_inbox_path)
+
+
+def run_all(env: Env, handlers, limit: int = 100) -> None:
+    """Runs due jobs until none is left (jobs with no handler stay queued)."""
+    from app.worker import process_one
+
+    for _ in range(limit):
+        if not process_one(env.conn, handlers, clock=env.clock, settings=env.settings,
+                           app_config=env.app_config):
+            return
+    raise AssertionError("the queue did not drain")

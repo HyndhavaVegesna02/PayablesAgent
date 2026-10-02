@@ -2,6 +2,7 @@ import pytest
 
 from app.domain.states import (
     BANK_TXN_TRANSITIONS,
+    DRIFT_TRANSITIONS,
     CREATE_RULES,
     PAYABLE_TRANSITIONS,
     RECEIVABLE_TRANSITIONS,
@@ -37,6 +38,16 @@ def test_bank_txn_table_has_only_the_cited_rows():
     assert {k: set(v) for k, v in BANK_TXN_TRANSITIONS.items()} == {
         ("UNMATCHED", "MATCHED"): {"reconciler"},
         ("MATCHED", "REVERSED"): {"reconciler"},
+        ("UNMATCHED", "REVERSED"): {"reconciler"},  # batch 2, Q7
+    }
+
+
+def test_drift_table_is_the_tdd_drift_check():
+    assert {k: set(v) for k, v in DRIFT_TRANSITIONS.items()} == {
+        ("OK", "CHECKING"): {"reconciler"},
+        ("CHECKING", "OK"): {"reconciler"},
+        ("CHECKING", "ASK_OWNER"): {"reconciler"},
+        ("ASK_OWNER", "OK"): {"owner"},
     }
 
 

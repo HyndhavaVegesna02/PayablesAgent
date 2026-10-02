@@ -8,16 +8,16 @@ from datetime import timedelta
 from pathlib import Path
 
 import pytest
-from cryptography.fernet import Fernet
 
 from app.ai.client import AIUnavailable
 from app.ingest import pipeline
 from app.ingest.store import KEYGEN_COMMAND
 from app.jobs import queue
 from app.trace import view
-from app.worker import default_handlers, process_one
+from app.worker import default_handlers
 from tests.fake_ai import FIXTURE_REPLIES, FakeBackend, fixture_backend
-from tests.worker_helpers import ROOT, make_env
+from tests.worker_helpers import ROOT, deliver, make_mail_env
+from tests.worker_helpers import run_all as _run_all
 
 FIXTURES = ROOT / "fixtures" / "test_inbox"
 DEBIT = "01-debit-ashirwad-paper.eml"
@@ -29,29 +29,14 @@ GOOD_ALERT = dict(FIXTURE_REPLIES[DEBIT])["BankAlertExtract"]
 
 @pytest.fixture
 def env(tmp_path):
-    e = make_env(tmp_path)
-    (tmp_path / "inbox").mkdir()
-    e.settings = e.settings.model_copy(update={
-        "fernet_key": Fernet.generate_key().decode(), "test_inbox_path": str(tmp_path / "inbox"),
-        "mail_source": "eml_folder",
-    })
+    e = make_mail_env(tmp_path)
     e.clock.advance(timedelta(days=4, hours=1))  # Fri 16 Oct, 10:00: every fixture is released
     yield e
     e.conn.close()
 
 
-def deliver(env, *names):
-    for name in names:
-        shutil.copy(FIXTURES / name, env.settings.test_inbox_path)
-
-
-def run_all(env, backend, limit=50):
-    handlers = default_handlers(backend)
-    for _ in range(limit):
-        if not process_one(env.conn, handlers, clock=env.clock, settings=env.settings,
-                           app_config=env.app_config):
-            return
-    raise AssertionError("the queue did not drain")
+def run_all(env, backend):
+    _run_all(env, default_handlers(backend))
 
 
 def poll(env, backend):
@@ -106,7 +91,7 @@ def test_a_debit_alert_becomes_a_bank_txn_through_the_worker(env):
 
     (reconcile,) = job(env, "reconcile_txn")
     assert json.loads(reconcile["payload_json"]) == {"bank_txn_id": txn["id"]}
-    assert reconcile["status"] == "queued"  # its handler lands with CHG-005
+    assert reconcile["status"] == "done"  # CHG-005's handler ran it
 
 
 def test_the_stored_email_is_encrypted_at_rest(env):

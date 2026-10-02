@@ -308,8 +308,17 @@ def _route(ctx: JobContext, doc: sqlite3.Row, doc_type: str, outcome: Outcome, c
         )
         job_id = queue.enqueue(conn, kind="reconcile_txn", payload={"bank_txn_id": txn.id},
                                idempotency_key=f"reconcile_txn:{txn.id}", clock=ctx.clock)
-        ctx.tracer.step(input_ref=input_ref, tool="route",
-                        result=f"bank_txn {txn.id} written; reconcile_txn job {job_id} queued")
+        queued = f"reconcile_txn job {job_id}"
+        if rec.balance_after_paise is not None:
+            # Queued after reconcile_txn, so the match is in the ledger before the comparison.
+            drift = queue.enqueue(
+                conn, kind="drift_check",
+                payload={"account_id": rec.account_id, "source": "alert",
+                         "reported_paise": rec.balance_after_paise, "reported_at": doc["received_at"]},
+                idempotency_key=f"drift_check:bank_txn:{txn.id}", clock=ctx.clock,
+            )
+            queued += f" and drift_check job {drift}"
+        ctx.tracer.step(input_ref=input_ref, tool="route", result=f"bank_txn {txn.id} written; {queued} queued")
     else:
         job_id = queue.enqueue(conn, kind="reconcile_failure", payload={"candidate_id": candidate_id},
                                idempotency_key=f"reconcile_failure:{candidate_id}", clock=ctx.clock)

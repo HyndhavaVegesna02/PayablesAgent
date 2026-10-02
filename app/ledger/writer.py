@@ -1,5 +1,6 @@
 """The only code that writes ledger tables (payable, receivable, bank_txn,
-tax_obligation) and the event table (TDD Part 2, "Ledger writer").
+tax_obligation), changes a bank_account's balance or drift fields, and
+writes the event table (TDD Part 2, "Ledger writer"; batch 1 plan, D10).
 
 Every state change goes through transition(); every write records its event
 row inside the same SQLite transaction, so a failure anywhere leaves neither.
@@ -30,6 +31,7 @@ from app.domain.models import (
 )
 from app.domain.states import (
     CREATE_RULES,
+    DRIFT_TRANSITIONS,
     STATE_COLUMN,
     TRANSITION_FIELDS,
     TRANSITIONS,
@@ -533,3 +535,159 @@ def split_payable(
             )
             children.append(Payable.model_validate(row))
     return children[0], children[1]
+
+
+# --- bank accounts: reported balance and drift (batch 2 plan, CHG-005) --------------
+
+
+def _account(conn: sqlite3.Connection, account_id: int) -> dict[str, Any]:
+    return _get(conn, "bank_account", account_id)
+
+
+def _update_account(conn: sqlite3.Connection, before: Mapping[str, Any], sets: Mapping[str, Any]) -> None:
+    """Compare-and-set on drift_status: bank_account has no version column."""
+    cur = conn.execute(
+        f"UPDATE bank_account SET {', '.join(f'{c} = ?' for c in sets)} WHERE id = ? AND drift_status = ?",
+        [*sets.values(), before["id"], before["drift_status"]],
+    )
+    if cur.rowcount != 1:
+        raise StaleVersion(f"bank_account {before['id']} changed underneath this write")
+
+
+def _account_event(conn, before, after, event_type, *, actor, reason, source_ref, trace_run_id, clock):
+    _insert_event(
+        conn, business_id=before["business_id"], event_type=event_type, entity="bank_account",
+        entity_id=before["id"], actor=actor, before=before, after=after, reason=reason,
+        source_ref=source_ref, trace_run_id=trace_run_id, clock=clock,
+    )
+
+
+def record_reported_balance(
+    account_id: int,
+    reported_paise: int,
+    reported_at: str,
+    actor: str,
+    reason: str,
+    source_ref: str | None,
+    *,
+    conn: sqlite3.Connection,
+    reconciled: bool,
+    clock: Clock | None = None,
+    trace_run_id: str | None = None,
+) -> dict[str, Any]:
+    """Stores a balance the bank reported (drift check, step 1). `reconciled`
+    means it equals the calculated balance, so last_reconciled_at moves too.
+    A report older than the one stored is ignored: the newest one wins."""
+    who = parse_actor(actor)
+    _check_role(who, frozenset({"reconciler"}), "record a reported balance")
+    if type(reported_paise) is not int:
+        raise TypeError("reported_paise must be int paise")
+    _require_fk(conn)
+    clock = clock or SystemClock()
+    with atomic(conn):
+        before = _account(conn, account_id)
+        if before["reported_at"] is not None and before["reported_at"] > reported_at:
+            return before
+        sets: dict[str, Any] = {"reported_balance_paise": reported_paise, "reported_at": reported_at}
+        if reconciled:
+            sets["last_reconciled_at"] = reported_at
+        _update_account(conn, before, sets)
+        after = _account(conn, account_id)
+        _account_event(conn, before, after, "BANK_ACCOUNT_REPORTED_BALANCE", actor=actor, reason=reason,
+                       source_ref=source_ref, trace_run_id=trace_run_id, clock=clock)
+    return after
+
+
+def set_drift_status(
+    account_id: int,
+    to_status: str,
+    actor: str,
+    reason: str,
+    source_ref: str | None,
+    *,
+    conn: sqlite3.Connection,
+    clock: Clock | None = None,
+    trace_run_id: str | None = None,
+) -> dict[str, Any]:
+    """Moves bank_account.drift_status along DRIFT_TRANSITIONS. The owner's
+    ASK_OWNER -> OK goes through confirm_balance(), which also writes the
+    adjustment, so it is refused here."""
+    who = parse_actor(actor)
+    _require_fk(conn)
+    clock = clock or SystemClock()
+    with atomic(conn):
+        before = _account(conn, account_id)
+        allowed = DRIFT_TRANSITIONS.get((before["drift_status"], to_status))
+        if allowed is None:
+            raise IllegalTransition(
+                f"bank_account {account_id}: drift {before['drift_status']} -> {to_status} is not allowed"
+            )
+        if who.role == "owner":
+            raise IllegalTransition("the owner settles drift through confirm_balance()")
+        _check_role(who, allowed, f"move drift {before['drift_status']} -> {to_status}")
+        _update_account(conn, before, {"drift_status": to_status})
+        after = _account(conn, account_id)
+        _account_event(conn, before, after, f"BANK_ACCOUNT_{to_status}", actor=actor, reason=reason,
+                       source_ref=source_ref, trace_run_id=trace_run_id, clock=clock)
+    return after
+
+
+def calculated_balance(conn: sqlite3.Connection, account_id: int, on_or_before: date | None = None) -> int:
+    """Opening balance plus every non-reversed transaction from the opening
+    date (up to `on_or_before`, when given): drift check, step 2."""
+    acct = _account(conn, account_id)
+    sql = (
+        "SELECT COALESCE(SUM(CASE WHEN direction = 'credit' THEN amount_paise ELSE -amount_paise END), 0) "
+        "FROM bank_txn WHERE account_id = ? AND status <> 'REVERSED' AND txn_date >= ?"
+    )
+    args: list[Any] = [account_id, acct["opening_balance_at"]]
+    if on_or_before is not None:
+        sql += " AND txn_date <= ?"
+        args.append(on_or_before.isoformat())
+    return acct["opening_balance_paise"] + conn.execute(sql, args).fetchone()[0]
+
+
+def confirm_balance(
+    account_id: int,
+    real_paise: int,
+    actor: str,
+    reason: str,
+    source_ref: str | None,
+    *,
+    conn: sqlite3.Connection,
+    clock: Clock | None = None,
+    trace_run_id: str | None = None,
+) -> BankTxn | None:
+    """The owner answers confirm_balance (drift check, step 6): an ADJUSTMENT
+    transaction for the difference, with the owner as actor, and the account
+    returns to OK. Returns the adjustment, or None when the owner's figure
+    already equals the calculated balance."""
+    who = parse_actor(actor)
+    _check_role(who, DRIFT_TRANSITIONS[("ASK_OWNER", "OK")], "confirm a balance")
+    if type(real_paise) is not int:
+        raise TypeError("real_paise must be int paise")
+    _require_fk(conn)
+    clock = clock or SystemClock()
+    with atomic(conn):
+        before = _account(conn, account_id)
+        _check_owner(conn, who, before["business_id"])
+        if before["drift_status"] != "ASK_OWNER":
+            raise IllegalTransition(f"bank_account {account_id} is {before['drift_status']}, not ASK_OWNER")
+        gap = real_paise - calculated_balance(conn, account_id)
+        now = clock.now().isoformat()
+        adjustment = None
+        if gap != 0:
+            adjustment = create_bank_txn(
+                BankTxnNew(account_id=account_id, direction="credit" if gap > 0 else "debit",
+                           amount_paise=abs(gap), txn_date=clock.today(),
+                           description="Adjustment: the owner confirmed the real balance",
+                           dedup_key=f"adjustment:{account_id}:{now}", status="ADJUSTMENT"),
+                actor=actor, reason=reason, source_ref=source_ref, conn=conn, clock=clock,
+                trace_run_id=trace_run_id,
+            )
+        _update_account(conn, before, {"drift_status": "OK", "reported_balance_paise": real_paise,
+                                       "reported_at": now, "last_reconciled_at": now})
+        after = _account(conn, account_id)
+        _account_event(conn, before, after, "BANK_ACCOUNT_OK", actor=actor, reason=reason,
+                       source_ref=source_ref, trace_run_id=trace_run_id, clock=clock)
+    return adjustment

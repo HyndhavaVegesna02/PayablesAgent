@@ -172,5 +172,7 @@ def test_read_heartbeat_is_none_before_the_worker_has_run(env):
 
 
 def test_default_handlers_cover_the_jobs_this_change_owns():
-    assert set(worker.default_handlers()) == {"replan", "monday_plan"}
+    assert set(worker.default_handlers()) == {
+        "replan", "monday_plan", "reconcile_txn", "reconcile_failure", "drift_check",
+    }
 

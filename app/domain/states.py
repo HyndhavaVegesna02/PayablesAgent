@@ -98,6 +98,18 @@ PAYABLE_TRANSITIONS: dict[tuple[str, str], frozenset[Role]] = {
 BANK_TXN_TRANSITIONS: dict[tuple[str, str], frozenset[Role]] = {
     ("UNMATCHED", "MATCHED"): frozenset({"reconciler"}),
     ("MATCHED", "REVERSED"): frozenset({"reconciler"}),
+    # A failure or return email whose debit was never matched (batch 2 plan, Q7;
+    # TDD "Failures and reversals": "any original debit is marked REVERSED").
+    ("UNMATCHED", "REVERSED"): frozenset({"reconciler"}),
+}
+
+# bank_account.drift_status (TDD Part 2, "Drift check"; batch 2 plan, CHG-005).
+# Changed only through ledger.writer (set_drift_status, confirm_balance).
+DRIFT_TRANSITIONS: dict[tuple[str, str], frozenset[Role]] = {
+    ("OK", "CHECKING"): frozenset({"reconciler"}),  # step 4: a mismatch remains
+    ("CHECKING", "OK"): frozenset({"reconciler"}),  # step 5: findings close the gap
+    ("CHECKING", "ASK_OWNER"): frozenset({"reconciler"}),  # step 5: they do not
+    ("ASK_OWNER", "OK"): frozenset({"owner"}),  # step 6: confirm_balance only
 }
 
 RECEIVABLE_TRANSITIONS: dict[tuple[str, str], frozenset[Role]] = {
