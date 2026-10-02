@@ -5,7 +5,7 @@ changes:
   - id: CHG-001
     title: Repo skeleton — layout, config, schema, Clock, tracer, job table, CI
     file: docs/changes/CHG-001-skeleton.md
-    status: ready
+    status: done
     priority: 1
     type: feature
     lane: planned

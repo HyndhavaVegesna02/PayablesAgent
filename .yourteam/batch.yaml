@@ -1,6 +1,6 @@
 # Active batch. status: none means no batch is running.
 batch: 0
-status: review      # none | active | review | closed | aborted
+status: closed      # none | active | review | closed | aborted
 goal: "Repo skeleton: setup, db, seed, run and CI all green on a clean checkout. No AI calls, no ledger-writer logic yet."
 branch: batch-0
 start_tag: null
