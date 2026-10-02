@@ -32,6 +32,14 @@ Batch 3 plan, docs/batches/2026-10-03-3/plan.md (these replace the drafted ones)
 - [ ] **AC6:** Settings changes and priority changes are recorded as events through the ledger writer and followed by a replan. Choosing a shortfall option records the choice and replans; split also performs the split.
 - [ ] **AC7:** The seed creates a real demo login (owner and helper) from SEED_OWNER_PASSWORD and SEED_HELPER_PASSWORD, with dev defaults documented in `.env.example`. A blank SESSION_SECRET stops the web app with a message naming how to make one.
 - [ ] **AC8:** The web layer never imports `app.ai`, enforced by import-linter. HTMX and Pico are served from `app/web/static/` with no CDN, and the layout is mobile-first (Pico's responsive container, a single column under 600px).
+- [ ] **AC9 (PO decision D12, 2026-10-03):** An owner-PAID bill whose bank debit has not arrived stays a committed outflow in the plan (build_snapshot passes it to the planner as PAYMENT_EXPECTED, on its planned date or today), so marking paid never overstates cash. When the debit arrives, match_debit treats a PAID-unmatched bill as a candidate on the same terms as an approved one. A single match sets the txn MATCHED and calls `writer.link_payment` (reconciler only; sets matched_txn_id, bumps the version, writes PAYABLE_PAYMENT_LINKED, makes no state change, and refuses if already linked). The bill then leaves the snapshot, so the money is subtracted once. More than one candidate means REVIEW (for the approved ones) and a case, as before. Marking a REVIEW bill paid links the debit it was held for. Known limit (recorded, not built): if that debit never arrives, the outflow stays committed until the next statement's drift check shows it.
+
+## PO decisions during the build
+- **D13 (2026-10-03, dev choice reported to the PO):** choosing early_receipt changes no ledger row (Q1), so match_credit also accepts a credit within the matching window of the to_date of a *chosen* early_receipt option for that receivable (same name and amount rules). Without it Nandi's Fri 16 credit, 12 days before its expected date, would be an ambiguous case, not CONFIRMED.
+- **Inputs hash (dev choice reported to the PO):** plan_run.inputs_sha256 covers what the planner reads, leaving out a bill's planner-owned status and planned date (except PAYMENT_EXPECTED), so the run's own moves don't make every approval stale (Q3).
+- **D14 (2026-10-03, PO):** demo mode has ONE clock. With DEMO_NOW set, the web app, the worker and `make seed` read a DemoClock whose instant lives in DATA_DIR/demo_clock.txt (starting at DEMO_NOW). It stands still and moves only forward, by `make demo-time T=...` or the owner-only POST /demo/time (registered only in demo mode; a form on Settings). Crossing a Monday 07:00 enqueues that Monday's plan (the demo worker has no real-time Monday cron); every move queues one mail poll. `make reseed` restarts the clock. DEMO_NOW blank: SystemClock, no demo route. `make seed` also makes the first plan.
+- **D15 (2026-10-03, PO):** DEMO_AI=fixtures (only with DEMO_NOW) makes the worker answer from the canned replies in fixtures/test_inbox/ai_replies.json (one copy, shared with tests/fake_ai.py), matched by the email text. Recorded as model fixture-ai with zero tokens and cost; the app shows "AI replies are canned fixtures". An email with no canned reply is a permanent AIUnavailable, never Gemini or a guess. A live-Gemini demo needs separate PO authorisation.
+- **D12 (2026-10-03):** Option A, fixed inside CHG-006. The S6 walkthrough runs Mon 12, then Thu 15, then Fri 16, and ends at Prime Chem PAY on Thu 22 with ₹3,83,000 lowest. See AC9.
 
 ## Expected paths
 - `app/web/`
@@ -39,6 +47,17 @@ Batch 3 plan, docs/batches/2026-10-03-3/plan.md (these replace the drafted ones)
 - `app/config.py`
 - `app/ledger/writer.py`
 - `app/domain/states.py`
+- `app/db/read.py`
+- `app/db/connection.py`
+- `app/ledger/reconcile.py`
+- `app/jobs/replan.py`
+- `app/clock.py`
+- `app/demo.py`
+- `app/worker.py`
+- `app/jobs/queue.py`
+- `app/ai/fixture_backend.py`
+- `Makefile`
+- `fixtures/test_inbox/ai_replies.json`
 - `fixtures/seed.py`
 - `fixtures/test_inbox/07-credit-nandi-foods.eml`
 - `tests/fake_ai.py`
@@ -57,6 +76,14 @@ Batch 3 plan, docs/batches/2026-10-03-3/plan.md (these replace the drafted ones)
 - `tests/test_phase5_exit.py`
 - `tests/test_seed.py`
 - `tests/test_states.py`
+- `tests/test_replan.py`
+- `tests/test_ledger_writer.py`
+- `tests/test_snapshot_builder.py`
+- `tests/test_reconcile_owner_paid.py`
+- `tests/test_reconcile_match.py`
+- `tests/test_eml_folder.py`
+- `tests/test_demo_mode.py`
+- `fixtures/test_inbox/README.md`
 
 ## Open Questions
 None. PO accepted every default on 2026-10-03 (see the plan's PO decisions).
