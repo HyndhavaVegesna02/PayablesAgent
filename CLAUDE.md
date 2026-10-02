@@ -24,8 +24,12 @@ no float ever holds an amount.
 
 ## Commands
 
-Defined in the `Makefile` once CHG-001 lands: `make setup`, `make db`,
-`make seed`, `make run`, `make worker`, `make test`, `make evals`, `make ablation`.
+- `make setup` — creates the uv-managed virtualenv, installs pinned dependencies, and copies `.env.example` to `.env` if `.env` doesn't exist yet
+- `make db` — applies `app/db/migrations/*.sql` (idempotent) and regenerates `app/db/schema.sql` from the live database
+- `make seed` — loads the worked-example business from the TDD (idempotent)
+- `make run` — starts the FastAPI web process on port 8000 (`GET /api/health`)
+- `make test` — runs pytest (incl. Hypothesis properties) and import-linter
+- `make worker`, `make evals`, `make ablation` — intentional stub failures until the phases that implement them (worker/scheduler: Phase 3+; evals/ablation: Phase 9) — they exist in the Makefile so nothing is silently green
 
 ## Invariants that hold across every change
 
