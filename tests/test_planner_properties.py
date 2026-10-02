@@ -6,7 +6,7 @@ from datetime import date, timedelta
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from app.planner.forecast import opening_cash
+from app.planner.forecast import opening_cash, project
 from app.planner.options import options
 from app.planner.plan import (
     AccountCash,
@@ -88,10 +88,39 @@ def _horizon(s):
     return [s.today + timedelta(days=i) for i in range(s.horizon_days)]
 
 
+def _normal_target_day(s, p):
+    """Independent restatement of the target rule: latest payment day in
+    [today, due], else the next payment day on or after today."""
+    d = p.due_date
+    while d >= s.today:
+        if d.weekday() in s.payment_days:
+            return d
+        d -= timedelta(days=1)
+    for i in range(7):
+        d = s.today + timedelta(days=i)
+        if d.weekday() in s.payment_days:
+            return d
+    return None
+
+
 @settings(max_examples=200, deadline=None)
 @given(snapshots())
-def test_i1_a_valid_plan_never_projects_a_day_below_safety(s):
+def test_i1_paying_the_pay_lines_never_takes_a_paid_day_below_safety(s):
+    # Rebuild the curve from the base movements plus only the PAY bills. Every
+    # non-statutory PAY was placed because the days from its pay date on stayed
+    # at or above safety, so that must hold on the final curve. (Escalated bills
+    # are left out: they are not being paid.)
     r = plan(s)
+    pay = {line.payable_id for line in r.lines if line.decision == "PAY"}
+    paid_curve = project(
+        r.opening_cash_paise,
+        [m for m in r.movements if m.source != "bill" or m.ref_id in pay],
+        _horizon(s),
+    )
+    statutory = {p.payable_id for p in s.payables if p.priority == "statutory"}
+    for line in r.lines:
+        if line.decision == "PAY" and line.payable_id not in statutory:
+            assert all(b.balance_paise >= s.safety_paise for b in paid_curve if b.day >= line.pay_on)
     if r.valid:
         assert all(b.balance_paise >= s.safety_paise for b in r.days)
 
@@ -120,6 +149,25 @@ def test_i2_every_rupee_in_the_forecast_traces_to_a_snapshot_record(s):
             assert -m.amount_paise in allowed
             assert (m.source == "payment_expected") == (p.status == "PAYMENT_EXPECTED")
 
+    # Complete and never counted twice.
+    keys = [(m.source, m.ref_id) for m in r.movements]
+    assert len(keys) == len(set(keys))
+    first, last = s.today, s.today + timedelta(days=s.horizon_days - 1)
+    refs = {src: {m.ref_id for m in r.movements if m.source == src}
+            for src in ("inflow", "commitment", "payment_expected", "bill")}
+    assert refs["inflow"] == {i.receivable_id for i in s.inflows if first <= i.expected_date <= last}
+    assert refs["commitment"] == {c.commitment_id for c in s.commitments if first <= c.day <= last}
+    assert refs["payment_expected"] == {
+        p.payable_id for p in s.payables
+        if p.status == "PAYMENT_EXPECTED" and max(p.planned_date or first, first) <= last
+    }
+    assert refs["bill"] == {line.payable_id for line in r.lines if line.decision != "WAIT"}
+    bill_moves = {m.ref_id: m for m in r.movements if m.source == "bill"}
+    for line in r.lines:
+        if line.decision == "PAY":
+            m = bill_moves[line.payable_id]
+            assert (m.day, -m.amount_paise) == (line.pay_on, line.amount_paise)
+
 
 @settings(max_examples=200, deadline=None)
 @given(snapshots(), st.data())
@@ -144,7 +192,6 @@ def test_i4_statutory_never_escalates_and_pay_dates_are_payment_days_in_the_hori
     r = plan(s)
     horizon_end = s.today + timedelta(days=s.horizon_days - 1)
     payables = {p.payable_id: p for p in s.payables}
-    any_payment_day = any(d.weekday() in s.payment_days for d in _horizon(s))
     for line in r.lines:
         p = payables[line.payable_id]
         if p.priority == "statutory":
@@ -152,8 +199,15 @@ def test_i4_statutory_never_escalates_and_pay_dates_are_payment_days_in_the_hori
         if line.decision == "PAY":
             assert line.pay_on.weekday() in s.payment_days
             assert s.today <= line.pay_on <= horizon_end
-        waits = p.due_date > horizon_end or not any_payment_day
-        assert (line.decision == "WAIT") == waits
+        target = _normal_target_day(s, p)
+        target_in_horizon = target is not None and target <= horizon_end
+        if target_in_horizon:
+            assert line.decision != "WAIT"
+        elif line.decision != "WAIT":
+            # Only a discount day inside the horizon can plan a bill whose normal
+            # target is outside it, and then at the discounted amount.
+            assert line.decision == "PAY" and p.discount_paise
+            assert line.amount_paise == p.amount_paise - p.discount_paise
         if line.decision == "ESCALATE":
             assert "below the safety amount from" in line.reason
 

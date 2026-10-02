@@ -244,6 +244,60 @@ def test_receivables_split_into_counted_and_uncounted(conn):
     assert s.commitments == ()
 
 
+def test_no_receivables_means_no_inflows(conn):
+    s = build_snapshot(conn, 1, TODAY)
+    assert (s.inflows, s.uncounted_inflows) == ((), ())
+
+
+class _CommitsAfterTheAccountsQuery:
+    """Wraps a connection; a concurrent writer commits right after the accounts read."""
+
+    def __init__(self, conn, on_accounts_read):
+        self._conn = conn
+        self._fire = on_accounts_read
+
+    @property
+    def in_transaction(self):
+        return self._conn.in_transaction
+
+    def execute(self, sql, args=()):
+        cur = self._conn.execute(sql, args)
+        if self._fire and "JOIN account_balance" in sql:
+            fire, self._fire = self._fire, None
+            fire()
+        return cur
+
+    def rollback(self):
+        self._conn.rollback()
+
+
+def test_snapshot_is_one_consistent_read_even_if_a_write_lands_midway(tmp_path):
+    db = tmp_path / "race.db"
+    w = make_ledger_db(db)
+    _payable(w, "PAYMENT_EXPECTED", amount_paise=30_000_000, planned_date="2026-10-15")
+
+    def owner_pays_and_the_debit_arrives():
+        t = writer.create_bank_txn(
+            BankTxnNew(account_id=1, direction="debit", amount_paise=30_000_000,
+                       txn_date=date(2026, 10, 12), dedup_key="race", status="UNMATCHED"),
+            actor="pipeline", reason="t", source_ref=None, conn=w,
+        )
+        writer.transition(EntityRef("bank_txn", t.id), "MATCHED", "reconciler", "t", None, conn=w)
+        writer.transition(EntityRef("payable", 1), "PAID", "reconciler", "t", None, conn=w,
+                          fields={"matched_txn_id": t.id})
+
+    ro = read_only_connection(db)
+    try:
+        s = build_snapshot(_CommitsAfterTheAccountsQuery(ro, owner_pays_and_the_debit_arrives), 1, TODAY)
+    finally:
+        ro.close()
+        w.close()
+    # Before the write: ₹6,20,000 in the bank and ₹3,00,000 still expected to leave.
+    assert s.accounts == (AccountCash(1, 62_000_000, None, False),)
+    assert [(p.payable_id, p.status) for p in s.payables] == [(1, "PAYMENT_EXPECTED")]
+    assert plan(s).lowest_balance_paise == 32_000_000
+
+
 def test_malformed_expected_date_raises(conn):
     _receivable(conn, "COMMITTED", "next week")
     with pytest.raises(ValueError, match="receivable"):

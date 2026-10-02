@@ -49,6 +49,14 @@ def test_bill_due_after_the_horizon_waits():
     assert r.movements == ()
 
 
+def test_a_bill_due_after_the_horizon_pays_if_its_payment_day_is_inside_it():
+    # Payment day Thursday only: the latest one before Tue 27 Oct is Thu 22, inside the horizon.
+    r = plan(snapshot(payment_days=frozenset({3}), payables=(PayableIn(1, 100, oct(27), "normal"),)))
+    line = _line(r, 1)
+    assert (line.decision, line.pay_on) == ("PAY", oct(22))
+    assert line.reason == "Pay ₹1 on Thu 22 Oct: latest payment day on or before the due date (Tue 27 Oct)."
+
+
 def test_no_payment_days_means_everything_waits():
     r = plan(snapshot(payment_days=frozenset(), payables=(PayableIn(1, 100, oct(14), "statutory"),)))
     line = _line(r, 1)
@@ -171,6 +179,49 @@ def test_discount_skipped_and_due_date_also_breaches_escalates():
         "Early-payment discount of ₹2,000 skipped: paying ₹1,18,000 on Mon 19 Oct would take the "
         "balance below the safety amount."
     )
+
+
+def test_discount_on_a_bill_due_after_the_horizon_is_still_taken():
+    p = _discounted(due_date=oct(30), discount_by=oct(15))
+    line = _line(plan(snapshot(accounts=_cash(100_000_000), payables=(p,))), 1)
+    assert (line.decision, line.pay_on, line.amount_paise) == ("PAY", oct(15), 11_800_000)
+
+
+def test_unsafe_discount_on_a_bill_due_after_the_horizon_waits_and_says_why():
+    p = _discounted(due_date=oct(30), discount_by=oct(15))
+    r = plan(snapshot(accounts=_cash(30_000_000), safety_paise=25_000_000, payables=(p,)))
+    line = _line(r, 1)
+    assert (line.decision, line.pay_on) == ("WAIT", None)
+    assert line.reason == (
+        "Wait: due Fri 30 Oct, after the planning horizon (ends Sun 25 Oct). Early-payment "
+        "discount of ₹2,000 skipped: paying ₹1,18,000 on Thu 15 Oct would take the balance "
+        "below the safety amount."
+    )
+
+
+def test_escalation_reports_breach_day_and_gap_away_from_the_target_day():
+    # Target Mon 12 fits that day; a commitment on Wed 14 breaches; the lowest day is Tue 20.
+    s = snapshot(
+        accounts=_cash(10_000), safety_paise=4_000,
+        payables=(PayableIn(1, 5_000, oct(14), "normal"),),
+        commitments=(CommitmentIn(1, oct(14), 2_000, "rent"), CommitmentIn(2, oct(20), 1_000, "wages")),
+    )
+    r = plan(s)
+    (e,) = r.escalations
+    assert (e.target_on, e.breach_on, e.lowest_on, e.lowest_paise, e.gap_paise) == (
+        oct(12), oct(14), oct(20), 2_000, 2_000,
+    )
+    assert _line(r, 1).reason == (
+        "Paying ₹50 on Mon 12 Oct takes the balance below the safety amount from Wed 14 Oct: "
+        "lowest ₹20 on Tue 20 Oct, ₹20 below."
+    )
+
+
+def test_planner_refuses_a_horizon_shorter_than_one_day():
+    import pytest
+
+    with pytest.raises(ValueError):
+        plan(snapshot(horizon_days=0))
 
 
 def test_a_past_discount_date_is_ignored():

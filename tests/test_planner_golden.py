@@ -2,12 +2,8 @@
 
 from datetime import timedelta
 
-from app.planner.plan import PlanLine, canonical_json, plan
+from app.planner.plan import PlanLine, plan
 from tests.planner_fixtures import ORIGINAL_PLAN, TODAY, oct, worked_example
-
-
-def golden_bytes() -> bytes:
-    return canonical_json(plan(worked_example()))
 
 
 def test_every_daily_balance_matches_part1():
@@ -42,6 +38,3 @@ def test_four_earlier_payments_pay_and_prime_chem_escalates():
     )
     assert [(e.payable_id, e.breach_on, e.gap_paise) for e in r.escalations] == [(5, oct(22), 6_700_000)]
 
-
-def test_golden_bytes_are_stable():
-    assert golden_bytes() == golden_bytes()

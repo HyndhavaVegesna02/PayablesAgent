@@ -88,6 +88,17 @@ def test_delay_flexible_moves_to_the_latest_payment_day_within_grace():
     assert delay.meets_rule is True
 
 
+def test_delay_flexible_names_the_payment_day_even_after_the_horizon():
+    s = snapshot(
+        accounts=(AccountCash(1, 10_000, None, False),), safety_paise=5_000,
+        payables=(PayableIn(1, 6_000, oct(22), "flexible", grace_days=7),),
+    )
+    delay = next(o for o in _opts(s) if o.kind == "delay_flexible")
+    assert delay.params["to_date"] == "2026-10-29"  # Thu 29 Oct, after the horizon
+    line = next(x for x in delay.plan.lines if x.payable_id == 1)
+    assert line.decision == "WAIT"
+
+
 def test_ask_ca_when_statutory_bills_alone_breach():
     s = snapshot(
         accounts=(AccountCash(1, 10_000, None, False),), safety_paise=5_000,
@@ -103,3 +114,12 @@ def test_no_split_when_the_gap_is_the_whole_bill():
     s = snapshot(accounts=(AccountCash(1, 100, None, False),), safety_paise=200,
                  payables=(PayableIn(1, 50, date(2026, 10, 15), "normal"),))
     assert "split" not in [o.kind for o in _opts(s)]
+
+
+def test_delay_flexible_not_offered_when_grace_reaches_no_later_payment_day():
+    # Due Mon 12 with 2 grace days: the latest payment day by Wed 14 is still Mon 12.
+    s = snapshot(
+        accounts=(AccountCash(1, 10_000, None, False),), safety_paise=5_000,
+        payables=(PayableIn(1, 6_000, oct(12), "flexible", grace_days=2),),
+    )
+    assert "delay_flexible" not in [o.kind for o in _opts(s)]

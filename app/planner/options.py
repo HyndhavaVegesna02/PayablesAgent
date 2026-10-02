@@ -10,7 +10,14 @@ from dataclasses import dataclass, field, replace
 from datetime import date, timedelta
 from typing import Any, Literal
 
-from app.planner.plan import InflowIn, PayableIn, PlanResult, PlanSnapshot, plan
+from app.planner.plan import (
+    InflowIn,
+    PayableIn,
+    PlanResult,
+    PlanSnapshot,
+    latest_payment_day,
+    plan,
+)
 
 OptionKind = Literal["early_receipt", "split", "delay_flexible", "authorise_breach", "ask_ca"]
 
@@ -75,8 +82,10 @@ def _splits(s: PlanSnapshot, r: PlanResult) -> list[OptionResult]:
         if pay_now <= 0:
             continue
         now_part = replace(p, amount_paise=pay_now, discount_paise=None, discount_by=None)
-        # The rest becomes a child bill after the horizon; -id marks it as a what-if record.
-        rest_part = PayableIn(-p.payable_id, e.gap_paise, rest_due, p.priority)
+        # The rest becomes a child bill after the horizon, as split_payable would make it.
+        # -id marks it as a what-if record: it must never be persisted as a plan line.
+        rest_part = PayableIn(-p.payable_id, e.gap_paise, rest_due, p.priority,
+                              grace_days=p.grace_days)
         what_if = replace(
             s, payables=tuple(x for x in s.payables if x is not p) + (now_part, rest_part)
         )
@@ -98,13 +107,18 @@ def _delays(s: PlanSnapshot, r: PlanResult) -> list[OptionResult]:
         if p.priority != "flexible" or p.grace_days <= 0 or line is None or line.decision == "WAIT":
             continue
         delayed = replace(p, due_date=p.due_date + timedelta(days=p.grace_days), grace_days=0)
+        from_day = line.pay_on or targets[p.payable_id]
+        # The latest payment day within the grace days, even if it falls after the
+        # horizon (then the rerun shows the bill as WAIT). If the grace days reach
+        # no later payment day, delaying moves nothing and is not offered.
+        to_day = latest_payment_day(s, s.today, delayed.due_date)
+        if to_day is None or to_day <= from_day:
+            continue
         rerun = plan(replace(s, payables=tuple(delayed if x is p else x for x in s.payables)))
-        new_line = next(x for x in rerun.lines if x.payable_id == p.payable_id)
         out.append(_from_rerun(
             "delay_flexible",
-            {"payable_id": p.payable_id,
-             "from_date": (line.pay_on or targets[p.payable_id]).isoformat(),
-             "to_date": new_line.pay_on.isoformat() if new_line.pay_on else None},
+            {"payable_id": p.payable_id, "from_date": from_day.isoformat(),
+             "to_date": to_day.isoformat()},
             rerun,
         ))
     return out
@@ -119,6 +133,8 @@ def options(s: PlanSnapshot, r: PlanResult) -> list[OptionResult]:
         {"gap_paise": r.gap_paise, "lowest_on": r.lowest_on.isoformat()},
         r.lowest_balance_paise, r.lowest_on, False, None,
     ))
+    # "The breach remains even with every non-statutory bill removed". Approved
+    # payments (PAYMENT_EXPECTED) stay: they are commitments, not bills to remove.
     statutory_only = replace(
         s,
         payables=tuple(p for p in s.payables

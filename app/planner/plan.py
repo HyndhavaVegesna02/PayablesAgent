@@ -6,14 +6,15 @@ the snapshot (app.db.read.build_snapshot) and stores the result.
 
 Rules the TDD leaves implicit are pinned here and locked by tests (batch 1
 plan, CHG-003 "Algorithm"; PO decisions D8 and D9):
-- A bill due after the horizon gets WAIT.
-- Otherwise its target is the latest payment day in [today, due date]; if
-  there is none (overdue, or no payment day before the due date) it is the
-  next payment day on or after today, today included. No such day inside the
-  horizon -> WAIT.
+- A bill's target is the latest payment day in [today, due date]; if there is
+  none (overdue, or no payment day before the due date) it is the next payment
+  day on or after today, today included.
 - A discount (paise saved if paid by discount_by) is tried first; if paying
   early would breach, the bill falls back to its normal target at full amount
   and only escalates if that breaches too (D9).
+- WAIT when no target falls inside the horizon (plan step 4d). So a bill due
+  after the horizon usually waits, but not when its latest payment day, or a
+  safe discount day, is still inside the horizon.
 - The plan is valid when nothing is escalated and no day of the full
   schedule is below the safety amount.
 """
@@ -144,7 +145,7 @@ def horizon(s: PlanSnapshot) -> tuple[date, ...]:
     return tuple(s.today + timedelta(days=i) for i in range(s.horizon_days))
 
 
-def _latest_payment_day(s: PlanSnapshot, start: date, end: date) -> date | None:
+def latest_payment_day(s: PlanSnapshot, start: date, end: date) -> date | None:
     d = end
     while d >= start:
         if d.weekday() in s.payment_days:
@@ -169,7 +170,7 @@ class _Target:
 
 
 def _normal_target(s: PlanSnapshot, p: PayableIn) -> _Target | None:
-    d = _latest_payment_day(s, s.today, p.due_date)
+    d = latest_payment_day(s, s.today, p.due_date)
     if d is not None:
         why = f"latest payment day on or before the due date ({format_day(p.due_date)})"
     else:
@@ -186,7 +187,7 @@ def _normal_target(s: PlanSnapshot, p: PayableIn) -> _Target | None:
 def _discount_target(s: PlanSnapshot, p: PayableIn) -> _Target | None:
     if not p.discount_paise or p.discount_by is None:
         return None
-    d = _latest_payment_day(s, s.today, min(p.discount_by, p.due_date))
+    d = latest_payment_day(s, s.today, min(p.discount_by, p.due_date))
     if d is None:
         return None
     return _Target(
@@ -252,16 +253,13 @@ def plan(s: PlanSnapshot) -> PlanResult:
         key=lambda p: (PRIORITY_ORDER[p.priority], p.due_date, p.payable_id),
     )
     for p in plannable:
-        normal = _normal_target(s, p) if p.due_date <= last else None
-        if normal is None or normal.day > last:
-            if p.due_date > last:
-                why = f"due {format_day(p.due_date)}, after the planning horizon (ends {format_day(last)})"
-            else:
-                why = f"no payment day in the planning horizon (ends {format_day(last)})"
-            lines[p.payable_id] = PlanLine(p.payable_id, "WAIT", None, p.amount_paise, f"Wait: {why}.")
-            continue
-
+        normal = _normal_target(s, p)
+        if normal is not None and normal.day > last:
+            normal = None
         discount = _discount_target(s, p)
+        if discount is not None and discount.day > last:
+            discount = None
+
         chosen: _Target | None = None
         note = ""
         if discount is not None and _fits(curve, days, discount, s.safety_paise):
@@ -273,6 +271,15 @@ def plan(s: PlanSnapshot) -> PlanResult:
                     f"{format_inr(discount.amount_paise)} on {format_day(discount.day)} would take "
                     f"the balance below the safety amount."
                 )
+            if normal is None:
+                if p.due_date > last:
+                    why = f"due {format_day(p.due_date)}, after the planning horizon (ends {format_day(last)})"
+                else:
+                    why = f"no payment day in the planning horizon (ends {format_day(last)})"
+                lines[p.payable_id] = PlanLine(
+                    p.payable_id, "WAIT", None, p.amount_paise, f"Wait: {why}.{note}"
+                )
+                continue
             if _fits(curve, days, normal, s.safety_paise):
                 chosen = normal
 

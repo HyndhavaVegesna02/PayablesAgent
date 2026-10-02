@@ -53,9 +53,22 @@ def _date(value: str | None, what: str) -> date | None:
 
 def build_snapshot(conn: sqlite3.Connection, business_id: int, today: date) -> PlanSnapshot:
     """Reads one business's plannable state into the planner's input. Every
-    rule here is a row of the contract grid in docs/batches/2026-10-02-1/plan.md."""
+    rule here is a row of the contract grid in docs/batches/2026-10-02-1/plan.md.
+    All reads share one read transaction, so a write committed part-way
+    through cannot produce a snapshot of a state that never existed."""
     if type(today) is not date:
         raise TypeError("today must be a date (Clock.today()), not a datetime")
+    own_transaction = not conn.in_transaction
+    if own_transaction:
+        conn.execute("BEGIN")
+    try:
+        return _read_snapshot(conn, business_id, today)
+    finally:
+        if own_transaction:
+            conn.rollback()  # nothing was written; this only ends the read
+
+
+def _read_snapshot(conn: sqlite3.Connection, business_id: int, today: date) -> PlanSnapshot:
     business = _rows(
         conn, "SELECT safety_amount_paise, horizon_days, payment_days FROM business WHERE id = ?",
         (business_id,),
