@@ -112,6 +112,7 @@ def run(settings, app_config, clock=SystemClock(), *, stop: threading.Event): he
 | WAIT or ESCALATE | CONFIRMED or REOPENED | nothing |
 
   5. The event reason is the line's reason plus " Projected minimum ₹X on <day>; safety amount ₹Y; rule check PASSED|FAILED". PASSED means the full schedule never goes below safety from `pay_on` onward. This mirrors Part 1's example event.
+     *As built (review round 1):* the minimum counts only the bills this plan pays, leaving out ESCALATE bills that wait for the owner's option, and the text says so ("Projected minimum with the bills this plan pays ...").
   6. `source_ref` is `plan_run:<id>`. `trace_run_id` is the job's run id.
 - **Out of scope:** `explain_plan` and `send_alert` are not enqueued yet. Neither has a handler; see Q9 and the new draft CHG-018.
 

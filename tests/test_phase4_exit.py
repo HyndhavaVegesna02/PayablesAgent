@@ -191,3 +191,33 @@ def test_redelivered_alerts_leave_one_transaction_and_one_match(env):
     assert json.loads(dup["checks_json"])["duplicates"].startswith("failed: same as bank transaction")
     assert status(env, "payable", PAPER) == "PAID"
     assert cases(env) == []
+
+
+def test_a_resent_return_email_after_the_first_was_reconciled_changes_nothing(env):
+    handlers = default_handlers(fixture_backend(DEBIT, RETURN, RETURN))
+    _plan_and_approve_paper(env, handlers)
+    at(env, 12, 12)
+    deliver(env, DEBIT)
+    enqueue(env, "poll_mail")
+    run_all(env, handlers)
+    at(env, 14, 11)
+    deliver(env, RETURN)
+    enqueue(env, "poll_mail")
+    run_all(env, handlers)
+
+    # The bank sends the return notice again under a new Message-ID.
+    inbox = Path(env.settings.test_inbox_path)
+    raw = (inbox / RETURN).read_bytes().replace(b"-03@hdfcbank.example>", b"-03-resend@hdfcbank.example>")
+    (inbox / "03-resent.eml").write_bytes(raw)
+    at(env, 14, 12)
+    enqueue(env, "poll_mail")
+    run_all(env, handlers)
+
+    notices = env.conn.execute(
+        "SELECT status, checks_json FROM candidate WHERE payload_json LIKE '%failure_notice%' ORDER BY id"
+    ).fetchall()
+    assert [n["status"] for n in notices] == ["ACCEPTED", "INVALID"]
+    assert json.loads(notices[1]["checks_json"])["duplicates"].startswith("failed: same notice as candidate")
+    assert env.conn.execute("SELECT COUNT(*) FROM event WHERE event_type = 'PAYABLE_REOPENED'").fetchone()[0] == 1
+    assert cases(env) == []
+    assert env.conn.execute("SELECT COUNT(*) FROM job WHERE kind = 'reconcile_failure'").fetchone()[0] == 1

@@ -9,7 +9,9 @@ process_document runs the pipeline for one email:
 1. sort (Gemini, low thinking). Irrelevant mail stops here.
 3. extract (Gemini, medium), for bank alerts and failure/return notices.
 4. validate with every rule check; a failure triggers one more extraction
-   with the failed checks attached.
+   with the failed checks attached. Two failures are never retried: a field
+   the model marks as uncertain goes to the owner at once, and a pure
+   duplicate of a stored transaction is set aside.
 5. a second failure is extracted once more at high thinking; if that fails
    too, the owner is asked to confirm the record.
 6. route: a bank alert is written to the ledger by the pipeline and

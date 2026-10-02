@@ -217,6 +217,11 @@ def run(
                 conn.rollback()
                 print(f"worker: database busy ({e}); will retry", file=sys.stderr)
                 worked = False
+                try:  # a job claimed before the error must not stay `running` until a restart
+                    queue.requeue_running(conn)
+                    conn.commit()
+                except sqlite3.OperationalError:
+                    conn.rollback()
             if not worked:
                 stop.wait(idle_seconds)
     finally:

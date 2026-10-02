@@ -364,3 +364,26 @@ def test_calculated_balance_is_the_account_balance_view(tmp_path_factory, txns, 
         assert writer.calculated_balance(e.conn, 1, day) == expected
     finally:
         e.conn.close()
+
+
+# --- review round 2: each drift episode is its own case ---------------------------------
+
+
+def test_a_second_drift_episode_opens_a_new_case_at_its_own_stake(env):
+    _missed_debit_alert(env)
+    check_drift(env.conn, 1, source="recheck", clock=env.clock)
+    txn(env, "debit", 2_000_000, date(2026, 10, 15), "BANK CHARGES")  # found: the gap closes
+    closed = check_drift(env.conn, 1, source="new_txn", clock=env.clock)
+    assert account(env)["drift_status"] == "OK"
+    first = cases(env)[0]
+    assert first["status"] == "RESOLVED" and "the gap closed" in first["case_file_md"]
+    assert "resolved" in closed.outcome
+
+    # Tue 20 Oct: a statement ₹3,00,000 short, a new and bigger gap
+    env.clock.advance(timedelta(days=5))
+    r = check_drift(env.conn, 1, source="statement", clock=env.clock, reported_paise=26_500_000,
+                    reported_at=datetime(2026, 10, 20, 18, 0, tzinfo=TIMEZONE))
+    second = cases(env)[1]
+    assert r.case_ids == [second["id"]] and second["id"] != first["id"]
+    assert (second["status"], second["stake_paise"], second["thinking"]) == ("OPEN", 30_000_000, "high")
+    assert "Gap (reported minus calculated): -₹3,00,000" in second["case_file_md"]

@@ -105,3 +105,14 @@ def test_an_attachment_is_returned_with_the_message(tmp_path):
     assert [(a.filename, a.content_type, a.data) for a in raw.attachments] == [
         ("stmt.pdf", "application/pdf", b"%PDF-1.4 fake"),
     ]
+
+
+def test_search_orders_by_time_across_utc_offsets(tmp_path):
+    def mail(name, date_header):
+        (tmp_path / name).write_bytes(
+            f"From: {BANK}\r\nSubject: debit\r\nDate: {date_header}\r\n\r\nRs.1 debited\r\n".encode())
+
+    mail("a.eml", "Mon, 12 Oct 2026 06:00:00 +0000")  # 11:30 IST, the later one
+    mail("b.eml", "Mon, 12 Oct 2026 10:00:00 +0530")  # 10:00 IST
+    found = EmlFolderSource(tmp_path, at(31)).search("debit")
+    assert [s.ref.id for s in found] == ["a.eml", "b.eml"]

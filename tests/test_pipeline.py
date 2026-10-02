@@ -350,7 +350,8 @@ def test_a_sort_reply_that_does_not_match_its_schema_is_retried(env):
 
 
 def test_an_email_with_no_date_is_stored_as_failed_and_not_processed(env):
-    raw = (FIXTURES / DEBIT).read_bytes().replace(b"Date: Mon, 12 Oct 2026 11:42:07 +0530\n", b"")
+    raw = (FIXTURES / DEBIT).read_bytes()
+    raw = b"".join(line for line in raw.splitlines(keepends=True) if not line.startswith(b"Date:"))
     with open(f"{env.settings.test_inbox_path}/nodate.eml", "wb") as f:
         f.write(raw)
     poll(env, FakeBackend())
@@ -369,7 +370,6 @@ def test_polling_records_the_sync_time_and_looks_back_one_day(env):
 def test_mail_jobs_are_registered_only_with_an_ai_backend():
     assert {"poll_mail", "process_document"} <= set(default_handlers(FakeBackend()))
     assert not {"poll_mail", "process_document"} & set(default_handlers())
-
 
 
 # --- contract grid: absent headers -------------------------------------------------------

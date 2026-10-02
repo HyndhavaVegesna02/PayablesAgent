@@ -24,6 +24,7 @@ from app.ledger.writer import EntityRef
 
 RECONCILER = "reconciler"
 RECHECK_AT = (23, 0)  # drift check step 3: an alert's mismatch is checked again at 23:00
+_ONE_EVENT_SUBJECTS = ("bank_txn:", "candidate:")
 _NOISE_WORDS = frozenset({"PVT", "PRIVATE", "LTD", "LIMITED", "MS"})  # and M/S, removed first
 
 
@@ -104,15 +105,19 @@ def open_case(
     clock: Clock,
 ) -> int:
     """Opens an exception case. It starts at high thinking when the stake is
-    above the owner's escalation amount, otherwise at medium. A case of the
-    same kind already open for the same subject is returned instead, so a job
-    that runs twice (a crash before mark_done) opens one case."""
-    open_already = conn.execute(
-        "SELECT id FROM agent_case WHERE business_id = ? AND kind = ? AND subject_ref = ? AND status = 'OPEN'",
-        (business_id, kind, subject_ref),
-    ).fetchone()
-    if open_already is not None:
-        return open_already[0]
+    above the owner's escalation amount, otherwise at medium.
+
+    A subject that is one event (a bank_txn or a candidate) gets one case, so a
+    job that runs twice (a crash before mark_done) opens one. An account is not
+    one event: each drift episode gets its own case, and check_drift resolves
+    the old one when the gap closes."""
+    if subject_ref.startswith(_ONE_EVENT_SUBJECTS):
+        open_already = conn.execute(
+            "SELECT id FROM agent_case WHERE business_id = ? AND kind = ? AND subject_ref = ? AND status = 'OPEN'",
+            (business_id, kind, subject_ref),
+        ).fetchone()
+        if open_already is not None:
+            return open_already[0]
     threshold = conn.execute(
         "SELECT escalation_stake_paise FROM business WHERE id = ?", (business_id,)
     ).fetchone()[0]
@@ -321,6 +326,24 @@ def handle_failure(conn: sqlite3.Connection, candidate_id: int, *, window_days: 
 # --- drift ----------------------------------------------------------------------------
 
 
+def resolve_drift_cases(conn: sqlite3.Connection, account_id: int, *, clock: Clock) -> list[int]:
+    """The gap closed by itself (a found transaction): the account's open
+    drift cases are RESOLVED, with a note in the case file."""
+    now = clock.now().isoformat()
+    ids = [r[0] for r in conn.execute(
+        "SELECT id FROM agent_case WHERE kind = 'drift' AND subject_ref = ? AND status = 'OPEN'",
+        (f"bank_account:{account_id}",),
+    )]
+    for case_id in ids:
+        conn.execute(
+            "UPDATE agent_case SET status = 'RESOLVED', updated_at = ?, "
+            "case_file_md = case_file_md || ? WHERE id = ?",
+            (now, f"- {now}: the gap closed: the calculated balance equals the reported one (reconciler).\n",
+             case_id),
+        )
+    return ids
+
+
 def _recheck_time(reported_at: datetime) -> datetime:
     local = reported_at.astimezone(TIMEZONE)
     at = local.replace(hour=RECHECK_AT[0], minute=RECHECK_AT[1], second=0, microsecond=0)
@@ -363,7 +386,8 @@ def check_drift(
             writer.set_drift_status(account_id, "OK", RECONCILER,
                                     f"The gap closed: calculated {format_inr(calc)} equals the reported balance.",
                                     f"bank_account:{account_id}", **kw)
-            return Result("gap closed: CHECKING -> OK", replan=True)
+            resolved = resolve_drift_cases(conn, account_id, clock=clock)
+            return Result(f"gap closed: CHECKING -> OK; drift cases {resolved} resolved", replan=True)
         return Result("balances agree")
 
     if status != "OK":

@@ -245,3 +245,26 @@ def test_main_starts_the_scheduler_and_the_loop_and_exits_cleanly(env, monkeypat
     assert "worker: running ['drift_check', 'monday_plan', 'reconcile_failure', 'reconcile_txn', 'replan']" in out.out
     assert "GEMINI_API_KEY is not set" in out.err
     assert worker.read_heartbeat(settings) is not None  # written before the first job claim
+
+
+def test_a_job_claimed_before_a_busy_database_error_goes_back_to_the_queue(env, monkeypatch):
+    real_done, calls = queue.mark_done, []
+
+    def busy_once(conn, job_id):
+        calls.append(job_id)
+        if len(calls) == 1:
+            raise sqlite3.OperationalError("database is locked")
+        return real_done(conn, job_id)
+
+    monkeypatch.setattr(queue, "mark_done", busy_once)
+    stop, ran = threading.Event(), []
+    job_id = _enqueue(env)
+
+    def handler(ctx):
+        ran.append(ctx.job["id"])
+        if len(ran) == 2:
+            stop.set()
+
+    _run_in_thread(env, {"replan": handler}, stop)
+    assert ran == [job_id, job_id]  # retried, not stuck in `running`
+    assert _job(env, job_id)["status"] == "done"

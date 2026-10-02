@@ -153,3 +153,15 @@ def test_main_returns_1_for_an_unknown_run_id(tmp_path, monkeypatch, capsys):
 
 def test_main_returns_2_with_no_args(capsys):
     assert main([]) == 2
+
+
+def test_the_viewer_falls_back_to_the_settings_trace_dir(tmp_path, monkeypatch, capsys):
+    import app.trace.view as view_module
+
+    (tmp_path / "2026-10-12").mkdir()
+    (tmp_path / "2026-10-12" / "r9.jsonl").write_text('{"run_id": "r9", "step": 1, "tool": "x"}\n',
+                                                      encoding="utf-8")
+    monkeypatch.delenv("TRACE_DIR", raising=False)
+    monkeypatch.setattr(view_module, "Settings", lambda: type("S", (), {"trace_dir": str(tmp_path)})())
+    assert view_module.main(["r9"]) == 0
+    assert "tool=x" in capsys.readouterr().out
