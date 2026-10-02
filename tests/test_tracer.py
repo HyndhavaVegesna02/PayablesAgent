@@ -77,6 +77,32 @@ def test_sensitive_fields_are_redacted(tmp_path):
     assert entry["arguments"]["ok"] == "fine"
 
 
+def _one_step(tmp_path, **fields):
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    clock = FakeClock(datetime(2026, 10, 12, 9, 0, tzinfo=ZoneInfo("Asia/Kolkata")))
+    Tracer(run_id="r", trace_dir=tmp_path, clock=clock).step(**fields)
+    return json.loads((tmp_path / "2026-10-12" / "r.jsonl").read_text(encoding="utf-8"))
+
+
+def test_the_tokens_field_is_kept(tmp_path):
+    # Part 1's trace has a `tokens` field; it holds counts, not credentials.
+    entry = _one_step(tmp_path, tokens={"input": 120, "output": 40, "thoughts": 7})
+    assert entry["tokens"] == {"input": 120, "output": 40, "thoughts": 7}
+
+
+def test_redaction_matches_whole_words_in_any_naming_style(tmp_path):
+    entry = _one_step(tmp_path, arguments={
+        "api_key": "k", "apiKey": "k", "client-secret": "s", "refresh_token_enc": "t",
+        "password_hash": "p", "GEMINI_API_KEY": "k",
+        "tokens": 5, "keyboard": "kept", "monkey": "kept", "input_tokens": 3,
+    })
+    redacted = {k for k, v in entry["arguments"].items() if v == "***REDACTED***"}
+    assert redacted == {"api_key", "apiKey", "client-secret", "refresh_token_enc", "password_hash",
+                        "GEMINI_API_KEY"}
+
+
 def test_find_run_file_locates_by_run_id_across_dates(tmp_path):
     (tmp_path / "2026-10-12").mkdir()
     target = tmp_path / "2026-10-12" / "run-xyz.jsonl"

@@ -18,7 +18,7 @@ changes:
   - id: CHG-004
     lane: planned
     board: in-progress
-    start_commit: null
+    start_commit: 6eda1af
     blocked_question: null
     gate_evidence: []
     prepatch: null
