@@ -1,6 +1,6 @@
 # Active batch. status: none means no batch is running.
 batch: 1
-status: active      # none | active | review | closed | aborted
+status: review      # none | active | review | closed | aborted
 goal: "Deterministic core: the ledger writer refuses agent actors and leaves an audit trail; the planner reproduces the worked example byte-for-byte from the seeded DB."
 branch: batch-1
 start_tag: null
