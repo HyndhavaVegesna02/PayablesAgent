@@ -9,6 +9,7 @@ from pathlib import Path
 from fastapi import FastAPI
 
 from app.config import Settings
+from app.db.read import read_only_connection
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -24,9 +25,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
         if db_path.exists():
             try:
-                conn = sqlite3.connect(
-                    f"file:{db_path.resolve().as_posix()}?mode=ro", uri=True
-                )
+                conn = read_only_connection(db_path)
                 try:
                     conn.execute("SELECT 1")
                     database["reachable"] = True
