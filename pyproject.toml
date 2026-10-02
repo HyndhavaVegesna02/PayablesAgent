@@ -1,0 +1,70 @@
+[project]
+name = "cashflow-agent"
+version = "0.1.0"
+description = "SME Cash-Flow & Payables Agent"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.12",
+    "itsdangerous>=2.2",
+    "argon2-cffi>=23.1",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "pyyaml>=6.0",
+    "apscheduler>=3.10",
+    "google-genai>=0.3",
+    "google-api-python-client>=2.149",
+    "google-auth>=2.35",
+    "google-auth-oauthlib>=1.2",
+    "pymupdf>=1.24",
+    "cryptography>=43.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "hypothesis>=6.112",
+    "import-linter>=2.1",
+    "httpx>=0.27",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.importlinter]
+root_package = "app"
+
+[[tool.importlinter.contracts]]
+name = "domain is pure: imports nothing else from app"
+type = "forbidden"
+source_modules = ["app.domain"]
+forbidden_modules = [
+    "app.config", "app.clock", "app.main",
+    "app.db", "app.ledger", "app.planner", "app.ingest",
+    "app.ai", "app.agent", "app.web", "app.notify", "app.jobs", "app.trace",
+]
+
+[[tool.importlinter.contracts]]
+name = "planner is a pure function: imports only domain"
+type = "forbidden"
+source_modules = ["app.planner"]
+forbidden_modules = [
+    "app.config", "app.clock", "app.main",
+    "app.db", "app.ledger", "app.ingest",
+    "app.ai", "app.agent", "app.web", "app.notify", "app.jobs", "app.trace",
+]
+
+[[tool.importlinter.contracts]]
+name = "ai never imports ledger, db or web"
+type = "forbidden"
+source_modules = ["app.ai"]
+forbidden_modules = ["app.ledger", "app.db", "app.web"]

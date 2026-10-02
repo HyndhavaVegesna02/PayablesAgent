@@ -1,0 +1,15 @@
+model:
+  id: gemini-3.8-flash
+  thinking: {sort: low, extract: medium, voice: medium, exception: medium, explain: low}
+prompts:
+  version: 2026-10-02.1
+escalation:
+  max_steps: 6
+  default_stake_paise: 5000000  # ₹50,000; the owner can change it in Settings
+  max_validation_failures: 2
+matching:
+  window_days: 3
+mail:
+  poll_minutes: 5
+alerts:
+  min_minutes_between_emails: 30
