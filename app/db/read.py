@@ -1,11 +1,14 @@
 """Read-only database access. Used by the agent's get_ledger tool so it cannot
 write to the ledger even if the rest of the agent code is wrong (TDD Part 2,
-"Security in code")."""
+"Security in code"), and by the planner's snapshot builder."""
 
 from __future__ import annotations
 
 import sqlite3
+from datetime import date, timedelta
 from pathlib import Path
+
+from app.planner.plan import AccountCash, InflowIn, PayableIn, PlanSnapshot
 
 
 def read_only_connection(db_path: str | Path) -> sqlite3.Connection:
@@ -13,3 +16,115 @@ def read_only_connection(db_path: str | Path) -> sqlite3.Connection:
     conn = sqlite3.connect(uri, uri=True)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+# --- planner snapshot -------------------------------------------------------------
+
+_DAY_CODES = {"MON": 0, "TUE": 1, "WED": 2, "THU": 3, "FRI": 4, "SAT": 5, "SUN": 6}
+_PLANNABLE = ("CONFIRMED", "PLANNED", "REOPENED", "PAYMENT_EXPECTED")
+
+
+def parse_payment_days(text: str) -> frozenset[int]:
+    """'MON,THU' -> {0, 3}. An unknown token is refused, never silently dropped."""
+    if text == "":
+        return frozenset()
+    days = set()
+    for token in text.split(","):
+        if token not in _DAY_CODES:
+            raise ValueError(f"unknown payment day {token!r} in {text!r}")
+        days.add(_DAY_CODES[token])
+    return frozenset(days)
+
+
+def _rows(conn: sqlite3.Connection, sql: str, args: tuple) -> list[dict]:
+    cur = conn.execute(sql, args)
+    cols = [d[0] for d in cur.description]
+    return [dict(zip(cols, row)) for row in cur.fetchall()]
+
+
+def _date(value: str | None, what: str) -> date | None:
+    if value is None:
+        return None
+    try:
+        return date.fromisoformat(value)
+    except (TypeError, ValueError) as e:
+        raise ValueError(f"{what}: not an ISO date: {value!r}") from e
+
+
+def build_snapshot(conn: sqlite3.Connection, business_id: int, today: date) -> PlanSnapshot:
+    """Reads one business's plannable state into the planner's input. Every
+    rule here is a row of the contract grid in docs/batches/2026-10-02-1/plan.md."""
+    if type(today) is not date:
+        raise TypeError("today must be a date (Clock.today()), not a datetime")
+    business = _rows(
+        conn, "SELECT safety_amount_paise, horizon_days, payment_days FROM business WHERE id = ?",
+        (business_id,),
+    )
+    if not business:
+        raise LookupError(f"business {business_id} does not exist")
+    b = business[0]
+    if b["horizon_days"] < 1:
+        raise ValueError(f"horizon_days must be at least 1, got {b['horizon_days']}")
+    horizon_end = today + timedelta(days=b["horizon_days"] - 1)
+
+    accounts = tuple(
+        AccountCash(r["id"], r["calculated_balance_paise"], r["reported_balance_paise"],
+                    r["drift_status"] != "OK")
+        for r in _rows(
+            conn,
+            "SELECT a.id, ab.calculated_balance_paise, a.reported_balance_paise, a.drift_status "
+            "FROM bank_account a JOIN account_balance ab ON ab.account_id = a.id "
+            "WHERE a.business_id = ? ORDER BY a.id",
+            (business_id,),
+        )
+    )
+
+    payables = []
+    for r in _rows(
+        conn,
+        "SELECT id, amount_paise, due_date, priority, grace_days, discount_paise, discount_by, "
+        f"status, planned_date FROM payable WHERE business_id = ? "
+        f"AND status IN ({','.join('?' for _ in _PLANNABLE)}) ORDER BY id",
+        (business_id, *_PLANNABLE),
+    ):
+        what = f"payable {r['id']}"
+        if r["grace_days"] < 0:
+            raise ValueError(f"{what}: negative grace_days")
+        discount, discount_by = r["discount_paise"], _date(r["discount_by"], what)
+        if discount is not None and not 0 <= discount < r["amount_paise"]:
+            raise ValueError(f"{what}: discount_paise must be below the bill amount")
+        if not discount or discount_by is None:
+            discount, discount_by = None, None
+        payables.append(PayableIn(
+            payable_id=r["id"], amount_paise=r["amount_paise"], due_date=_date(r["due_date"], what),
+            priority=r["priority"], grace_days=r["grace_days"], discount_paise=discount,
+            discount_by=discount_by, status=r["status"], planned_date=_date(r["planned_date"], what),
+        ))
+
+    inflows, uncounted = [], []
+    for r in _rows(
+        conn,
+        "SELECT id, amount_paise, expected_date, confidence FROM receivable "
+        "WHERE business_id = ? AND confidence IN ('COMMITTED', 'EXPECTED') "
+        "AND expected_date IS NOT NULL ORDER BY id",
+        (business_id,),
+    ):
+        expected = _date(r["expected_date"], f"receivable {r['id']}")
+        inflow = InflowIn(r["id"], r["amount_paise"], expected, r["confidence"])
+        if r["confidence"] == "EXPECTED" or expected > horizon_end:
+            uncounted.append(inflow)
+        elif expected >= today:
+            inflows.append(inflow)
+        # A COMMITTED date already past with no matched credit is neither counted nor offered.
+
+    return PlanSnapshot(
+        today=today,
+        horizon_days=b["horizon_days"],
+        payment_days=parse_payment_days(b["payment_days"]),
+        safety_paise=b["safety_amount_paise"],
+        accounts=accounts,
+        payables=tuple(payables),
+        inflows=tuple(inflows),
+        commitments=(),  # D1: no commitments table in the MVP
+        uncounted_inflows=tuple(uncounted),
+    )
