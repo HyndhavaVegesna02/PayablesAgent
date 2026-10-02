@@ -17,15 +17,16 @@ changes:
     notes_resolved: true
   - id: CHG-004
     lane: planned
-    board: in-progress
+    board: done
     start_commit: 6eda1af
     blocked_question: null
-    gate_evidence: []
-    prepatch: null
-    notes_resolved: false
+    gate_evidence:
+      - {command: "make test", exit_code: 0, output_tail: "ports | --------- | Contracts | --------- | Analyzed 41 files, 71 dependencies. | ----------------------------------- | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | Contracts: 4 kept, 0 broken.", commit: 2d0dda7, at: 2026-10-02T18:05:01+00:00}
+    prepatch: {exit_code: 0, tests: 12, at: 2026-10-02T18:40:00+00:00, note: "new files fail to import at 6eda1af; new tests in test_config, test_seed and test_tracer were masked by those collection errors and replayed separately at 6eda1af: all fail (the first tokens test passed there, so it was rewritten to cover top-level redaction)"}
+    notes_resolved: true
   - id: CHG-005
     lane: planned
-    board: todo
+    board: in-progress
     start_commit: null
     blocked_question: null
     gate_evidence: []
