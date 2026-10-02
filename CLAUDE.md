@@ -26,9 +26,13 @@ no float ever holds an amount.
 
 - `make setup` — creates the uv-managed virtualenv, installs pinned dependencies, and copies `.env.example` to `.env` if `.env` doesn't exist yet
 - `make db` — applies `app/db/migrations/*.sql` (idempotent) and regenerates `app/db/schema.sql` from the live database
-- `make seed` — loads the worked-example business from the TDD through the ledger writer; a second run is a no-op (it never deletes rows, because events are append-only)
+- `make seed` — loads the worked-example business from the TDD through the ledger writer and makes its first plan; a second run is a no-op (it never deletes rows, because events are append-only)
 - `make reseed` — deletes the database file at `DATABASE_PATH`, then migrates and seeds from scratch
-- `make run` — starts the FastAPI web process on port 8000 (`GET /api/health`)
+- `make run` — starts the owner web app on port 8000 (`GET /api/health` too). It refuses to start without
+  `SESSION_SECRET` (the error names the command that makes one). Demo login after `make reseed`:
+  `owner@example.test` / `owner-demo-pass` or `helper@example.test` / `helper-demo-pass` (the
+  `SEED_*_PASSWORD` dev defaults). Demo mode: `DEMO_NOW=2026-10-12T09:00:00+05:30` (one shared clock for the app and
+  worker) and `DEMO_AI=fixtures` (canned AI replies, never Gemini); move time with `make demo-time T=...`.
 - `make test` — runs pytest (incl. Hypothesis properties) and import-linter
 - `make worker` — runs the job worker and the scheduler (`python -m app.worker`); it writes a heartbeat that `/api/health` reports
 - `make smoke-gemini` — live and billed: at most 3 Gemini calls (sort and extract on two test-inbox fixtures) to check the prompts on Gemini itself; never part of `make test`, and run only when the PO authorises it

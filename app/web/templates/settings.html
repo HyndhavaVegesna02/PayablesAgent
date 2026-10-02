@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% from "_fields.html" import err with context %}
+{% block title %}Settings{% endblock %}
+{% block main %}
+<h1>Settings</h1>
+<article>
+  <form method="post" action="/settings" hx-post="/settings" hx-target="#main">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="grid">
+      <label>Safety amount (₹) <input name="safety_amount" value="{{ v.get('safety_amount', '') }}" required>{{ err(e, "safety_amount") }}</label>
+      <label>Escalation amount (₹) <input name="escalation_amount" value="{{ v.get('escalation_amount', '') }}" required>{{ err(e, "escalation_amount") }}</label>
+    </div>
+    <label>Plan this many days ahead <input type="number" name="horizon_days" min="1" max="60" value="{{ v.get('horizon_days', '') }}" required>{{ err(e, "horizon_days") }}</label>
+    <fieldset>
+      <legend>Payment days</legend>
+      {% set chosen = v.get('payment_days', '').split(",") %}
+      {% for d in days %}<label><input type="checkbox" name="payment_days" value="{{ d }}"{% if d in chosen %} checked{% endif %}> {{ d | capitalize }}</label>{% endfor %}
+      {{ err(e, "payment_days") }}
+    </fieldset>
+    <label>Language
+      <select name="language"><option value="en" selected>English</option></select>{{ err(e, "language") }}</label>
+    <button type="submit">Save settings</button>
+  </form>
+</article>
+
+{% if demo_now %}
+<article>
+  <header>Demo clock</header>
+  <form method="post" action="/demo/time" hx-post="/demo/time" hx-target="#main">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Move the demo forward to (India time)
+      <input type="datetime-local" name="to" value="{{ demo_now.strftime('%Y-%m-%dT%H:%M') }}" required></label>
+    <button type="submit" class="outline">Move the clock</button>
+  </form>
+  <p class="muted">Time stands still between moves. Moving past a Monday 07:00 makes that Monday's plan.</p>
+</article>
+{% endif %}
+
+<h2>Bill priorities</h2>
+{{ err(e, "priority") }}
+<table>
+  <tbody>
+  {% for b in bills %}
+    <tr>
+      <td>{{ b.name }} {{ b.amount_paise | inr }} <small class="muted">due {{ b.due_date | day }}</small></td>
+      <td>
+        <form method="post" action="/settings" hx-post="/settings" hx-target="#main" style="margin:0; display:flex; gap:.5rem">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="payable_id" value="{{ b.id }}">
+          <input type="hidden" name="version" value="{{ b.version }}">
+          <select name="priority" aria-label="Priority for {{ b.name }}" style="margin:0">
+            {% for p in priorities %}<option value="{{ p }}"{% if p == b.priority %} selected{% endif %}>{{ p }}</option>{% endfor %}
+          </select>
+          <button type="submit" class="outline" style="margin:0; padding:.2rem .6rem">Set</button>
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

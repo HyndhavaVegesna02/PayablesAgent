@@ -1,0 +1,18 @@
+X-Fixture-Note: fictional data; format modelled on HDFC InstaAlerts
+From: HDFC Bank InstaAlerts <alerts@hdfcbank.example>
+To: owner@example.test
+Subject: Credit alert: Rs.2,00,000.00 credited to your account ending 4821
+Date: Fri, 16 Oct 2026 10:12:31 +0530
+Message-ID: <instaalert-20261016-101231-4821-07@hdfcbank.example>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+
+Dear Customer,
+
+Rs.2,00,000.00 has been credited to account **4821 on 16-10-26 by NEFT from NANDI FOODS.
+
+NEFT Reference Number: N290261877340
+
+Warm Regards,
+HDFC Bank
+(This is a fictional fixture. No real bank, account or person is described.)

@@ -25,7 +25,7 @@ from apscheduler.schedulers.base import BaseScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
-from app.clock import TIMEZONE, Clock, SystemClock
+from app.clock import TIMEZONE, Clock, clock_for
 from app.config import AppConfig, Settings, load_app_config
 from app.db.connection import write_connection
 from app.jobs import queue
@@ -131,12 +131,14 @@ def schedule_jobs(
     app_config: AppConfig,
     clock: Clock,
     kinds: Iterable[str],
+    demo: bool = False,
 ) -> None:
     """Registers the timed jobs. A trigger only enqueues a row; it never runs
     work itself. Kinds with no handler yet are not scheduled at all, so they
-    cannot pile up in the queue."""
+    cannot pile up in the queue. In demo mode the Monday plan is not on a
+    real-time cron: moving the demo clock past Monday 07:00 enqueues it (D14)."""
     kinds = set(kinds)
-    if "monday_plan" in kinds:
+    if "monday_plan" in kinds and not demo:
         scheduler.add_job(
             enqueue_monday_plan, CronTrigger(day_of_week="mon", hour=7, minute=0, timezone=TIMEZONE),
             kwargs={"db_path": db_path, "clock": clock}, id="monday_plan", replace_existing=True,
@@ -152,12 +154,7 @@ def schedule_jobs(
 def enqueue_monday_plan(*, db_path: str | Path, clock: Clock) -> None:
     conn = write_connection(db_path)
     try:
-        day = clock.today().isoformat()
-        for (business_id,) in conn.execute("SELECT id FROM business ORDER BY id").fetchall():
-            queue.enqueue(
-                conn, kind="monday_plan", payload={"business_id": business_id},
-                idempotency_key=f"monday_plan:{business_id}:{day}", clock=clock,
-            )
+        queue.enqueue_monday_plans(conn, clock=clock)
         conn.commit()
     finally:
         conn.close()
@@ -228,23 +225,36 @@ def run(
         conn.close()
 
 
+def build_backend(settings: Settings, app_config: AppConfig):
+    """The worker's AI: the demo's canned fixture replies (DEMO_AI=fixtures,
+    D15: never Gemini, recorded as model fixture-ai with no tokens or cost),
+    Gemini when a key is set, or none."""
+    if settings.demo_ai == "fixtures":
+        from app.ai.fixture_backend import FIXTURE_MODEL, FixtureBackend
+
+        free = app_config.model.pricing.model_copy(update={"input_micro_usd_per_mtok": 0,
+                                                            "output_micro_usd_per_mtok": 0})
+        model = app_config.model.model_copy(update={"id": FIXTURE_MODEL, "pricing": free})
+        return FixtureBackend(), app_config.model_copy(update={"model": model})
+    if settings.gemini_api_key.strip():
+        from app.ai.client import GeminiBackend
+
+        return GeminiBackend(settings.gemini_api_key, timeout_ms=app_config.ai.timeout_ms), app_config
+    return None, app_config
+
+
 def main() -> int:
     from apscheduler.schedulers.background import BackgroundScheduler
 
     settings = Settings()
-    app_config = load_app_config()
-    clock = SystemClock()
-    backend = None
-    if settings.gemini_api_key.strip():
-        from app.ai.client import GeminiBackend
-
-        backend = GeminiBackend(settings.gemini_api_key, timeout_ms=app_config.ai.timeout_ms)
-    else:
+    clock = clock_for(settings.demo_now, settings.data_dir)
+    backend, app_config = build_backend(settings, load_app_config())
+    if backend is None:
         print("worker: GEMINI_API_KEY is not set, so mail is not polled or processed", file=sys.stderr)
     handlers = default_handlers(backend)
     scheduler = BackgroundScheduler(timezone=TIMEZONE)
     schedule_jobs(scheduler, db_path=settings.database_path, app_config=app_config, clock=clock,
-                  kinds=handlers)
+                  kinds=handlers, demo=bool(settings.demo_now))
     scheduler.start()
     stop = threading.Event()
     print(f"worker: running {sorted(handlers)} against {settings.database_path}")

@@ -13,21 +13,28 @@ it refuses a database that already has a business, and `--fresh`
 from __future__ import annotations
 
 import argparse
+import functools
 import sqlite3
 import sys
 from datetime import date
 from pathlib import Path
 
-from app.clock import Clock
+from app.clock import Clock, DemoClock, clock_for
 from app.config import Settings
 from app.db.connection import write_connection
 from app.db.migrate import apply_migrations
 from app.domain.models import PayableNew, ReceivableNew, TaxObligationNew
+from app.jobs.replan import replan
 from app.ledger import writer
 from app.ledger.writer import EntityRef
+from app.web.auth import hash_password
 
 BUSINESS_ID = 1
 OWNER = "owner:1"
+OWNER_EMAIL = "owner@example.test"
+HELPER_EMAIL = "helper@example.test"
+DEV_OWNER_PASSWORD = Settings.model_fields["seed_owner_password"].default
+DEV_HELPER_PASSWORD = Settings.model_fields["seed_helper_password"].default
 WHY = dict(reason="seed: TDD Part 1 worked example", source_ref="fixture:seed")
 
 
@@ -42,7 +49,19 @@ def _confirm(conn: sqlite3.Connection, payable_id: int, clock: Clock | None) -> 
     )
 
 
-def seed(conn: sqlite3.Connection, clock: Clock | None = None) -> None:
+@functools.lru_cache(maxsize=8)
+def _password_hash(password: str) -> str:
+    # Cached so a test run hashes each demo password once, not once per seed.
+    return hash_password(password)
+
+
+def seed(
+    conn: sqlite3.Connection,
+    clock: Clock | None = None,
+    *,
+    owner_password: str = DEV_OWNER_PASSWORD,
+    helper_password: str = DEV_HELPER_PASSWORD,
+) -> None:
     if conn.execute("SELECT COUNT(*) FROM business").fetchone()[0]:
         raise AlreadySeeded("database already has a business; run `make reseed` to start fresh")
     kw = dict(actor=OWNER, conn=conn, clock=clock, **WHY)
@@ -57,12 +76,15 @@ def seed(conn: sqlite3.Connection, clock: Clock | None = None) -> None:
             """,
             (BUSINESS_ID, "Saraswati Precision Works", 25_000_000),  # ₹2,50,000 safety
         )
-        # The owner every seeded event names. The '!' hash can never verify, so
-        # nobody can log in as this user until CHG-006 adds a real demo login.
-        conn.execute(
-            "INSERT INTO app_user (id, business_id, email, role, password_hash) "
-            "VALUES (1, ?, 'owner@example.test', 'owner', '!seed: no login until CHG-006')",
-            (BUSINESS_ID,),
+        # The demo logins: the owner every seeded event names, and a helper who
+        # can only submit bills (Part 1, "Roles"). Passwords come from Settings
+        # (SEED_OWNER_PASSWORD, SEED_HELPER_PASSWORD; dev defaults in .env.example).
+        conn.executemany(
+            "INSERT INTO app_user (id, business_id, email, role, password_hash) VALUES (?, ?, ?, ?, ?)",
+            [
+                (1, BUSINESS_ID, OWNER_EMAIL, "owner", _password_hash(owner_password)),
+                (2, BUSINESS_ID, HELPER_EMAIL, "helper", _password_hash(helper_password)),
+            ],
         )
         conn.execute(
             """
@@ -152,9 +174,13 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     # The same setting the app and worker read (.env or the environment), so
     # `make reseed` replaces the database `make run` actually uses.
-    db_path = Path(Settings().database_path)
+    settings = Settings()
+    db_path = Path(settings.database_path)
 
+    clock = clock_for(settings.demo_now, settings.data_dir)
     if args.fresh:
+        if isinstance(clock, DemoClock):
+            clock.reset()  # a fresh demo starts again at DEMO_NOW
         try:
             _remove_database(db_path)
         except PermissionError:
@@ -167,13 +193,19 @@ def main(argv: list[str] | None = None) -> int:
     apply_migrations(db_path)  # idempotent; seed.py can run standalone
     conn = write_connection(db_path)
     try:
-        seed(conn)
+        seed(conn, clock, owner_password=settings.seed_owner_password,
+             helper_password=settings.seed_helper_password)
+        # The first plan, so the app has one to show before the worker's Monday
+        # plan runs. It is the replan job's own function, as the planner.
+        replan(conn, BUSINESS_ID, triggered_by="seed", clock=clock)
     except AlreadySeeded:
         print(f"seed: {db_path} is already seeded; run `make reseed` to start fresh")
         return 0
     finally:
         conn.close()
-    print(f"seed: loaded the worked-example business into {db_path}")
+    print(f"seed: loaded the worked-example business into {db_path}, planned from {clock.today()}")
+    print(f"seed: log in as {OWNER_EMAIL} (SEED_OWNER_PASSWORD) or {HELPER_EMAIL} (SEED_HELPER_PASSWORD); "
+          "the dev defaults are in .env.example")
     return 0
 
 

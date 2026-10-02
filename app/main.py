@@ -1,5 +1,9 @@
 """FastAPI app factory (TDD Part 2, "At a glance"). The web process never
-calls Gemini; in this phase it exposes only GET /api/health."""
+calls Gemini (import-linter: web never imports ai). It serves the owner web
+app (app/web) and GET /api/health.
+
+`make run` starts it with `uvicorn --factory app.main:create_app`, so nothing
+reads Settings when this module is imported."""
 
 from __future__ import annotations
 
@@ -8,15 +12,25 @@ from pathlib import Path
 
 from fastapi import FastAPI
 
-from app.config import Settings
+from app.clock import Clock, clock_for
+from app.config import AppConfig, Settings, load_app_config
 from app.db.read import read_only_connection
+from app.web.auth import check_secret
 from app.worker import read_heartbeat
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    *,
+    clock: Clock | None = None,
+    app_config: AppConfig | None = None,
+) -> FastAPI:
     settings = settings or Settings()
-    app = FastAPI(title="PayablesAgent")
+    check_secret(settings.session_secret)  # refuses to start without one
+    app = FastAPI(title="PayablesAgent", docs_url=None, redoc_url=None, openapi_url=None)
     app.state.settings = settings
+    app.state.clock = clock or clock_for(settings.demo_now, settings.data_dir)
+    app.state.app_config = app_config or load_app_config()
 
     @app.get("/api/health")
     def health() -> dict:
@@ -46,7 +60,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "worker": {"last_heartbeat": read_heartbeat(settings)},
         }
 
+    from app.web.app import install
+
+    install(app)
     return app
-
-
-app = create_app()

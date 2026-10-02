@@ -1,4 +1,4 @@
-.PHONY: setup db seed reseed run worker test smoke-gemini evals ablation
+.PHONY: setup db seed reseed run worker demo-time test smoke-gemini evals ablation
 
 setup:
 	uv sync --all-groups
@@ -14,10 +14,15 @@ reseed:
 	uv run python -m fixtures.seed --fresh
 
 run:
-	uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
+	uv run uvicorn --factory app.main:create_app --host 0.0.0.0 --port 8000
 
 worker:
 	uv run python -m app.worker
+
+# Demo mode only (DEMO_NOW set): move the shared demo clock forward, e.g.
+# make demo-time T=2026-10-15T09:00:00+05:30
+demo-time:
+	uv run python -m app.demo $(T)
 
 test:
 	uv run pytest -q

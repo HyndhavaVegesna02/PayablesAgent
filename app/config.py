@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Literal
 
 import yaml
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ThinkingLevel = Literal["low", "medium", "high"]  # "minimal" is not supported, see TDD Part 1
@@ -47,6 +47,27 @@ class Settings(BaseSettings):
     trace_dir: str = "./traces"
     mail_source: Literal["gmail", "eml_folder"] = "eml_folder"
     test_inbox_path: str = "./fixtures/test_inbox"
+    # The web app's cookie is marked Secure only behind https (local http can't use it).
+    cookie_secure: bool = False
+    # Demo logins created by `make seed` (dev defaults; documented in .env.example).
+    seed_owner_password: str = "owner-demo-pass"
+    seed_helper_password: str = "helper-demo-pass"
+    # A fixed "now" for the web app and the seed, e.g. 2026-10-12T09:00:00+05:30 to
+    # demo the worked example on its own Monday. Blank means real time.
+    demo_now: str = ""
+    # DEMO_AI=fixtures: in a demo, the worker answers from the test inbox's canned
+    # replies instead of Gemini (batch 3 plan, D15). Needs DEMO_NOW.
+    demo_ai: Literal["", "fixtures"] = ""
+
+    @field_validator("demo_now")
+    @classmethod
+    def _demo_now_has_offset(cls, value: str) -> str:
+        if value.strip():
+            from datetime import datetime
+
+            if datetime.fromisoformat(value.strip()).tzinfo is None:
+                raise ValueError("DEMO_NOW needs a UTC offset, like 2026-10-12T09:00:00+05:30")
+        return value.strip()
 
     @field_validator("database_path", "data_dir", "trace_dir")
     @classmethod
@@ -54,6 +75,12 @@ class Settings(BaseSettings):
         if not value.strip():
             raise ValueError(f"{info.field_name.upper()} must not be blank")
         return value
+
+    @model_validator(mode="after")
+    def _fixture_ai_only_in_a_demo(self):
+        if self.demo_ai == "fixtures" and not self.demo_now:
+            raise ValueError("DEMO_AI=fixtures is for demos only: set DEMO_NOW too (see .env.example)")
+        return self
 
     @field_validator("smtp_port", mode="before")
     @classmethod

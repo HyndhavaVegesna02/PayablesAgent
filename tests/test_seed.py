@@ -26,10 +26,33 @@ def test_seed_creates_worked_example_business(conn):
     assert business["horizon_days"] == 14
 
 
-def test_seed_creates_the_owner_every_event_names(conn):
-    user = conn.execute("SELECT * FROM app_user WHERE id = 1").fetchone()
-    assert (user["role"], user["email"], user["business_id"]) == ("owner", "owner@example.test", 1)
-    assert user["password_hash"].startswith("!")  # can never verify as an Argon2 hash
+def test_seed_creates_the_owner_and_a_helper_with_real_demo_logins(conn):
+    from argon2 import PasswordHasher
+
+    users = {r["id"]: r for r in conn.execute("SELECT * FROM app_user")}
+    assert (users[1]["role"], users[1]["email"], users[1]["business_id"]) == ("owner", "owner@example.test", 1)
+    assert (users[2]["role"], users[2]["email"], users[2]["business_id"]) == ("helper", "helper@example.test", 1)
+    hasher = PasswordHasher()
+    assert hasher.verify(users[1]["password_hash"], "owner-demo-pass")  # dev defaults (.env.example)
+    assert hasher.verify(users[2]["password_hash"], "helper-demo-pass")
+    assert users[1]["password_hash"].startswith("$argon2id$")
+
+
+def test_the_seed_takes_its_passwords_from_settings_and_never_prints_them(tmp_path, monkeypatch, capsys):
+    from argon2 import PasswordHasher
+
+    db_path = tmp_path / "pw.db"
+    monkeypatch.setenv("DATABASE_PATH", str(db_path))
+    monkeypatch.setenv("SEED_OWNER_PASSWORD", "s3cret-owner-pw")
+    monkeypatch.setenv("SEED_HELPER_PASSWORD", "s3cret-helper-pw")
+    assert seed_module.main([]) == 0
+    out = capsys.readouterr().out
+    assert "owner@example.test" in out and "helper@example.test" in out
+    assert "s3cret" not in out
+    c = write_connection(db_path)
+    hashes = dict(c.execute("SELECT email, password_hash FROM app_user").fetchall())
+    c.close()
+    assert PasswordHasher().verify(hashes["owner@example.test"], "s3cret-owner-pw")
 
 
 def test_seed_creates_the_bank_account_with_observed_cash(conn):
@@ -130,6 +153,7 @@ def test_make_seed_is_a_harmless_no_op_the_second_time(tmp_path, monkeypatch, ca
 def test_fresh_recreates_the_file_instead_of_deleting_rows(tmp_path, monkeypatch, capsys):
     db_path = tmp_path / "cli.db"
     monkeypatch.setenv("DATABASE_PATH", str(db_path))
+    monkeypatch.setenv("DEMO_NOW", "2026-10-12T09:00:00+05:30")
     assert seed_module.main([]) == 0
     first = _counts(db_path)
     marker = write_connection(db_path)  # a row only the old file has
@@ -144,9 +168,34 @@ def test_fresh_recreates_the_file_instead_of_deleting_rows(tmp_path, monkeypatch
     check = write_connection(db_path)
     assert check.execute("SELECT COUNT(*) FROM party WHERE name = 'MARKER'").fetchone()[0] == 0
     check.close()
+    # 15 seeded rows' events, plus the first plan's four PAY lines moving to PLANNED.
     assert _counts(db_path) == first == {
-        "business": 1, "payable": 5, "receivable": 2, "tax_obligation": 3, "event": 15,
+        "business": 1, "payable": 5, "receivable": 2, "tax_obligation": 3, "event": 19,
     }
+
+
+def test_the_seed_makes_the_first_plan_at_demo_now(tmp_path, monkeypatch, capsys):
+    db_path = tmp_path / "plan.db"
+    monkeypatch.setenv("DATABASE_PATH", str(db_path))
+    monkeypatch.setenv("DEMO_NOW", "2026-10-12T09:00:00+05:30")
+    assert seed_module.main([]) == 0
+    assert "planned from 2026-10-12" in capsys.readouterr().out
+    c = write_connection(db_path)
+    run = c.execute("SELECT * FROM plan_run WHERE is_current = 1").fetchone()
+    events = c.execute("SELECT DISTINCT occurred_at FROM event").fetchall()
+    c.close()
+    assert (run["triggered_by"], run["lowest_balance_paise"], run["lowest_on"]) == ("seed", 18_300_000, "2026-10-22")
+    assert [e[0] for e in events] == ["2026-10-12T09:00:00+05:30"]
+
+
+def test_demo_now_needs_an_offset(monkeypatch):
+    from pydantic import ValidationError
+
+    from app.config import Settings
+
+    with pytest.raises(ValidationError, match="UTC offset"):
+        Settings(_env_file=None, demo_now="2026-10-12T09:00:00")
+    assert Settings(_env_file=None, demo_now="").demo_now == ""
 
 
 def test_the_seed_reads_database_path_through_settings_like_the_app(tmp_path, monkeypatch, capsys):

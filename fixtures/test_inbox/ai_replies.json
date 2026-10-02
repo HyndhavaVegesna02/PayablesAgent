@@ -1,0 +1,90 @@
+{
+  "_note": "Hand-written replies, as Gemini would send them, for each fixture in this folder. One copy, read by tests/fake_ai.py and by the demo fixture AI (app/ai/fixture_backend.py, DEMO_AI=fixtures). A string value means: the same replies as that file.",
+  "replies": {
+    "01-debit-ashirwad-paper.eml": {
+      "SortResult": {
+        "doc_type": "bank_alert",
+        "reason": "A bank alert for a debit or credit."
+      },
+      "BankAlertExtract": {
+        "account_last4": "4821",
+        "direction": "debit",
+        "amount_text": "Rs.1,80,000.00",
+        "txn_date": "2026-10-12",
+        "counterparty": "ASHIRWAD PAPER SUPPLIERS",
+        "reference": "N286261234567",
+        "available_balance_text": "Rs.4,40,000.00",
+        "uncertain_fields": []
+      }
+    },
+    "02-credit-kaveri-traders.eml": {
+      "SortResult": {
+        "doc_type": "bank_alert",
+        "reason": "A bank alert for a debit or credit."
+      },
+      "BankAlertExtract": {
+        "account_last4": "4821",
+        "direction": "credit",
+        "amount_text": "Rs.33,000.00",
+        "txn_date": "2026-10-13",
+        "counterparty": "KAVERI TRADERS",
+        "reference": "N287265551210",
+        "available_balance_text": "Rs.4,73,000.00",
+        "uncertain_fields": []
+      }
+    },
+    "03-return-ashirwad-paper.eml": {
+      "SortResult": {
+        "doc_type": "failure_notice",
+        "reason": "An NEFT payment was returned."
+      },
+      "FailureNoticeExtract": {
+        "account_last4": "4821",
+        "amount_text": "Rs.1,80,000.00",
+        "original_reference": "N286261234567",
+        "failure_date": "2026-10-14",
+        "reason": "Beneficiary account closed or transferred",
+        "uncertain_fields": []
+      }
+    },
+    "04-debit-city-electricity-balance-short.eml": {
+      "SortResult": {
+        "doc_type": "bank_alert",
+        "reason": "A bank alert for a debit or credit."
+      },
+      "BankAlertExtract": {
+        "account_last4": "4821",
+        "direction": "debit",
+        "amount_text": "Rs.35,000.00",
+        "txn_date": "2026-10-15",
+        "counterparty": "CITY ELECTRICITY BOARD",
+        "reference": "BP2610150098812",
+        "available_balance_text": "Rs.5,65,000.00",
+        "uncertain_fields": []
+      }
+    },
+    "05-offer-newsletter.eml": {
+      "SortResult": {
+        "doc_type": "irrelevant",
+        "reason": "A promotional email."
+      }
+    },
+    "07-credit-nandi-foods.eml": {
+      "SortResult": {
+        "doc_type": "bank_alert",
+        "reason": "A bank alert for a debit or credit."
+      },
+      "BankAlertExtract": {
+        "account_last4": "4821",
+        "direction": "credit",
+        "amount_text": "Rs.2,00,000.00",
+        "txn_date": "2026-10-16",
+        "counterparty": "NANDI FOODS",
+        "reference": "N290261877340",
+        "available_balance_text": null,
+        "uncertain_fields": []
+      }
+    },
+    "06-debit-ashirwad-paper-resent.eml": "01-debit-ashirwad-paper.eml"
+  }
+}

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "_fields.html" import entry_fields, err with context %}
+{% block title %}Add{% endblock %}
+{% block main %}
+<h1>Add</h1>
+{% if message %}<p role="alert">{{ message }}</p>{% endif %}
+<article>
+  <header>
+    Type a {% if kind == "bill" %}bill{% else %}sales invoice{% endif %}
+    <small>· <a href="/add?kind={{ 'invoice' if kind == 'bill' else 'bill' }}">type a {{ 'sales invoice' if kind == 'bill' else 'bill' }} instead</a></small>
+  </header>
+  <form method="post" action="/entries" hx-post="/entries" hx-target="#main">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="kind" value="{{ kind }}">
+    {{ err(e, "kind") }}
+    {{ entry_fields(kind, v, e) }}
+    <button type="submit">Add</button>
+  </form>
+</article>
+<article>
+  <header>Upload a photo, PDF or voice note</header>
+  <form method="post" action="/uploads" enctype="multipart/form-data" hx-post="/uploads" hx-encoding="multipart/form-data" hx-target="#main">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="file" name="file" accept="image/*,application/pdf,audio/*" required>{{ err(e, "file") }}
+    <button type="submit">Upload</button>
+  </form>
+  <p class="muted">Uploads are stored encrypted. Reading them comes with a later change, so they wait for now.</p>
+</article>
+
+<h2>{% if user.role == "owner" %}Submissions{% else %}Your submissions{% endif %}</h2>
+{% if submissions %}
+<table>
+  <thead><tr><th>Added</th><th>What</th><th>Status</th></tr></thead>
+  <tbody>
+  {% for s in submissions %}
+    <tr>
+      <td>{{ s.received_at[:10] }}</td>
+      <td>{% if s.kind == "typed" %}{{ s.record.get("party", "") }} {% if s.record.get("amount_paise") is integer %}{{ s.record.amount_paise | inr }}{% endif %}{% else %}{{ s.kind }}{% endif %}</td>
+      <td>{{ s.status_text }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p class="muted">Nothing yet.</p>{% endif %}
+{% endblock %}

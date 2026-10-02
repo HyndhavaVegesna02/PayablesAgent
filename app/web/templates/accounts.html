@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Accounts{% endblock %}
+{% block main %}
+<h1>Accounts</h1>
+{% for a in accounts %}
+<article>
+  <header><strong>{{ a.bank_name }}</strong> {{ a.account_name }} {{ a.account_mask }}</header>
+  <table>
+    <tbody>
+      <tr><td>Calculated balance</td><td class="amount">{{ a.calculated_paise | inr }}</td></tr>
+      <tr><td>Bank reported</td><td class="amount">{% if a.reported_balance_paise is not none %}{{ a.reported_balance_paise | inr }}{% else %}not yet{% endif %}</td></tr>
+      <tr><td>Status</td><td class="amount">{% if a.drift_status == "OK" %}Matches{% elif a.drift_status == "CHECKING" %}Checking a difference{% else %}<span class="below">Needs your confirmation</span>{% endif %}</td></tr>
+      <tr><td>Last reconciled</td><td class="amount">{% if a.last_reconciled_at %}{{ a.last_reconciled_at[:16] | replace("T", " ") }}{% else %}never{% endif %}</td></tr>
+    </tbody>
+  </table>
+  {% if a.drift_status == "ASK_OWNER" %}
+  <form method="post" action="/accounts/{{ a.id }}/confirm-balance" hx-post="/accounts/{{ a.id }}/confirm-balance" hx-target="#main">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Actual balance in your bank app (₹) <input name="amount" required>
+      {% if errors.get(a.id) %}<small class="below">{{ errors[a.id] }}</small>{% endif %}</label>
+    <button type="submit">Confirm balance</button>
+  </form>
+  {% endif %}
+</article>
+{% endfor %}
+<article>
+  <header><strong>Gmail</strong></header>
+  <p>Not connected (set up later)</p>
+</article>
+{% endblock %}

@@ -39,13 +39,13 @@ def test_emails_are_released_day_by_day_by_the_clock():
 def test_only_the_given_senders_are_listed_whatever_their_case():
     source = EmlFolderSource(INBOX, at(31))
     assert source.list_new(date(2026, 10, 1), ["billing@vendor.example"]) == []
-    assert len(source.list_new(date(2026, 10, 1), ["ALERTS@HDFCBANK.EXAMPLE"])) == 6
+    assert len(source.list_new(date(2026, 10, 1), ["ALERTS@HDFCBANK.EXAMPLE"])) == 7
 
 
 def test_since_is_a_day_in_kolkata():
     source = EmlFolderSource(INBOX, at(31))
     assert _names(source.list_new(date(2026, 10, 15), [BANK])) == [
-        "04-debit-city-electricity-balance-short.eml", "05-offer-newsletter.eml",
+        "04-debit-city-electricity-balance-short.eml", "05-offer-newsletter.eml", "07-credit-nandi-foods.eml",
     ]
 
 

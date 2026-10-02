@@ -5,6 +5,7 @@ seconds. See TDD Part 2, "What this design adds to the TDD" (Time)."""
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Protocol
 from zoneinfo import ZoneInfo
 
@@ -43,3 +44,54 @@ class FakeClock:
 
     def today(self) -> date:
         return self._at.date()
+
+
+DEMO_CLOCK_FILE = "demo_clock.txt"
+
+
+class DemoClock:
+    """Demo mode's one "now" (batch 3 plan, PO decision D14). The instant lives
+    in a file under DATA_DIR, so the web app and the worker read the same
+    time; it starts at DEMO_NOW and stands still until `make demo-time` or
+    the owner's demo form moves it forward."""
+
+    def __init__(self, path: str | Path, start: datetime) -> None:
+        if start.tzinfo is None:
+            raise ValueError("DemoClock requires a timezone-aware start")
+        self.path = Path(path)
+        self.start = start
+
+    def now(self) -> datetime:
+        try:
+            text = self.path.read_text(encoding="utf-8").strip()
+        except FileNotFoundError:
+            return self.start.astimezone(TIMEZONE)
+        return datetime.fromisoformat(text).astimezone(TIMEZONE)
+
+    def today(self) -> date:
+        return self.now().date()
+
+    def set(self, at: datetime) -> datetime:
+        """Moves the demo forward to `at`; returns the previous instant."""
+        if at.tzinfo is None:
+            raise ValueError("the demo time needs a UTC offset, like 2026-10-15T09:00:00+05:30")
+        before = self.now()
+        if at < before:
+            raise ValueError(f"the demo clock only moves forward; it is already {before.isoformat()}")
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = self.path.with_suffix(".tmp")
+        tmp.write_text(at.astimezone(TIMEZONE).isoformat(), encoding="utf-8")
+        tmp.replace(self.path)
+        return before
+
+    def reset(self) -> None:
+        """Back to DEMO_NOW (make reseed)."""
+        self.path.unlink(missing_ok=True)
+
+
+def clock_for(demo_now: str, data_dir: str | Path) -> Clock:
+    """The clock for a process: real time, or with DEMO_NOW set the demo clock
+    every process shares (D14). Nothing else differs between the two modes."""
+    if not demo_now:
+        return SystemClock()
+    return DemoClock(Path(data_dir) / DEMO_CLOCK_FILE, datetime.fromisoformat(demo_now))

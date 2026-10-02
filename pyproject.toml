@@ -74,3 +74,13 @@ name = "ledger never imports ai, agent, web or ingest"
 type = "forbidden"
 source_modules = ["app.ledger"]
 forbidden_modules = ["app.ai", "app.agent", "app.web", "app.ingest"]
+
+[[tool.importlinter.contracts]]
+name = "web never imports ai"
+type = "forbidden"
+source_modules = ["app.web"]
+forbidden_modules = ["app.ai"]
+# The web app runs the inline replan (app.jobs.replan.replan). That module
+# names app.worker.JobContext only under TYPE_CHECKING, so the web process
+# never loads the worker, whose main() is what builds the Gemini backend.
+ignore_imports = ["app.jobs.replan -> app.worker"]

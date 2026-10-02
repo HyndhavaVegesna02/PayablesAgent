@@ -1,0 +1,50 @@
+{% if partial %}{{ self.main() }}{% else %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <meta name="htmx-config" content='{"responseHandling": [{"code": "204", "swap": false}, {"code": "[23]..", "swap": true}, {"code": "(403|409|413|422)", "swap": true, "error": false}, {"code": "...", "swap": false, "error": true}]}'>
+  <title>{% block title %}PayablesAgent{% endblock %} · PayablesAgent</title>
+  <link rel="stylesheet" href="/static/pico.min.css">
+  <style>
+    main.container { max-width: 960px; }
+    .muted { color: var(--pico-muted-color); }
+    .demo { background: var(--pico-mark-background-color); padding: .4rem .8rem; margin: 0; }
+    .below { color: var(--pico-del-color); }
+    table td.amount, table th.amount { text-align: right; white-space: nowrap; }
+    @media (max-width: 600px) { nav ul:last-child { flex-wrap: wrap; } }
+  </style>
+  <script src="/static/htmx.min.js" defer></script>
+</head>
+<body hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'>
+  <header class="container">
+    <nav>
+      <ul><li><strong>PayablesAgent</strong></li></ul>
+      {% if user %}
+      <ul>
+        {% if user.role == "owner" %}
+        <li><a href="/">This week</a></li>
+        <li><a href="/attention">Needs attention</a></li>
+        {% endif %}
+        <li><a href="/add">Add</a></li>
+        {% if user.role == "owner" %}
+        <li><a href="/accounts">Accounts</a></li>
+        <li><a href="/settings">Settings</a></li>
+        {% endif %}
+        <li>
+          <form method="post" action="/logout" style="margin:0">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button class="secondary outline" type="submit" style="padding:.2rem .6rem">Log out</button>
+          </form>
+        </li>
+      </ul>
+      {% endif %}
+    </nav>
+  </header>
+  {% if demo_now %}
+  <div class="container"><p class="demo" role="status">Demo mode: it is {{ demo_now.strftime("%a %d %b %Y, %H:%M") }}.{% if demo_ai %} AI replies are canned fixtures.{% endif %}</p></div>
+  {% endif %}
+  <main class="container" id="main">{% block main %}{% endblock %}</main>
+</body>
+</html>{% endif %}

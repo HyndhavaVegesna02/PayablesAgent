@@ -16,7 +16,7 @@ def test_health_opens_the_database_through_read_only_connection(tmp_path, monkey
         return read_only_connection(path)
 
     monkeypatch.setattr(main_module, "read_only_connection", spy)
-    settings = Settings(_env_file=None, database_path=str(db_path))
+    settings = Settings(_env_file=None, database_path=str(db_path), session_secret="test-secret")
 
     resp = TestClient(main_module.create_app(settings)).get("/api/health")
 

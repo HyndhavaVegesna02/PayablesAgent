@@ -9,9 +9,13 @@ from __future__ import annotations
 import json
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from app.ai.client import AIUnavailable, RawAIResponse
+from app.ai.fixture_backend import load_replies
+
+INBOX = Path(__file__).resolve().parent.parent / "fixtures" / "test_inbox"
 
 
 @dataclass
@@ -56,48 +60,11 @@ def unavailable(retryable: bool = True) -> AIUnavailable:
     return AIUnavailable("fake outage", retryable=retryable, code=503 if retryable else 400)
 
 
-# Hand-written replies for fixtures/test_inbox, as Gemini would send them.
-_ALERT_SORT = {"doc_type": "bank_alert", "reason": "A bank alert for a debit or credit."}
+# Hand-written replies for fixtures/test_inbox, as Gemini would send them. One
+# copy, in fixtures/test_inbox/ai_replies.json, shared with the demo fixture AI (D15).
 FIXTURE_REPLIES: dict[str, list[tuple[str, dict]]] = {
-    "01-debit-ashirwad-paper.eml": [
-        ("SortResult", _ALERT_SORT),
-        ("BankAlertExtract", {
-            "account_last4": "4821", "direction": "debit", "amount_text": "Rs.1,80,000.00",
-            "txn_date": "2026-10-12", "counterparty": "ASHIRWAD PAPER SUPPLIERS",
-            "reference": "N286261234567", "available_balance_text": "Rs.4,40,000.00",
-            "uncertain_fields": [],
-        }),
-    ],
-    "02-credit-kaveri-traders.eml": [
-        ("SortResult", _ALERT_SORT),
-        ("BankAlertExtract", {
-            "account_last4": "4821", "direction": "credit", "amount_text": "Rs.33,000.00",
-            "txn_date": "2026-10-13", "counterparty": "KAVERI TRADERS", "reference": "N287265551210",
-            "available_balance_text": "Rs.4,73,000.00", "uncertain_fields": [],
-        }),
-    ],
-    "03-return-ashirwad-paper.eml": [
-        ("SortResult", {"doc_type": "failure_notice", "reason": "An NEFT payment was returned."}),
-        ("FailureNoticeExtract", {
-            "account_last4": "4821", "amount_text": "Rs.1,80,000.00",
-            "original_reference": "N286261234567", "failure_date": "2026-10-14",
-            "reason": "Beneficiary account closed or transferred", "uncertain_fields": [],
-        }),
-    ],
-    "04-debit-city-electricity-balance-short.eml": [
-        ("SortResult", _ALERT_SORT),
-        ("BankAlertExtract", {
-            "account_last4": "4821", "direction": "debit", "amount_text": "Rs.35,000.00",
-            "txn_date": "2026-10-15", "counterparty": "CITY ELECTRICITY BOARD",
-            "reference": "BP2610150098812", "available_balance_text": "Rs.5,65,000.00",
-            "uncertain_fields": [],
-        }),
-    ],
-    "05-offer-newsletter.eml": [
-        ("SortResult", {"doc_type": "irrelevant", "reason": "A promotional email."}),
-    ],
+    name: list(replies.items()) for name, replies in load_replies(INBOX).items()
 }
-FIXTURE_REPLIES["06-debit-ashirwad-paper-resent.eml"] = FIXTURE_REPLIES["01-debit-ashirwad-paper.eml"]
 
 
 def fixture_backend(*names: str) -> FakeBackend:

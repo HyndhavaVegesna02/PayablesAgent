@@ -15,5 +15,6 @@ balance) so the extraction prompts see a realistic shape.
 | 04-debit-city-electricity-balance-short.eml | ₹35,000 debit whose available balance is ₹20,000 short: a debit with no alert |
 | 05-offer-newsletter.eml | A promotional email (irrelevant) |
 | 06-debit-ashirwad-paper-resent.eml | Alert 01 re-sent with a new Message-ID |
+| 07-credit-nandi-foods.eml | ₹2,00,000 credit from Nandi Foods, Fri 16 Oct: the early payment the owner asked for (no available balance shown) |
 
 The fake AI replies for these files live in `tests/fake_ai.py` and were written by hand.

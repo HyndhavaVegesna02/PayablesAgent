@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% from "_fields.html" import entry_fields, txn_fields with context %}
+{% block title %}Needs attention{% endblock %}
+{% block main %}
+<h1>Needs attention</h1>
+{% if message %}<p class="below" role="alert">{{ message }}</p>{% endif %}
+{% if not (questions or candidates or accounts or options) %}<p>Nothing needs you right now.</p>{% endif %}
+
+{% if options %}
+<h2>Shortfall options</h2>
+{% for o in options %}
+<article>
+  <p><strong>{{ o.label }}</strong></p>
+  <p class="muted">
+    {% if o.lowest_balance_paise is not none %}Lowest balance {{ o.lowest_balance_paise | inr }}. {% endif %}
+    {% if o.meets_rule %}Meets the safety amount.{% else %}Does not meet the safety amount.{% endif %}
+  </p>
+  {% if o.chosen %}<p><mark>Chosen</mark></p>{% else %}
+  <form method="post" action="/options/{{ o.id }}/choose" hx-post="/options/{{ o.id }}/choose" hx-target="#main">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="outline">Choose this</button>
+  </form>
+  {% endif %}
+</article>
+{% endfor %}
+{% endif %}
+
+{% if candidates %}
+<h2>Entries to confirm</h2>
+{% for c in candidates %}
+{% set e = errors.get(c.id, {}) %}
+<article>
+  <header>
+    {% if c.record_type == "payable" %}Bill{% elif c.record_type == "receivable" %}Sales invoice{% else %}Bank email{% endif %}
+    <small class="muted">entry {{ c.id }}, {{ c.document_kind }}</small>
+  </header>
+  {% set failing = [] %}{% for name, result in c.checks.items() %}{% if result.startswith("failed") %}{% set _ = failing.append(name ~ ": " ~ result[8:]) %}{% endif %}{% endfor %}
+  {% if failing %}<p class="below">Checks that failed: {{ failing | join("; ") }}</p>{% endif %}
+  <form method="post" action="/candidates/{{ c.id }}/confirm" hx-post="/candidates/{{ c.id }}/confirm" hx-target="#main">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {% if c.record_type == "txn" %}{{ txn_fields(shown[c.id], e, all_accounts) }}
+    {% else %}{{ entry_fields("bill" if c.record_type == "payable" else "invoice", shown[c.id], e) }}{% endif %}
+    <button type="submit">Confirm</button>
+  </form>
+  <form method="post" action="/candidates/{{ c.id }}/reject" hx-post="/candidates/{{ c.id }}/reject" hx-target="#main">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="secondary outline">Reject</button>
+  </form>
+</article>
+{% endfor %}
+{% endif %}
+
+{% if questions %}
+<h2>Questions</h2>
+{% for q in questions %}
+<article>
+  <p>{{ q.body_text }}</p>
+  {% if q.kind == "confirm_record" %}<p class="muted">Confirm or reject the entry above.</p>
+  {% elif q.kind == "confirm_balance" %}
+  <form method="post" action="/questions/{{ q.id }}/answer" hx-post="/questions/{{ q.id }}/answer" hx-target="#main">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Actual balance (₹) <input name="amount" required></label>
+    <button type="submit">Confirm balance</button>
+  </form>
+  {% else %}<p class="muted">Answering this comes with a later change.</p>{% endif %}
+</article>
+{% endfor %}
+{% endif %}
+
+{% if accounts %}
+<h2>Balance mismatches</h2>
+{% for a in accounts %}
+<article>
+  <p>{{ a.bank_name }} {{ a.account_mask }}: the bank shows {% if a.reported_balance_paise is not none %}{{ a.reported_balance_paise | inr }}{% else %}no balance{% endif %};
+     I calculate {{ a.calculated_paise | inr }}.</p>
+  {% if a.drift_status == "ASK_OWNER" %}<p><a href="/accounts">Confirm the real balance</a></p>
+  {% else %}<p class="muted">Checking: the missing transactions may still arrive.</p>{% endif %}
+</article>
+{% endfor %}
+{% endif %}
+{% endblock %}
