@@ -9,7 +9,10 @@ traces/
 *.db-wal
 *.db-shm
 .pytest_cache/
-yourteam.skill  # source archive, already extracted into .claude/skills/yourteam/
+# source archive, already extracted into .claude/skills/yourteam/ -- .gitignore
+# has no inline-comment syntax, an earlier version of this line put the comment
+# inside the pattern itself so it never actually matched (caught in batch-0 review)
+yourteam.skill
 .hypothesis/
 *.egg-info/
 dist/

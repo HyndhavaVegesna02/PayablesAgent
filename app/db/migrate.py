@@ -12,6 +12,8 @@ import os
 import sqlite3
 from pathlib import Path
 
+from app.db.connection import write_connection
+
 MODULE_DIR = Path(__file__).resolve().parent
 MIGRATIONS_DIR = MODULE_DIR / "migrations"
 SCHEMA_SQL_PATH = MODULE_DIR / "schema.sql"
@@ -27,7 +29,7 @@ def apply_migrations(db_path: str | Path) -> None:
     db_path = Path(db_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
-    conn = sqlite3.connect(db_path)
+    conn = write_connection(db_path)
     try:
         conn.execute(
             "CREATE TABLE IF NOT EXISTS _migrations "

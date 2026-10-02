@@ -12,6 +12,7 @@ from __future__ import annotations
 import os
 import sqlite3
 
+from app.db.connection import write_connection
 from app.db.migrate import apply_migrations
 
 BUSINESS_ID = 1
@@ -108,7 +109,7 @@ def seed(conn: sqlite3.Connection) -> None:
 def main() -> None:
     db_path = os.environ.get("DATABASE_PATH", "./data/cashflow.db")
     apply_migrations(db_path)  # idempotent; seed.py can run standalone
-    conn = sqlite3.connect(db_path)
+    conn = write_connection(db_path)
     try:
         seed(conn)
     finally:

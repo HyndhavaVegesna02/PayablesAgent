@@ -1,7 +1,6 @@
-import sqlite3
-
 import pytest
 
+from app.db.connection import write_connection
 from app.db.migrate import apply_migrations
 from fixtures.seed import seed
 
@@ -10,8 +9,7 @@ from fixtures.seed import seed
 def conn(tmp_path):
     db_path = tmp_path / "seed-test.db"
     apply_migrations(db_path)
-    c = sqlite3.connect(db_path)
-    c.row_factory = sqlite3.Row
+    c = write_connection(db_path)  # exercises seed() under real FK enforcement
     yield c
     c.close()
 

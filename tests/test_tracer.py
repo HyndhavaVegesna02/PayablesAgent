@@ -2,7 +2,7 @@ import json
 
 from app.clock import FakeClock
 from app.trace.tracer import Tracer
-from app.trace.view import find_run_file, format_step
+from app.trace.view import find_run_file, format_step, main
 
 
 def test_step_writes_one_json_line_with_part1_fields(tmp_path):
@@ -95,3 +95,29 @@ def test_format_step_is_human_readable():
     assert "step 1" in text
     assert "search_gmail" in text
     assert "3 messages found" in text
+
+
+def test_main_prints_a_run_found_via_trace_dir_env_var(tmp_path, monkeypatch, capsys):
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    monkeypatch.setenv("TRACE_DIR", str(tmp_path))
+    clock = FakeClock(datetime(2026, 10, 12, 9, 0, tzinfo=ZoneInfo("Asia/Kolkata")))
+    Tracer(run_id="cli-run-1", trace_dir=tmp_path, clock=clock).step(tool="search_gmail")
+
+    exit_code = main(["cli-run-1"])
+
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert "step 1" in out
+    assert "search_gmail" in out
+
+
+def test_main_returns_1_for_an_unknown_run_id(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("TRACE_DIR", str(tmp_path))
+    exit_code = main(["does-not-exist"])
+    assert exit_code == 1
+
+
+def test_main_returns_2_with_no_args(capsys):
+    assert main([]) == 2
