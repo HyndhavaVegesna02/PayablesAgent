@@ -8,12 +8,13 @@ started: "2026-10-02T13:30:00+05:30"
 changes:
   - id: CHG-011
     lane: direct
-    board: in-progress
+    board: done
     start_commit: d774dd9
     blocked_question: null
-    gate_evidence: []
-    prepatch: null
-    notes_resolved: null
+    gate_evidence:
+      - {command: "make test", exit_code: 0, output_tail: "ngs.html | 46 passed, 1 warning in 1.36s | uv run lint-imports | --------- | Contracts | --------- | Analyzed 16 files, 5 dependencies. | ---------------------------------- | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | ai never imports ledger, db or web KEPT | Contracts: 3 kept, 0 broken.", commit: 29c22ee, at: 2026-10-02T13:12:06+00:00}
+    prepatch: {exit_code: 0, tests: 1, at: 2026-10-02T13:11:00+00:00}
+    notes_resolved: true
   - id: CHG-002
     lane: planned
     board: todo
