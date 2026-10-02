@@ -17,12 +17,13 @@ changes:
     notes_resolved: true
   - id: CHG-002
     lane: planned
-    board: in-progress
+    board: done
     start_commit: a82c7d5
     blocked_question: null
-    gate_evidence: []
-    prepatch: null
-    notes_resolved: null
+    gate_evidence:
+      - {command: "make test", exit_code: 0, output_tail: "imports | --------- | Contracts | --------- | Analyzed 21 files, 8 dependencies. | ---------------------------------- | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | Contracts: 4 kept, 0 broken.", commit: 24bee8c, at: 2026-10-02T13:25:09+00:00}
+    prepatch: {exit_code: 0, tests: 9, at: 2026-10-02T14:05:00+00:00, note: "run via uv run (system python lacks hypothesis); write guard verified separately at start commit: fails on old seed's raw writes"}
+    notes_resolved: true
   - id: CHG-003
     lane: planned
     board: todo
