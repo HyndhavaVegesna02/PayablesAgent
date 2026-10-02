@@ -24,6 +24,11 @@ def format_step(entry: dict) -> str:
         parts.append(f"result={entry['result']}")
     if entry.get("validation"):
         parts.append(f"validation={entry['validation']}")
+    if entry.get("tokens"):
+        t = entry["tokens"]
+        parts.append("tokens=" + "/".join(f"{k}:{t[k]}" for k in ("input", "output", "thoughts") if k in t))
+    if entry.get("cost_micro_usd") is not None:
+        parts.append(f"cost={entry['cost_micro_usd']}µ$")
     if entry.get("retries"):
         parts.append(f"retries={entry['retries']}")
     if entry.get("escalation_rule"):

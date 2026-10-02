@@ -20,6 +20,11 @@ from typing import Any
 from app.clock import Clock, SystemClock
 
 
+class PermanentJobError(Exception):
+    """Raised by a job handler when retrying cannot help (a malformed payload,
+    a request the API refused): the worker dead-letters the job at once."""
+
+
 def enqueue(
     conn: sqlite3.Connection,
     *,

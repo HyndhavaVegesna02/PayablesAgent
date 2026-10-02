@@ -1,0 +1,332 @@
+"""The poll_mail and process_document jobs (TDD Part 2, "Jobs and the document
+pipeline" and "Gmail ingestion"; batch 2 plan, CHG-004).
+
+poll_mail stores each new message, encrypted, as a source document and queues
+one process_document per document. The unique keys on source_document make a
+re-poll harmless: a message already stored is skipped.
+
+process_document runs the pipeline for one email:
+1. sort (Gemini, low thinking). Irrelevant mail stops here.
+3. extract (Gemini, medium), for bank alerts and failure/return notices.
+4. validate with every rule check; a failure triggers one more extraction
+   with the failed checks attached.
+5. a second failure is extracted once more at high thinking; if that fails
+   too, the owner is asked to confirm the record.
+6. route: a bank alert is written to the ledger by the pipeline and
+   reconcile_txn is queued; a failure notice queues reconcile_failure.
+Step 2 (unlocking PDFs) and the other document types land with CHG-007.
+
+The AI calls run before any database write; everything the job decides is
+then written in one transaction, so a crash or an AI outage part-way leaves
+nothing behind and the job queue simply retries."""
+
+from __future__ import annotations
+
+import functools
+import hashlib
+import json
+import sqlite3
+from collections.abc import Callable
+from dataclasses import asdict, dataclass
+from datetime import date, datetime, timedelta
+from email.message import EmailMessage
+from typing import TYPE_CHECKING, Any
+
+from app.ai.client import AIResult, AIUnavailable, Backend
+from app.ai.extract import extract_document, prompt_version
+from app.ai.sort import sort_document
+from app.clock import TIMEZONE
+from app.config import Settings
+from app.domain.models import BankTxnNew
+from app.ingest.eml_folder import EmlFolderSource, body_text, parse_message, sender_address, sent_at
+from app.ingest.mail_source import MailSource
+from app.ingest.store import DocumentStore, StoreKeyError
+from app.jobs import queue
+from app.jobs.queue import PermanentJobError
+from app.ledger import writer
+from app.validate import failures
+from app.validate.alert import (
+    AccountIn,
+    AlertRecord,
+    FailureRecord,
+    MailFacts,
+    check_bank_alert,
+    check_failure_notice,
+)
+from app.validate.duplicates import bank_txn_with_key, failure_candidate_with_key
+
+if TYPE_CHECKING:
+    from app.worker import Handler, JobContext
+
+DEFAULT_BUSINESS_ID = 1
+LATER = {"statement", "invoice", "challan", "payment_confirmation"}  # CHG-007
+
+
+def _ai_failure(e: AIUnavailable) -> Exception:
+    return e if e.retryable else PermanentJobError(str(e))
+
+
+# --- poll_mail ----------------------------------------------------------------------
+
+
+def mail_source(settings: Settings, clock) -> MailSource:
+    if settings.mail_source == "eml_folder":
+        return EmlFolderSource(settings.test_inbox_path, clock)
+    raise PermanentJobError("MAIL_SOURCE=gmail is not available yet (Gmail lands with CHG-009)")
+
+
+def document_store(settings: Settings) -> DocumentStore:
+    try:
+        return DocumentStore(settings.data_dir, settings.fernet_key)
+    except StoreKeyError as e:
+        raise PermanentJobError(str(e)) from None
+
+
+def accounts_of(conn: sqlite3.Connection, business_id: int) -> list[AccountIn]:
+    out = []
+    for row in conn.execute(
+        "SELECT id, account_mask, alert_senders_json FROM bank_account "
+        "WHERE business_id = ? ORDER BY id", (business_id,)
+    ):
+        try:
+            senders = json.loads(row["alert_senders_json"])
+        except json.JSONDecodeError:
+            senders = []
+        out.append(AccountIn(row["id"], row["account_mask"][-4:],
+                             frozenset(s.lower() for s in senders if isinstance(s, str))))
+    return out
+
+
+def _since(conn: sqlite3.Connection, source: str, business_id: int) -> date:
+    """One day before the last sync, so nothing at the boundary is missed;
+    before the first sync, the date the ledger's opening balance was taken."""
+    row = conn.execute("SELECT last_synced_at FROM sync_state WHERE source = ?", (source,)).fetchone()
+    if row is not None and row[0]:
+        return datetime.fromisoformat(row[0]).astimezone(TIMEZONE).date() - timedelta(days=1)
+    row = conn.execute(
+        "SELECT MIN(opening_balance_at) FROM bank_account WHERE business_id = ?", (business_id,)
+    ).fetchone()
+    return date.fromisoformat(row[0]) if row[0] else date.min
+
+
+def handle_poll_mail(ctx: JobContext, *, source: MailSource | None = None) -> None:
+    business_id = ctx.payload.get("business_id", DEFAULT_BUSINESS_ID)
+    source = source or mail_source(ctx.settings, ctx.clock)
+    store = document_store(ctx.settings)
+    conn = ctx.conn
+    senders = sorted({s for a in accounts_of(conn, business_id) for s in a.alert_senders})
+    since = _since(conn, ctx.settings.mail_source, business_id)
+    stored = skipped = 0
+    for ref in source.list_new(since, senders):
+        raw = source.fetch(ref).raw
+        sha = hashlib.sha256(raw).hexdigest()
+        msg = parse_message(raw)
+        external_ref = str(msg.get("Message-ID") or "").strip() or f"sha256:{sha}"
+        seen = conn.execute(
+            "SELECT id FROM source_document WHERE business_id = ? "
+            "AND (content_sha256 = ? OR (kind = 'email' AND external_ref = ?))",
+            (business_id, sha, external_ref),
+        ).fetchone()
+        if seen is not None:
+            skipped += 1
+            continue
+        at = sent_at(msg)
+        cur = conn.execute(
+            "INSERT INTO source_document (business_id, kind, external_ref, content_sha256, received_at, "
+            "storage_path, status) VALUES (?, 'email', ?, ?, ?, ?, ?)",
+            (business_id, external_ref, sha, (at or ctx.clock.now()).isoformat(), store.put(raw, sha),
+             "NEW" if at is not None else "FAILED"),
+        )
+        doc_id = cur.lastrowid
+        stored += 1
+        if at is None:
+            ctx.tracer.step(input_ref=f"source_document:{doc_id}", tool="poll_mail",
+                            result="no readable Date header: stored as FAILED, not processed")
+            continue
+        queue.enqueue(conn, kind="process_document", payload={"document_id": doc_id},
+                      idempotency_key=f"process_document:{doc_id}", clock=ctx.clock)
+    conn.execute(
+        "INSERT INTO sync_state (source, last_synced_at) VALUES (?, ?) "
+        "ON CONFLICT(source) DO UPDATE SET last_synced_at = excluded.last_synced_at",
+        (ctx.settings.mail_source, ctx.clock.now().isoformat()),
+    )
+    ctx.tracer.step(tool="poll_mail", arguments={"since": since.isoformat(), "senders": senders},
+                    result=f"{stored} stored, {skipped} already seen")
+
+
+# --- process_document ---------------------------------------------------------------
+
+
+def ai_text(msg: EmailMessage) -> str:
+    """What Gemini sees: the three headers that matter, then the text."""
+    return (
+        f"From: {msg.get('From', '')}\nDate: {msg.get('Date', '')}\nSubject: {msg.get('Subject', '')}\n\n"
+        f"{body_text(msg).strip()}\n"
+    )
+
+
+@dataclass
+class Attempt:
+    thinking: str
+    result: AIResult
+    checks: dict[str, str]
+
+
+@dataclass
+class Outcome:
+    status: str  # candidate status: VALID, INVALID (duplicate) or AWAITING_OWNER
+    attempts: list[Attempt]
+    record: AlertRecord | FailureRecord | None
+
+
+def extract_with_retries(ctx: JobContext, backend: Backend, doc_type: str, text: str, mail: MailFacts,
+                         accounts: list[AccountIn], input_ref: str) -> Outcome:
+    """Steps 3-5: extract, check, re-extract with the failures attached, then
+    once more at high thinking. A reply that only repeats a transaction already
+    in the ledger is not retried: reading it again cannot change that."""
+    conn = ctx.conn
+    if doc_type == "bank_alert":
+        check: Callable = functools.partial(check_bank_alert, existing_txn=lambda k: bank_txn_with_key(conn, k))
+    else:
+        check = functools.partial(check_failure_notice,
+                                  existing_notice=lambda k: failure_candidate_with_key(conn, k))
+    first = ctx.app_config.model.thinking.extract
+    ladder = [first] * ctx.app_config.escalation.max_validation_failures + ["high"]
+    attempts: list[Attempt] = []
+    previous, failed_checks = None, None
+    for thinking in ladder:
+        try:
+            r = extract_document(doc_type, text, thinking=thinking, backend=backend,
+                                 app_config=ctx.app_config, tracer=ctx.tracer, input_ref=input_ref,
+                                 previous=previous, failed_checks=failed_checks)
+        except AIUnavailable as e:
+            raise _ai_failure(e) from e
+        checks, record = check(r.parsed, r.schema_error, mail, accounts)
+        attempts.append(Attempt(thinking, r, checks))
+        fails = failures(checks)
+        ctx.tracer.step(input_ref=input_ref, tool="validate", validation=checks,
+                        retries=len(attempts) - 1,
+                        result="all checks passed" if record else f"failed: {sorted(fails)}")
+        if record is not None:
+            return Outcome("VALID", attempts, record)
+        if set(fails) == {"duplicates"}:
+            return Outcome("INVALID", attempts, None)
+        previous, failed_checks = r.text, fails
+    return Outcome("AWAITING_OWNER", attempts, None)
+
+
+def handle_process_document(ctx: JobContext, *, backend: Backend) -> None:
+    conn = ctx.conn
+    doc = conn.execute("SELECT * FROM source_document WHERE id = ?",
+                       (ctx.payload.get("document_id"),)).fetchone()
+    if doc is None:
+        raise PermanentJobError(f"source_document {ctx.payload.get('document_id')} does not exist")
+    if doc["status"] != "NEW":
+        ctx.tracer.step(input_ref=f"source_document:{doc['id']}", tool="process_document",
+                        result=f"already {doc['status']}; nothing to do")
+        return
+    input_ref = f"source_document:{doc['id']}"
+    msg = parse_message(document_store(ctx.settings).get(doc["storage_path"]))
+    text = ai_text(msg)
+
+    try:
+        sorted_ = sort_document(text, backend=backend, app_config=ctx.app_config, tracer=ctx.tracer,
+                                input_ref=input_ref)
+    except AIUnavailable as e:
+        raise _ai_failure(e) from e
+    if sorted_.parsed is None:
+        raise RuntimeError(f"the sort reply did not match the schema: {sorted_.schema_error}")
+    doc_type = sorted_.parsed.doc_type
+
+    if doc_type == "irrelevant" or doc_type in LATER:
+        status = "IRRELEVANT" if doc_type == "irrelevant" else "PROCESSED"
+        with writer.atomic(conn):
+            conn.execute("UPDATE source_document SET doc_type = ?, status = ? WHERE id = ?",
+                         (doc_type, status, doc["id"]))
+        ctx.tracer.step(input_ref=input_ref, tool="route",
+                        result="irrelevant: stopped after sort" if status == "IRRELEVANT"
+                        else f"{doc_type}: not extracted until CHG-007")
+        return
+
+    mail = MailFacts(sender_address(msg), sent_at(msg))
+    accounts = accounts_of(conn, doc["business_id"])
+    outcome = extract_with_retries(ctx, backend, doc_type, text, mail, accounts, input_ref)
+    with writer.atomic(conn):
+        candidate_id = _store_candidate(ctx, doc, doc_type, outcome)
+        _route(ctx, doc, doc_type, outcome, candidate_id, msg)
+        conn.execute("UPDATE source_document SET doc_type = ?, status = 'PROCESSED' WHERE id = ?",
+                     (doc_type, doc["id"]))
+
+
+def _plain(value: Any) -> Any:
+    return value.isoformat() if isinstance(value, date) else value
+
+
+def _store_candidate(ctx: JobContext, doc: sqlite3.Row, doc_type: str, outcome: Outcome) -> int:
+    last = outcome.attempts[-1]
+    record = None if outcome.record is None else {k: _plain(v) for k, v in asdict(outcome.record).items()}
+    payload = {
+        "doc_type": doc_type,
+        "extract": None if last.result.parsed is None else last.result.parsed.model_dump(mode="json"),
+        "record": record,
+        "dedup_key": record["dedup_key"] if record else None,
+    }
+    cur = ctx.conn.execute(
+        "INSERT INTO candidate (source_document_id, record_type, payload_json, model_id, thinking, "
+        "prompt_version, checks_json, status, attempts, created_by, created_at) "
+        "VALUES (?, 'txn', ?, ?, ?, ?, ?, ?, ?, 'pipeline', ?)",
+        (doc["id"], json.dumps(payload, sort_keys=True), ctx.app_config.model.id, last.thinking,
+         prompt_version(ctx.app_config, doc_type), json.dumps(last.checks), outcome.status,
+         len(outcome.attempts), ctx.clock.now().isoformat()),
+    )
+    return cur.lastrowid
+
+
+def _route(ctx: JobContext, doc: sqlite3.Row, doc_type: str, outcome: Outcome, candidate_id: int,
+           msg: EmailMessage) -> None:
+    conn, input_ref = ctx.conn, f"source_document:{doc['id']}"
+    if outcome.status == "AWAITING_OWNER":
+        fails = failures(outcome.attempts[-1].checks)
+        conn.execute(
+            "INSERT INTO owner_question (business_id, kind, body_text, choices_json, status) "
+            "VALUES (?, 'confirm_record', ?, ?, 'OPEN')",
+            (doc["business_id"],
+             f"Please check this bank email: \"{msg.get('Subject', '')}\". It was read "
+             f"{len(outcome.attempts)} times and these checks still fail: "
+             + "; ".join(f"{k} ({v})" for k, v in sorted(fails.items())) + ".",
+             json.dumps({"candidate_id": candidate_id})),
+        )
+        ctx.tracer.step(input_ref=input_ref, tool="route", escalation_rule="max_validation_failures",
+                        result=f"candidate {candidate_id} awaits the owner (confirm_record)")
+        return
+    if outcome.status == "INVALID":
+        ctx.tracer.step(input_ref=input_ref, tool="route",
+                        result=f"duplicate: {failures(outcome.attempts[-1].checks)['duplicates']}")
+        return
+    rec = outcome.record
+    if doc_type == "bank_alert":
+        txn = writer.create_bank_txn(
+            BankTxnNew(account_id=rec.account_id, direction=rec.direction, amount_paise=rec.amount_paise,
+                       txn_date=rec.txn_date, counterparty=rec.counterparty, reference=rec.reference,
+                       balance_after_paise=rec.balance_after_paise, dedup_key=rec.dedup_key,
+                       source_document_id=doc["id"], candidate_id=candidate_id, status="UNMATCHED"),
+            actor="pipeline", reason=f"bank alert, candidate {candidate_id}", source_ref=input_ref,
+            conn=conn, clock=ctx.clock, trace_run_id=ctx.tracer.run_id,
+        )
+        job_id = queue.enqueue(conn, kind="reconcile_txn", payload={"bank_txn_id": txn.id},
+                               idempotency_key=f"reconcile_txn:{txn.id}", clock=ctx.clock)
+        ctx.tracer.step(input_ref=input_ref, tool="route",
+                        result=f"bank_txn {txn.id} written; reconcile_txn job {job_id} queued")
+    else:
+        job_id = queue.enqueue(conn, kind="reconcile_failure", payload={"candidate_id": candidate_id},
+                               idempotency_key=f"reconcile_failure:{candidate_id}", clock=ctx.clock)
+        ctx.tracer.step(input_ref=input_ref, tool="route",
+                        result=f"failure notice, candidate {candidate_id}; reconcile_failure job {job_id} queued")
+
+
+def handlers(backend: Backend) -> dict[str, Handler]:
+    return {
+        "poll_mail": handle_poll_mail,
+        "process_document": functools.partial(handle_process_document, backend=backend),
+    }
+

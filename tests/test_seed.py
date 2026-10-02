@@ -1,3 +1,4 @@
+import json
 from collections import Counter
 
 import pytest
@@ -174,3 +175,8 @@ def test_fresh_on_a_database_another_process_holds_exits_with_a_clear_message(
     err = capsys.readouterr().err
     assert "another process has it open" in err
     assert "make reseed" in err
+
+
+def test_the_seeded_account_takes_alerts_from_the_test_inbox_sender(conn):
+    row = conn.execute("SELECT alert_senders_json FROM bank_account WHERE id = 1").fetchone()
+    assert json.loads(row[0]) == ["alerts@hdfcbank.example"]  # fictional; fixtures/test_inbox

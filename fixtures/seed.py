@@ -67,9 +67,11 @@ def seed(conn: sqlite3.Connection, clock: Clock | None = None) -> None:
         conn.execute(
             """
             INSERT INTO bank_account
-                (id, business_id, bank_name, account_name, account_mask,
+                (id, business_id, bank_name, account_name, account_mask, alert_senders_json,
                  opening_balance_paise, opening_balance_at, status)
-            VALUES (1, ?, 'HDFC Bank', 'Current Account', 'XXXX4821', ?, '2026-10-12', 'active')
+            VALUES (1, ?, 'HDFC Bank', 'Current Account', 'XXXX4821',
+                    '["alerts@hdfcbank.example"]',  -- fictional sender of fixtures/test_inbox
+                    ?, '2026-10-12', 'active')
             """,
             (BUSINESS_ID, 62_000_000),  # ₹6,20,000 observed cash, Mon 12 Oct 2026
         )

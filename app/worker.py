@@ -29,16 +29,12 @@ from app.clock import TIMEZONE, Clock, SystemClock
 from app.config import AppConfig, Settings, load_app_config
 from app.db.connection import write_connection
 from app.jobs import queue
+from app.jobs.queue import PermanentJobError
 from app.trace.tracer import Tracer
 
 BACKOFF_FIRST = timedelta(seconds=30)
 BACKOFF_CAP = timedelta(hours=1)
 HEARTBEAT_FILE = "worker.heartbeat"
-
-
-class PermanentJobError(Exception):
-    """Retrying cannot help (a malformed payload, a request the API refused):
-    the job is dead-lettered at once."""
 
 
 @dataclass
@@ -177,10 +173,17 @@ def enqueue_poll_mail(*, db_path: str | Path, clock: Clock) -> None:
 # --- the loop ---------------------------------------------------------------------
 
 
-def default_handlers() -> dict[str, Handler]:
+def default_handlers(backend=None) -> dict[str, Handler]:
+    """Every job this build can run. Mail jobs need an AI backend; without one
+    they are not registered, so their jobs wait in the queue (Q10)."""
     from app.jobs import replan
 
-    return {"replan": replan.handle_replan, "monday_plan": replan.handle_monday_plan}
+    out: dict[str, Handler] = {"replan": replan.handle_replan, "monday_plan": replan.handle_monday_plan}
+    if backend is not None:
+        from app.ingest import pipeline
+
+        out.update(pipeline.handlers(backend))
+    return out
 
 
 def run(
@@ -210,7 +213,14 @@ def main() -> int:
     settings = Settings()
     app_config = load_app_config()
     clock = SystemClock()
-    handlers = default_handlers()
+    backend = None
+    if settings.gemini_api_key.strip():
+        from app.ai.client import GeminiBackend
+
+        backend = GeminiBackend(settings.gemini_api_key, timeout_ms=app_config.ai.timeout_ms)
+    else:
+        print("worker: GEMINI_API_KEY is not set, so mail is not polled or processed", file=sys.stderr)
+    handlers = default_handlers(backend)
     scheduler = BackgroundScheduler(timezone=TIMEZONE)
     schedule_jobs(scheduler, db_path=settings.database_path, app_config=app_config, clock=clock,
                   kinds=handlers)
