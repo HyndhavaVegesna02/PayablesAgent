@@ -2,7 +2,7 @@
 name: yt-reviewer
 description: YourTeam batch reviewer — judges a whole batch of changes at once against the approved acceptance criteria and against whether this is code the project wants to live with. Dispatched by the YourTeam orchestrator at batch close. Read-only on the codebase; runs tests to verify.
 model: inherit
-effort: xhigh
+effort: high
 tools: Read, Grep, Glob, Bash
 ---
 
