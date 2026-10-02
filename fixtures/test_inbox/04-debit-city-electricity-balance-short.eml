@@ -1,0 +1,19 @@
+X-Fixture-Note: fictional data; format modelled on HDFC InstaAlerts. The available balance is Rs.20,000 below the ledger's: one earlier debit sent no alert (the missing-alert scenario).
+From: HDFC Bank InstaAlerts <alerts@hdfcbank.example>
+To: owner@example.test
+Subject: Debit alert: Rs.35,000.00 debited from your account ending 4821
+Date: Thu, 15 Oct 2026 12:30:41 +0530
+Message-ID: <instaalert-20261015-123041-4821-04@hdfcbank.example>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+
+Dear Customer,
+
+Rs.35,000.00 has been debited from account **4821 towards BillPay to CITY ELECTRICITY BOARD on 15-10-26.
+
+BillPay Reference Number: BP2610150098812
+Available balance: Rs.5,65,000.00
+
+Warm Regards,
+HDFC Bank
+(This is a fictional fixture. No real bank, account or person is described.)

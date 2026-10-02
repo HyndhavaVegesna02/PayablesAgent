@@ -1,0 +1,20 @@
+X-Fixture-Note: fictional data; format modelled on HDFC NEFT return notices
+From: HDFC Bank InstaAlerts <alerts@hdfcbank.example>
+To: owner@example.test
+Subject: NEFT transaction returned: Rs.1,80,000.00 credited back to your account ending 4821
+Date: Wed, 14 Oct 2026 10:21:33 +0530
+Message-ID: <instaalert-20261014-102133-4821-03@hdfcbank.example>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+
+Dear Customer,
+
+Your NEFT payment of Rs.1,80,000.00 to ASHIRWAD PAPER SUPPLIERS from account **4821 (NEFT Reference Number N286261234567) could not be completed and has been returned on 14-10-26.
+
+Reason for return: Beneficiary account closed or transferred.
+
+The amount has been credited back to your account. Please verify the beneficiary details before trying again.
+
+Warm Regards,
+HDFC Bank
+(This is a fictional fixture. No real bank, account or person is described.)
