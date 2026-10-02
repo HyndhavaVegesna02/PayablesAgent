@@ -2,7 +2,7 @@
 
 **Covers:** CHG-013 (worker and replan), CHG-004 (alert ingestion) and CHG-005 (reconciliation). All three are `planned`.
 
-**Branch:** `batch-2`, cut from `main` at acaac9b.
+**Branch:** `batch-2`, cut from `main` at the commit that records this plan's approval.
 
 **Order:** 013 → 004 → 005.
 - 004's pipeline runs as jobs inside 013's worker.
@@ -420,4 +420,5 @@ It then queues `run_case`. That job stays queued until CHG-008 registers a handl
 | Q10 | What happens to `run_case` jobs before CHG-008? | They stay queued. The worker claims only kinds that have handlers. |
 | Q11 | How is the 23:00 alert recheck scheduled? | A delayed `drift_check` job with `run_after` at that day's 23:00 IST. |
 | Q12 | Fixture sender domain. | `alerts@hdfcbank.example`, fictional, set in the seed's `alert_senders_json`. |
+| Q13 | CHG-005's drafted AC3 says the agent recovering the missing transaction from Gmail closes the gap. The agent is CHG-008. | Split it. Here: the code side (a later transaction that closes the gap returns CHECKING→OK; a gap that stays is CHECKING with a drift case). CHG-008: the agent's search and the CHECKING→ASK_OWNER move when it gives up. |
 | — | Latent bug, flagged: the tracer currently redacts any field whose name contains "token", so the TDD's `tokens` trace field is always blanked. | Fixed in CHG-004 A1. Only fields named or ending in password, token or key are redacted. |

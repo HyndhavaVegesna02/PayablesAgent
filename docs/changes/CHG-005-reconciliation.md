@@ -2,7 +2,7 @@
 id: CHG-005
 title: Reconciliation — matching, failures, reversals, drift check
 type: feature
-lane:
+lane: planned
 ---
 
 ## Context
@@ -16,16 +16,36 @@ reversal handling, and the drift check's three-step procedure (spot the gap, rec
 Gmail, ask the owner).
 
 ## Acceptance Criteria
-- [ ] AC1: An approved payment plus a matching debit alert moves the bill to PAID
-- [ ] AC2: A return/failure email moves the bill to REOPENED and the original debit to REVERSED
-- [ ] AC3: A missing alert produces a CHECKING drift state, and the agent recovering the transaction from Gmail closes the gap
-- [ ] AC4: While drift is unresolved, every planner snapshot uses the lower of the two balances
+Batch 2 plan, docs/batches/2026-10-02-2/plan.md (these replace the drafted ones).
+
+- [ ] AC1: An approved payment plus a matching debit alert moves the bill to PAID and the debit to MATCHED, atomically, and queues a replan.
+- [ ] AC2: A return or failure email moves the bill to REOPENED and its original debit to REVERSED, then queues a replan. A failure that matches no bill opens a `failed_payment` case.
+- [ ] AC3: An ambiguous debit (no name match, or several candidates) moves the bill or bills to REVIEW and opens an `ambiguous_match` case. A debit matching nothing stays UNMATCHED with an `unknown_txn` case. Cases start at high thinking when the stake exceeds the escalation amount.
+- [ ] AC4: A credit matching an open receivable marks it CONFIRMED. A name match with a different amount opens a case.
+- [ ] AC5: Drift:
+  - An alert's available balance that disagrees is rechecked at 23:00. A mismatch that remains sets the account to CHECKING and opens a drift case. A statement mismatch is acted on at once.
+  - A later transaction that closes the gap returns the account to OK.
+  - `confirm_balance` writes an ADJUSTMENT txn with the owner as actor and returns the account to OK.
+- [ ] AC6: While drift is unresolved, every planner snapshot uses the lower of the two balances. This is shown through the persisted replan, not only through the planner.
+- [ ] AC7: Every bank_account and ledger change in this change goes through the writer. The guard (R008) is green, and agent actors are refused for the drift moves.
+- [ ] AC8: The Phase 4 exit test runs all three scenarios end to end through the worker on the seeded DB with the fake AI. It also shows the debit's trace.
 
 ## Expected paths
-<!-- fill in when pulled into a batch -->
+- `app/ledger/reconcile.py`
+- `app/ledger/writer.py`
+- `app/domain/states.py`
+- `app/jobs/`
+- `app/worker.py`
+- `app/ingest/pipeline.py`
+- `tests/test_reconcile_match.py`
+- `tests/test_reconcile_failure.py`
+- `tests/test_drift.py`
+- `tests/test_phase4_exit.py`
+- `tests/test_states.py`
+- `tests/test_ledger_transitions.py`
 
 ## Open Questions
-<!-- none yet -->
+See the batch 2 plan's PO questions (each has a default).
 
 ## History
 - 2026-10-02: drafted from TDD v2.0 Part 2, Phase 4
@@ -34,3 +54,4 @@ Gmail, ask the owner).
   - UNMATCHED→MATCHED: allowed for the owner when they resolve a REVIEW bill as paid against a specific transaction.
   - UNMATCHED→REVERSED: reconciler only, for a failure email whose debit was never matched.
   - Receivables: the owner may re-rate among COMMITTED/EXPECTED/UNKNOWN. Creation is by the owner only (via confirm_record), never by the pipeline. CONFIRMED→anything else is out of the MVP.
+- 2026-10-02: planned for batch 2 (lane planned, cap: consumes CHG-004's extract contract). ACs rewritten in the plan. Original AC3's "the agent recovering the transaction from Gmail closes the gap" splits: the code side (a later txn closes the gap, CHECKING→OK) lands here; the agent's Gmail search lands with CHG-008 (Q13). PO leaning UNMATCHED→REVERSED lands here; the other leaned rows land with their callers (Q7).

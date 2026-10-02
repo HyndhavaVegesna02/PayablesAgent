@@ -1,6 +1,6 @@
 # Every change, ever. Entries are never deleted -- done and rejected are history.
 # Status is a field, never a folder.
-next_id: 18
+next_id: 19
 changes:
   - id: CHG-001
     title: Repo skeleton — layout, config, schema, Clock, tracer, job table, CI
@@ -89,8 +89,34 @@ changes:
     status: draft
     priority: 4
     type: feature
-    lane: null
-    expected_paths: []
+    lane: planned
+    expected_paths:
+      - app/ingest/mail_source.py
+      - app/ingest/eml_folder.py
+      - app/ingest/store.py
+      - app/ingest/pipeline.py
+      - app/ai/client.py
+      - app/ai/sort.py
+      - app/ai/extract.py
+      - app/ai/prompts/
+      - app/ai/smoke.py
+      - app/validate/
+      - app/domain/money.py
+      - app/trace/tracer.py
+      - app/config.py
+      - config.yaml
+      - fixtures/seed.py
+      - fixtures/test_inbox/
+      - Makefile
+      - pyproject.toml
+      - tests/conftest.py
+      - tests/fake_ai.py
+      - tests/test_ai_client.py
+      - tests/test_eml_folder.py
+      - tests/test_pipeline.py
+      - tests/test_validate_alert.py
+      - tests/test_money.py
+      - tests/test_tracer.py
     depends_on: CHG-001
     batch: null
   - id: CHG-005
@@ -99,8 +125,20 @@ changes:
     status: draft
     priority: 5
     type: feature
-    lane: null
-    expected_paths: []
+    lane: planned
+    expected_paths:
+      - app/ledger/reconcile.py
+      - app/ledger/writer.py
+      - app/domain/states.py
+      - app/jobs/
+      - app/worker.py
+      - app/ingest/pipeline.py
+      - tests/test_reconcile_match.py
+      - tests/test_reconcile_failure.py
+      - tests/test_drift.py
+      - tests/test_phase4_exit.py
+      - tests/test_states.py
+      - tests/test_ledger_transitions.py
     depends_on: CHG-004
     batch: null
   - id: CHG-006
@@ -179,8 +217,23 @@ changes:
     status: draft
     priority: 13
     type: feature
-    lane: null
-    expected_paths: []
+    lane: planned
+    expected_paths:
+      - app/worker.py
+      - app/jobs/replan.py
+      - app/jobs/queue.py
+      - app/ledger/writer.py
+      - app/planner/plan.py
+      - app/main.py
+      - fixtures/seed.py
+      - Makefile
+      - CLAUDE.md
+      - tests/test_worker.py
+      - tests/test_replan.py
+      - tests/test_scheduler.py
+      - tests/test_health.py
+      - tests/test_seed.py
+      - tests/test_jobs_queue.py
     depends_on: CHG-003
     batch: null
 
@@ -205,7 +258,7 @@ changes:
     depends_on: null
     batch: null
   - id: CHG-016
-    title: Seed robustness: AlreadySeeded check inside the write transaction
+    title: "Seed robustness: AlreadySeeded check inside the write transaction"
     file: docs/changes/CHG-016-seed-toctou.md
     status: draft
     priority: 16
@@ -223,6 +276,17 @@ changes:
     lane: null
     expected_paths: []
     depends_on: null
+    batch: null
+
+  - id: CHG-018
+    title: explain_plan job — plan diff to a plain-language summary (Gemini), number check, template fallback
+    file: docs/changes/CHG-018-explain-plan.md
+    status: draft
+    priority: 18
+    type: feature
+    lane: null
+    expected_paths: []
+    depends_on: CHG-013
     batch: null
 
 # Shape of an entry:
