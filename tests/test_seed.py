@@ -1,8 +1,11 @@
+from collections import Counter
+
 import pytest
 
 from app.db.connection import write_connection
 from app.db.migrate import apply_migrations
-from fixtures.seed import seed
+from fixtures import seed as seed_module
+from fixtures.seed import AlreadySeeded, seed
 
 
 @pytest.fixture
@@ -10,23 +13,25 @@ def conn(tmp_path):
     db_path = tmp_path / "seed-test.db"
     apply_migrations(db_path)
     c = write_connection(db_path)  # exercises seed() under real FK enforcement
+    seed(c)
     yield c
     c.close()
 
 
 def test_seed_creates_worked_example_business(conn):
-    seed(conn)
-
     business = conn.execute("SELECT * FROM business WHERE id = 1").fetchone()
-    assert business is not None
     assert business["safety_amount_paise"] == 25_000_000  # ₹2,50,000
     assert business["payment_days"] == "MON,THU"
     assert business["horizon_days"] == 14
 
 
-def test_seed_creates_the_bank_account_with_observed_cash(conn):
-    seed(conn)
+def test_seed_creates_the_owner_every_event_names(conn):
+    user = conn.execute("SELECT * FROM app_user WHERE id = 1").fetchone()
+    assert (user["role"], user["email"], user["business_id"]) == ("owner", "owner@example.test", 1)
+    assert user["password_hash"].startswith("!")  # can never verify as an Argon2 hash
 
+
+def test_seed_creates_the_bank_account_with_observed_cash(conn):
     row = conn.execute(
         "SELECT calculated_balance_paise FROM account_balance ab "
         "JOIN bank_account a ON a.id = ab.account_id WHERE a.business_id = 1"
@@ -35,51 +40,98 @@ def test_seed_creates_the_bank_account_with_observed_cash(conn):
 
 
 def test_seed_creates_five_payables_matching_the_worked_example(conn):
-    seed(conn)
-
     payables = {
-        row["invoice_number"]: (row["amount_paise"], row["due_date"], row["priority"])
-        for row in conn.execute(
-            "SELECT * FROM payable WHERE business_id = 1"
-        ).fetchall()
+        row["invoice_number"]: (row["id"], row["amount_paise"], row["due_date"], row["priority"])
+        for row in conn.execute("SELECT * FROM payable WHERE business_id = 1").fetchall()
     }
-    assert len(payables) == 5
-    assert payables["PAPER-001"] == (18_000_000, "2026-10-14", "normal")
-    assert payables["PFESI-OCT26"] == (4_500_000, "2026-10-15", "statutory")
-    assert payables["ELEC-OCT26"] == (3_500_000, "2026-10-16", "critical")
-    assert payables["GST-OCT26"] == (9_000_000, "2026-10-20", "statutory")
-    assert payables["PRIME-001"] == (12_000_000, "2026-10-22", "normal")
-
-    # Prime Chem has no grace days (TDD: "no grace days")
-    prime = conn.execute(
-        "SELECT grace_days FROM payable WHERE invoice_number = 'PRIME-001'"
-    ).fetchone()
-    assert prime["grace_days"] == 0
-
-    statuses = {
-        row["status"] for row in conn.execute("SELECT status FROM payable").fetchall()
+    assert payables == {
+        "PAPER-001": (1, 18_000_000, "2026-10-14", "normal"),
+        "PFESI-OCT26": (2, 4_500_000, "2026-10-15", "statutory"),
+        "ELEC-OCT26": (3, 3_500_000, "2026-10-16", "critical"),
+        "GST-OCT26": (4, 9_000_000, "2026-10-20", "statutory"),
+        "PRIME-001": (5, 12_000_000, "2026-10-22", "normal"),
     }
-    assert statuses == {"CONFIRMED"}
+    prime = conn.execute("SELECT grace_days FROM payable WHERE invoice_number = 'PRIME-001'").fetchone()
+    assert prime["grace_days"] == 0  # TDD: "no grace days"
+    rows = conn.execute("SELECT status, version FROM payable").fetchall()
+    assert {(r["status"], r["version"]) for r in rows} == {("CONFIRMED", 2)}
 
 
 def test_seed_creates_two_receivables_with_correct_confidence(conn):
-    seed(conn)
-
     receivables = {
         row["invoice_number"]: (row["amount_paise"], row["expected_date"], row["confidence"])
-        for row in conn.execute(
-            "SELECT * FROM receivable WHERE business_id = 1"
-        ).fetchall()
+        for row in conn.execute("SELECT * FROM receivable WHERE business_id = 1").fetchall()
     }
-    assert receivables["KAVERI-001"] == (3_300_000, "2026-10-13", "COMMITTED")
-    assert receivables["NANDI-001"] == (20_000_000, "2026-10-28", "EXPECTED")
+    assert receivables == {
+        "KAVERI-001": (3_300_000, "2026-10-13", "COMMITTED"),
+        "NANDI-001": (20_000_000, "2026-10-28", "EXPECTED"),
+    }
 
 
-def test_seed_is_idempotent(conn):
-    seed(conn)
-    seed(conn)  # must not raise a UNIQUE constraint error
+def test_seed_links_tax_obligations_to_their_statutory_payables(conn):
+    rows = conn.execute(
+        "SELECT t.tax_type, t.amount_paise, t.amount_status, t.period, p.invoice_number "
+        "FROM tax_obligation t JOIN payable p ON p.id = t.payable_id ORDER BY t.tax_type"
+    ).fetchall()
+    assert [tuple(r) for r in rows] == [
+        ("ESI", 900_000, "ESTIMATED", "2026-09", "PFESI-OCT26"),
+        ("GST", 9_000_000, "CONFIRMED", "2026-09", "GST-OCT26"),
+        ("PF", 3_600_000, "ESTIMATED", "2026-09", "PFESI-OCT26"),
+    ]
 
-    count = conn.execute("SELECT COUNT(*) FROM business").fetchone()[0]
-    assert count == 1
-    payable_count = conn.execute("SELECT COUNT(*) FROM payable").fetchone()[0]
-    assert payable_count == 5
+
+def test_every_ledger_row_has_its_audit_trail(conn):
+    evs = conn.execute("SELECT * FROM event").fetchall()
+    assert Counter((e["entity"], e["event_type"]) for e in evs) == {
+        ("payable", "PAYABLE_CREATED"): 5,
+        ("payable", "PAYABLE_CONFIRMED"): 5,
+        ("receivable", "RECEIVABLE_CREATED"): 2,
+        ("tax_obligation", "TAX_OBLIGATION_CREATED"): 3,
+    }
+    assert {e["actor"] for e in evs} == {"owner:1"}
+    assert {e["reason"] for e in evs} == {"seed: TDD Part 1 worked example"}
+    assert {e["source_ref"] for e in evs} == {"fixture:seed"}
+    for table in ("payable", "receivable", "tax_obligation"):
+        ids = {r[0] for r in conn.execute(f"SELECT id FROM {table}")}
+        created = {e["entity_id"] for e in evs if e["event_type"] == f"{table.upper()}_CREATED"}
+        assert ids == created, table
+
+
+def test_seeding_twice_refuses_and_changes_nothing(conn):
+    events_before = conn.execute("SELECT COUNT(*) FROM event").fetchone()[0]
+    with pytest.raises(AlreadySeeded):
+        seed(conn)
+    assert conn.execute("SELECT COUNT(*) FROM event").fetchone()[0] == events_before
+    assert conn.execute("SELECT COUNT(*) FROM payable").fetchone()[0] == 5
+
+
+def _counts(db_path):
+    c = write_connection(db_path)
+    try:
+        return {
+            t: c.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
+            for t in ("business", "payable", "receivable", "tax_obligation", "event")
+        }
+    finally:
+        c.close()
+
+
+def test_make_seed_is_a_harmless_no_op_the_second_time(tmp_path, monkeypatch, capsys):
+    db_path = tmp_path / "cli.db"
+    monkeypatch.setenv("DATABASE_PATH", str(db_path))
+    assert seed_module.main([]) == 0
+    first = _counts(db_path)
+    assert seed_module.main([]) == 0
+    assert "already seeded" in capsys.readouterr().out
+    assert _counts(db_path) == first
+
+
+def test_fresh_recreates_the_file_instead_of_deleting_rows(tmp_path, monkeypatch):
+    db_path = tmp_path / "cli.db"
+    monkeypatch.setenv("DATABASE_PATH", str(db_path))
+    assert seed_module.main([]) == 0
+    first = _counts(db_path)
+    assert seed_module.main(["--fresh"]) == 0
+    assert _counts(db_path) == first == {
+        "business": 1, "payable": 5, "receivable": 2, "tax_obligation": 3, "event": 15,
+    }

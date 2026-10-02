@@ -26,7 +26,8 @@ no float ever holds an amount.
 
 - `make setup` — creates the uv-managed virtualenv, installs pinned dependencies, and copies `.env.example` to `.env` if `.env` doesn't exist yet
 - `make db` — applies `app/db/migrations/*.sql` (idempotent) and regenerates `app/db/schema.sql` from the live database
-- `make seed` — loads the worked-example business from the TDD (idempotent)
+- `make seed` — loads the worked-example business from the TDD through the ledger writer; a second run is a no-op (it never deletes rows, because events are append-only)
+- `make reseed` — deletes the database file at `DATABASE_PATH`, then migrates and seeds from scratch
 - `make run` — starts the FastAPI web process on port 8000 (`GET /api/health`)
 - `make test` — runs pytest (incl. Hypothesis properties) and import-linter
 - `make worker`, `make evals`, `make ablation` — intentional stub failures until the phases that implement them (worker/scheduler: Phase 3+; evals/ablation: Phase 9) — they exist in the Makefile so nothing is silently green

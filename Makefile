@@ -1,4 +1,4 @@
-.PHONY: setup db seed run worker test evals ablation
+.PHONY: setup db seed reseed run worker test evals ablation
 
 setup:
 	uv sync --all-groups
@@ -9,6 +9,9 @@ db:
 
 seed:
 	uv run python -m fixtures.seed
+
+reseed:
+	uv run python -m fixtures.seed --fresh
 
 run:
 	uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
