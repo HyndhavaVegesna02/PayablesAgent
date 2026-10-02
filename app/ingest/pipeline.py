@@ -175,8 +175,12 @@ class Outcome:
 def extract_with_retries(ctx: JobContext, backend: Backend, doc_type: str, text: str, mail: MailFacts,
                          accounts: list[AccountIn], input_ref: str) -> Outcome:
     """Steps 3-5: extract, check, re-extract with the failures attached, then
-    once more at high thinking. A reply that only repeats a transaction already
-    in the ledger is not retried: reading it again cannot change that."""
+    once more at high thinking. Two failures stop the ladder at once:
+    - a field the model marks as uncertain goes to the owner (TDD Part 1:
+      "fields the model marks as uncertain are flagged for the owner"); asking
+      the model again would only invite it to drop the flag;
+    - a reply that only repeats a transaction already in the ledger is not
+      retried: reading it again cannot change that."""
     conn = ctx.conn
     if doc_type == "bank_alert":
         check: Callable = functools.partial(check_bank_alert, existing_txn=lambda k: bank_txn_with_key(conn, k))
@@ -202,6 +206,8 @@ def extract_with_retries(ctx: JobContext, backend: Backend, doc_type: str, text:
                         result="all checks passed" if record else f"failed: {sorted(fails)}")
         if record is not None:
             return Outcome("VALID", attempts, record)
+        if "confidence" in fails:
+            return Outcome("AWAITING_OWNER", attempts, None)
         if set(fails) == {"duplicates"}:
             return Outcome("INVALID", attempts, None)
         previous, failed_checks = r.text, fails
@@ -219,7 +225,10 @@ def handle_process_document(ctx: JobContext, *, backend: Backend) -> None:
                         result=f"already {doc['status']}; nothing to do")
         return
     input_ref = f"source_document:{doc['id']}"
-    msg = parse_message(document_store(ctx.settings).get(doc["storage_path"]))
+    try:
+        msg = parse_message(document_store(ctx.settings).get(doc["storage_path"]))
+    except StoreKeyError as e:
+        raise PermanentJobError(str(e)) from None
     text = email_text(msg)
 
     try:

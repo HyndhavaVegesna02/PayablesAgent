@@ -14,6 +14,7 @@ from datetime import date, datetime
 from email.message import EmailMessage
 from pathlib import Path
 
+from app.ai.email_text import body_text
 from app.clock import TIMEZONE, Clock
 from app.ingest.mail_source import Attachment, MessageRef, MessageSummary, RawMessage
 
@@ -40,13 +41,6 @@ def sender_address(msg: EmailMessage) -> str | None:
         return None
     _, addr = email.utils.parseaddr(str(value))
     return addr.lower() or None
-
-
-def body_text(msg: EmailMessage) -> str:
-    part = msg.get_body(preferencelist=("plain", "html"))
-    if part is None:
-        return ""
-    return part.get_content()
 
 
 def attachments(msg: EmailMessage) -> tuple[Attachment, ...]:
@@ -104,5 +98,5 @@ class EmlFolderSource:
                     MessageRef(f.name), sender_address(msg) or "", str(msg.get("Subject", "")),
                     sent_at(msg), " ".join(body.split())[:160],
                 ))
-        found.sort(key=lambda s: (s.sent_at is not None, s.sent_at and s.sent_at.isoformat()), reverse=True)
+        found.sort(key=lambda s: (s.sent_at is not None, s.sent_at.timestamp() if s.sent_at else 0), reverse=True)
         return found[:limit]

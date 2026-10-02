@@ -219,3 +219,28 @@ def test_timeouts_and_connection_errors_are_retryable(exc):
 def test_gemini_backend_refuses_a_blank_key(key):
     with pytest.raises(ValueError, match="GEMINI_API_KEY"):
         GeminiBackend(key, timeout_ms=1000)
+
+
+def test_an_api_error_with_no_code_is_retryable():
+    # The contract grid's absent case: APIError.code None is treated as transient.
+    from google.genai import errors
+
+    backend, _ = _backend(lambda req: httpx.Response(200, json=OK_BODY))
+
+    class Refusing:
+        def generate_content(self, **kw):
+            raise errors.APIError(None, {"error": {"message": "no status", "status": None}})
+
+    backend._client = type("C", (), {"models": Refusing()})()
+    with pytest.raises(AIUnavailable) as e:
+        _generate(backend)
+    assert (e.value.retryable, e.value.code) == (True, None)
+
+
+def test_an_outage_is_written_to_the_trace_before_it_is_raised(tracer):
+    backend = FakeBackend().queue("BankAlertExtract", AIUnavailable("down", retryable=True, code=503))
+    with pytest.raises(AIUnavailable):
+        _call(backend, tracer)
+    (step,) = _steps(tracer)
+    assert step["tool"] == "ai.call:extract:bank_alert"
+    assert step["result"] is None and step["validation"] == "not run: AI unavailable (retryable, 503): down"

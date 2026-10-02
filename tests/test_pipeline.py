@@ -9,6 +9,8 @@ from pathlib import Path
 
 import pytest
 
+from cryptography.fernet import Fernet
+
 from app.ai.client import AIUnavailable
 from app.ingest import pipeline
 from app.ingest.store import KEYGEN_COMMAND
@@ -161,10 +163,42 @@ def test_a_failed_check_is_retried_with_the_failures_attached(env):
 def test_a_second_failure_is_extracted_at_high_thinking(env):
     deliver(env, DEBIT)
     backend = FakeBackend().queue("SortResult", {"doc_type": "bank_alert", "reason": "r"})
-    backend.queue("BankAlertExtract", "not json", _alert(uncertain_fields=["amount_text"]), GOOD_ALERT)
+    backend.queue("BankAlertExtract", "not json", _alert(account_last4="9999"), GOOD_ALERT)
     poll(env, backend)
     assert [r.thinking for r in backend.calls("BankAlertExtract")] == ["medium", "medium", "high"]
     assert tuple(rows(env, "SELECT status, attempts, thinking FROM candidate")[0]) == ("VALID", 3, "high")
+
+
+@pytest.mark.parametrize("first_ok", [True, False])
+def test_an_uncertain_field_goes_to_the_owner_without_asking_the_model_again(env, first_ok):
+    # Whether it is unsure on the first reading or on a retry, the model is not
+    # asked again, so it cannot drop the flag and slip the record past the owner.
+    deliver(env, DEBIT)
+    backend = FakeBackend().queue("SortResult", {"doc_type": "bank_alert", "reason": "r"})
+    unsure = _alert(uncertain_fields=["amount_text"])
+    backend.queue("BankAlertExtract", *([unsure, GOOD_ALERT] if first_ok else [_alert(amount_text="?"), unsure,
+                                                                              GOOD_ALERT]))
+    poll(env, backend)
+    expected_calls = 1 if first_ok else 2
+    assert len(backend.calls("BankAlertExtract")) == expected_calls
+    (cand,) = rows(env, "SELECT status, attempts, checks_json FROM candidate")
+    assert (cand["status"], cand["attempts"]) == ("AWAITING_OWNER", expected_calls)
+    assert json.loads(cand["checks_json"])["confidence"] == "failed: the model is unsure of amount_text"
+    (q,) = rows(env, "SELECT kind, body_text FROM owner_question")
+    assert q["kind"] == "confirm_record" and "confidence (the model is unsure of amount_text)" in q["body_text"]
+    assert rows(env, "SELECT * FROM bank_txn") == []
+
+
+def test_a_document_stored_under_another_key_dead_letters_at_once(env):
+    deliver(env, DEBIT)
+    queue.enqueue(env.conn, kind="poll_mail", payload={}, clock=env.clock)
+    env.conn.commit()
+    _run_all(env, {"poll_mail": pipeline.handle_poll_mail})  # stored, process_document queued
+    env.settings = env.settings.model_copy(update={"fernet_key": Fernet.generate_key().decode()})
+    run_all(env, FakeBackend())
+    (j,) = job(env, "process_document")
+    assert (j["status"], j["attempts"]) == ("dead", 1)
+    assert "does not match the key these documents were stored with" in j["last_error"]
 
 
 def test_a_third_failure_asks_the_owner_and_writes_nothing_to_the_ledger(env):
@@ -336,3 +370,28 @@ def test_mail_jobs_are_registered_only_with_an_ai_backend():
     assert {"poll_mail", "process_document"} <= set(default_handlers(FakeBackend()))
     assert not {"poll_mail", "process_document"} & set(default_handlers())
 
+
+
+# --- contract grid: absent headers -------------------------------------------------------
+
+
+def test_an_email_with_no_message_id_is_keyed_by_its_content_hash(env):
+    raw = (FIXTURES / DEBIT).read_bytes()
+    raw = b"".join(line for line in raw.splitlines(keepends=True) if not line.startswith(b"Message-ID:"))
+    with open(f"{env.settings.test_inbox_path}/no-id.eml", "wb") as f:
+        f.write(raw)
+    poll(env, fixture_backend(DEBIT))
+    (doc,) = rows(env, "SELECT external_ref, content_sha256, status FROM source_document")
+    assert doc["external_ref"] == f"sha256:{doc['content_sha256']}"
+    assert doc["status"] == "PROCESSED"
+    poll(env, FakeBackend())  # seen again: skipped by the unique keys
+    assert len(rows(env, "SELECT * FROM source_document")) == 1
+
+
+def test_an_email_with_no_from_header_is_never_listed(env):
+    raw = (FIXTURES / DEBIT).read_bytes()
+    raw = b"".join(line for line in raw.splitlines(keepends=True) if not line.startswith(b"From:"))
+    with open(f"{env.settings.test_inbox_path}/no-from.eml", "wb") as f:
+        f.write(raw)
+    poll(env, FakeBackend())
+    assert rows(env, "SELECT * FROM source_document") == []

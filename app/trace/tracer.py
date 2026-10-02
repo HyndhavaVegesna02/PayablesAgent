@@ -2,10 +2,11 @@
 audit trail"; Part 2, "Tracing, configuration and security"). Someone who did
 not build the agent should be able to explain a failure from the trace alone.
 
-Any field whose name has a word password, token, key or secret in it
-(`api_key`, `refresh_token`, `clientSecret`) is redacted before it touches
-disk, recursively through nested dicts. Matching is by whole word, so the
-TDD's own `tokens` field (token counts) is kept."""
+Any field with a word in its name that is, or ends with, password, token,
+key or secret (`api_key`, `refresh_token`, `clientSecret`, `apikey`,
+`dbpassword`) is redacted before it touches disk, top level and nested. The
+TDD's own `tokens` field (token counts) does not end with one of those, so it
+is kept. Redacting a harmless name like `monkey` is the safe side."""
 
 from __future__ import annotations
 
@@ -18,12 +19,12 @@ from typing import Any
 from app.clock import Clock, SystemClock
 
 REDACTED = "***REDACTED***"
-_SENSITIVE_WORDS = frozenset({"password", "token", "key", "secret"})
+_SENSITIVE_ENDINGS = ("password", "passwords", "passwd", "token", "key", "keys", "secret", "secrets")
 _WORD_BREAK = re.compile(r"[^A-Za-z0-9]+|(?<=[a-z0-9])(?=[A-Z])")
 
 
 def _is_sensitive(name: str) -> bool:
-    return any(w.lower() in _SENSITIVE_WORDS for w in _WORD_BREAK.split(name))
+    return any(w.lower().endswith(_SENSITIVE_ENDINGS) for w in _WORD_BREAK.split(name) if w)
 
 
 def _redact(value: Any) -> Any:

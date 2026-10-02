@@ -90,10 +90,16 @@ def call(
 ) -> AIResult:
     if thinking not in THINKING_LEVELS:
         raise ValueError(f"thinking level must be one of {sorted(THINKING_LEVELS)}, got {thinking!r}")
-    raw = backend.generate(
-        model=app_config.model.id, system=system, contents=context, thinking=thinking,
-        json_schema=schema.model_json_schema() if schema is not None else None,
-    )
+    try:
+        raw = backend.generate(
+            model=app_config.model.id, system=system, contents=context, thinking=thinking,
+            json_schema=schema.model_json_schema() if schema is not None else None,
+        )
+    except AIUnavailable as e:
+        kind = "retryable" if e.retryable else "permanent"
+        tracer.step(input_ref=input_ref, model=app_config.model.id, thinking=thinking, tool=f"ai.call:{job}",
+                    result=None, validation=f"not run: AI unavailable ({kind}, {e.code}): {e}", retries=0)
+        raise
     parsed, schema_error = None, None
     if schema is not None:
         try:
@@ -175,7 +181,6 @@ class GeminiBackend:
             output_tokens=(u.candidates_token_count or 0) if u else 0,
             thought_tokens=(u.thoughts_token_count or 0) if u else 0,
         )
-
 
 
 # --- prompts ----------------------------------------------------------------------

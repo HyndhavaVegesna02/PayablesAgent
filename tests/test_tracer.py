@@ -94,15 +94,19 @@ def test_top_level_fields_are_redacted_too_but_tokens_is_kept(tmp_path):
     assert entry["tokens"] == {"input": 120, "output": 40, "thoughts": 7}
 
 
-def test_redaction_matches_whole_words_in_any_naming_style(tmp_path):
-    entry = _one_step(tmp_path, arguments={
-        "api_key": "k", "apiKey": "k", "client-secret": "s", "refresh_token_enc": "t",
-        "password_hash": "p", "GEMINI_API_KEY": "k",
-        "tokens": 5, "keyboard": "kept", "monkey": "kept", "input_tokens": 3,
-    })
+SENSITIVE = [
+    "api_key", "apiKey", "client-secret", "refresh_token_enc", "password_hash", "GEMINI_API_KEY",
+    # compounds written as one word (batch 2 review): they end in a sensitive word
+    "apikey", "APIKEY", "accesstoken", "dbpassword", "fernetkey", "PRIVATEKEY", "passwords", "keys",
+    "monkey",  # over-redaction is the safe side
+]
+KEPT = ["tokens", "input_tokens", "keyboard", "ok", "thoughts", "input_ref"]
+
+
+def test_redaction_matches_word_endings_in_any_naming_style(tmp_path):
+    entry = _one_step(tmp_path, arguments={**{k: "secret" for k in SENSITIVE}, **{k: 1 for k in KEPT}})
     redacted = {k for k, v in entry["arguments"].items() if v == "***REDACTED***"}
-    assert redacted == {"api_key", "apiKey", "client-secret", "refresh_token_enc", "password_hash",
-                        "GEMINI_API_KEY"}
+    assert redacted == set(SENSITIVE)
 
 
 def test_find_run_file_locates_by_run_id_across_dates(tmp_path):

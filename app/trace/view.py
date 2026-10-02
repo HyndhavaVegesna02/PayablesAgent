@@ -7,6 +7,8 @@ import os
 import sys
 from pathlib import Path
 
+from app.config import Settings
+
 
 def find_run_file(trace_dir: str | Path, run_id: str) -> Path | None:
     trace_dir = Path(trace_dir)
@@ -42,7 +44,8 @@ def main(argv: list[str] | None = None) -> int:
         print("usage: python -m app.trace.view <run_id>", file=sys.stderr)
         return 2
     run_id = argv[0]
-    trace_dir = os.environ.get("TRACE_DIR", "./traces")
+    # TRACE_DIR from the environment, else the same Settings (.env) the worker uses
+    trace_dir = os.environ.get("TRACE_DIR") or Settings().trace_dir
     path = find_run_file(trace_dir, run_id)
     if path is None:
         print(f"no trace found for run_id={run_id} under {trace_dir}", file=sys.stderr)

@@ -8,9 +8,14 @@ import email.policy
 from email.message import EmailMessage
 
 
-def email_text(msg: EmailMessage) -> str:
+def body_text(msg: EmailMessage) -> str:
+    """The text body: plain text if there is one, else HTML."""
     part = msg.get_body(preferencelist=("plain", "html"))
-    body = part.get_content() if part is not None else ""
+    return part.get_content() if part is not None else ""
+
+
+def email_text(msg: EmailMessage) -> str:
+    body = body_text(msg)
     return (
         f"From: {msg.get('From', '')}\nDate: {msg.get('Date', '')}\nSubject: {msg.get('Subject', '')}\n\n"
         f"{body.strip()}\n"

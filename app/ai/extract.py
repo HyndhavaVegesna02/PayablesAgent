@@ -80,5 +80,3 @@ def extract_document(
         schema=schema, backend=backend, app_config=app_config, tracer=tracer, input_ref=input_ref,
         prompt_version=prompt_version(app_config, doc_type),
     )
-
-
