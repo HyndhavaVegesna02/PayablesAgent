@@ -313,3 +313,170 @@ def create_tax_obligation(
             payable_id = payable["id"]
         row = _create(conn, "tax_obligation", {**new.model_dump(), "payable_id": payable_id}, **kw)
     return TaxObligation.model_validate(row)
+
+
+# --- state changes -----------------------------------------------------------
+
+
+def _check_fields(kind: EntityKind, to_state: str, fields: Mapping[str, object]) -> None:
+    rule = TRANSITION_FIELDS.get((kind, to_state), FieldRule())
+    extra = set(fields) - rule.required - rule.optional
+    if extra:
+        raise FieldNotAllowed(f"{kind} -> {to_state} may not set {sorted(extra)}")
+    missing = rule.required - set(fields)
+    if missing:
+        raise FieldNotAllowed(f"{kind} -> {to_state} requires {sorted(missing)}")
+    for name, value in fields.items():
+        if name.endswith("_date") and not isinstance(value, date):
+            raise TypeError(f"{name} must be a date, got {type(value).__name__}")
+        if name.endswith("_id") and value is not None and type(value) is not int:
+            raise TypeError(f"{name} must be an int id, got {type(value).__name__}")
+
+
+def _check_version(kind: str, who: Actor, row: Mapping[str, Any], expected_version: int | None) -> None:
+    if kind not in _VERSIONED:
+        return  # bank_txn has no version column; the status compare-and-set guards it
+    if who.role == "owner" and expected_version is None:
+        raise VersionRequired("owner actions must pass the version the owner saw")
+    if expected_version is not None and expected_version != row["version"]:
+        raise StaleVersion(
+            f"{kind} {row['id']} is at version {row['version']}, not {expected_version}"
+        )
+
+
+def _update_state(
+    conn: sqlite3.Connection,
+    kind: str,
+    before: Mapping[str, Any],
+    sets: Mapping[str, Any],
+) -> None:
+    col = STATE_COLUMN[kind]  # type: ignore[index]
+    assignments = [f"{c} = ?" for c in sets]
+    where = [f"id = ?", f"{col} = ?"]
+    args = [_sql_value(v) for v in sets.values()]
+    where_args: list[Any] = [before["id"], before[col]]
+    if kind in _VERSIONED:
+        assignments.append("version = version + 1")
+        where.append("version = ?")
+        where_args.append(before["version"])
+    cur = conn.execute(
+        f"UPDATE {kind} SET {', '.join(assignments)} WHERE {' AND '.join(where)}",
+        args + where_args,
+    )
+    if cur.rowcount != 1:
+        raise StaleVersion(f"{kind} {before['id']} changed underneath this write")
+
+
+def transition(
+    entity: EntityRef,
+    to_state: str,
+    actor: str,
+    reason: str,
+    source_ref: str | None,
+    *,
+    conn: sqlite3.Connection,
+    expected_version: int | None = None,
+    fields: Mapping[str, object] | None = None,
+    trace_run_id: str | None = None,
+    clock: Clock | None = None,
+) -> Payable | Receivable | BankTxn:
+    """Move one record to `to_state` if the table allows it for this actor.
+    Bumps `version` and writes the event row in the same transaction."""
+    who = parse_actor(actor)
+    kind = entity.kind
+    if kind == "payable" and to_state == "SPLIT":
+        raise IllegalTransition("a split creates two child bills; use split_payable()")
+    fields = dict(fields or {})
+    _check_fields(kind, to_state, fields)
+    _require_fk(conn)
+    clock = clock or SystemClock()
+    col = STATE_COLUMN[kind]
+
+    with atomic(conn):
+        before = _get(conn, kind, entity.id)
+        allowed = TRANSITIONS[kind].get((before[col], to_state))
+        if allowed is None:
+            raise IllegalTransition(f"{kind} {entity.id}: {before[col]} -> {to_state} is not allowed")
+        _check_role(who, allowed, f"move {kind} {before[col]} -> {to_state}")
+        business_id = _business_of(conn, kind, before)
+        _check_owner(conn, who, business_id)
+        _check_version(kind, who, before, expected_version)
+
+        sets: dict[str, Any] = {col: to_state, **fields}
+        if kind == "payable" and to_state == "PAYMENT_EXPECTED":
+            sets["approved_by"] = who.owner_id
+            sets["approved_at"] = clock.now().isoformat()
+        if kind == "payable" and before[col] == "PLANNED" and to_state == "CONFIRMED":
+            sets["planned_date"] = None
+        _update_state(conn, kind, before, sets)
+        after = _get(conn, kind, entity.id)
+        _insert_event(
+            conn, business_id=business_id, event_type=f"{kind.upper()}_{to_state}",
+            entity=kind, entity_id=entity.id, actor=actor, before=before, after=after,
+            reason=reason, source_ref=source_ref, trace_run_id=trace_run_id, clock=clock,
+        )
+    return _MODELS[kind].model_validate(after)
+
+
+_SPLIT_COPIED = ("business_id", "party_id", "invoice_number", "invoice_date", "priority",
+                 "grace_days", "source_document_id")
+
+
+def split_payable(
+    entity: EntityRef,
+    first_paise: int,
+    second_due_date: date,
+    actor: str,
+    reason: str,
+    source_ref: str | None,
+    *,
+    conn: sqlite3.Connection,
+    expected_version: int | None,
+    clock: Clock | None = None,
+    trace_run_id: str | None = None,
+) -> tuple[Payable, Payable]:
+    """Owner splits a bill: the parent becomes SPLIT and two CONFIRMED children
+    carry its amount between them (Part 2, "Splits")."""
+    who = parse_actor(actor)
+    if entity.kind != "payable":
+        raise IllegalTransition("only payables can be split")
+    if type(first_paise) is not int:
+        raise TypeError("first_paise must be int paise")
+    _require_fk(conn)
+    clock = clock or SystemClock()
+
+    with atomic(conn):
+        before = _get(conn, "payable", entity.id)
+        allowed = TRANSITIONS["payable"].get((before["status"], "SPLIT"))
+        if allowed is None:
+            raise IllegalTransition(f"payable {entity.id}: {before['status']} cannot be split")
+        _check_role(who, allowed, "split a bill")
+        _check_owner(conn, who, before["business_id"])
+        _check_version("payable", who, before, expected_version)
+        if not 0 < first_paise < before["amount_paise"]:
+            raise ValueError(f"first part must be between 0 and {before['amount_paise']} paise")
+        if second_due_date < date.fromisoformat(before["due_date"]):
+            raise ValueError("the second part cannot fall due before the original bill")
+
+        _update_state(conn, "payable", before, {"status": "SPLIT"})
+        after = _get(conn, "payable", entity.id)
+        _insert_event(
+            conn, business_id=before["business_id"], event_type="PAYABLE_SPLIT", entity="payable",
+            entity_id=entity.id, actor=actor, before=before, after=after, reason=reason,
+            source_ref=source_ref, trace_run_id=trace_run_id, clock=clock,
+        )
+        copied = {c: before[c] for c in _SPLIT_COPIED}
+        children = []
+        for amount, due in (
+            (first_paise, before["due_date"]),
+            (before["amount_paise"] - first_paise, second_due_date),
+        ):
+            row = _create(
+                conn, "payable",
+                {**copied, "amount_paise": amount, "due_date": due, "status": "CONFIRMED",
+                 "parent_payable_id": entity.id},
+                actor=actor, reason=reason, source_ref=f"payable:{entity.id}",
+                trace_run_id=trace_run_id, clock=clock,
+            )
+            children.append(Payable.model_validate(row))
+    return children[0], children[1]
