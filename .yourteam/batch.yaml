@@ -8,15 +8,16 @@ started: "2026-10-02T23:15:00+05:30"
 changes:
   - id: CHG-013
     lane: planned
-    board: in-progress
+    board: done
     start_commit: 30d66ed
     blocked_question: null
-    gate_evidence: []
-    prepatch: null
-    notes_resolved: false
+    gate_evidence:
+      - {command: "make test", exit_code: 0, output_tail: "ports | --------- | Contracts | --------- | Analyzed 27 files, 29 dependencies. | ----------------------------------- | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | Contracts: 4 kept, 0 broken.", commit: b64aaa7, at: 2026-10-02T17:46:57+00:00}
+    prepatch: {exit_code: 0, tests: 6, at: 2026-10-02T17:44:00+00:00, note: "new files fail to import at the start commit; the two new test_seed tests were masked by that collection error and were replayed separately at 30d66ed: both fail"}
+    notes_resolved: true
   - id: CHG-004
     lane: planned
-    board: todo
+    board: in-progress
     start_commit: null
     blocked_question: null
     gate_evidence: []
