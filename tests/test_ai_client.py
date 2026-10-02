@@ -244,3 +244,60 @@ def test_an_outage_is_written_to_the_trace_before_it_is_raised(tracer):
     (step,) = _steps(tracer)
     assert step["tool"] == "ai.call:extract:bank_alert"
     assert step["result"] is None and step["validation"] == "not run: AI unavailable (retryable, 503): down"
+
+
+# --- CHG-020: the reason Google gives, with the key redacted ------------------------
+
+FAKE_KEY = "AIzaSyFAKEFAKEFAKEFAKEFAKEFAKEFAKE1234567"
+OTHER_KEY_SHAPE = "AIzaSyOTHEROTHEROTHEROTHEROTHEROTHER98765"
+
+
+def _keyed_backend(respond):
+    client = httpx.Client(transport=httpx.MockTransport(respond))
+    return GeminiBackend(FAKE_KEY, timeout_ms=1000, httpx_client=client)
+
+
+def _refusal(message, code=403, status="PERMISSION_DENIED"):
+    return lambda req: httpx.Response(code, json={"error": {"code": code, "message": message, "status": status}})
+
+
+def test_a_refusal_carries_googles_reason():
+    backend = _keyed_backend(_refusal("Generative Language API has not been used in project 123 before or it is disabled."))
+    with pytest.raises(AIUnavailable) as e:
+        _generate(backend)
+    assert e.value.detail.startswith("Generative Language API has not been used")
+    assert str(e.value) == ("Gemini refused the request: 403 PERMISSION_DENIED: Generative Language API has not "
+                            "been used in project 123 before or it is disabled.")
+    assert (e.value.retryable, e.value.code) == (False, 403)
+
+
+@pytest.mark.parametrize("message", [
+    f"API key not valid. Please pass a valid API key. (key={FAKE_KEY})",
+    f"Request had invalid authentication credentials: {OTHER_KEY_SHAPE}",
+])
+def test_the_key_never_appears_even_when_google_echoes_it(message, tracer):
+    backend = _keyed_backend(_refusal(message, code=400, status="INVALID_ARGUMENT"))
+    with pytest.raises(AIUnavailable) as e:
+        call(job="sort", thinking="low", system="s", context="c", schema=None, backend=backend,
+             app_config=CONFIG, tracer=tracer, input_ref="d:1")
+    for text in (str(e.value), repr(e.value), e.value.detail):
+        assert FAKE_KEY not in text and OTHER_KEY_SHAPE not in text
+        assert "***REDACTED-KEY***" in text
+    trace = (tracer.trace_dir / "2026-10-12" / f"{tracer.run_id}.jsonl").read_text(encoding="utf-8")
+    assert FAKE_KEY not in trace and OTHER_KEY_SHAPE not in trace
+    assert "***REDACTED-KEY***" in trace
+    assert e.value.__cause__ is None and e.value.__suppress_context__  # the raw SDK error is not chained
+
+
+def test_a_server_error_and_a_timeout_carry_their_reason_and_stay_retryable():
+    backend = _keyed_backend(_refusal("The model is overloaded.", code=503, status="UNAVAILABLE"))
+    with pytest.raises(AIUnavailable) as e:
+        _generate(backend)
+    assert (e.value.retryable, e.value.detail) == (True, "The model is overloaded.")
+
+    def slow(req):
+        raise httpx.ReadTimeout("timed out reading the response", request=req)
+
+    with pytest.raises(AIUnavailable) as e:
+        _generate(_keyed_backend(slow))
+    assert (e.value.retryable, e.value.detail) == (True, "timed out reading the response")

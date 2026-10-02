@@ -405,3 +405,22 @@ def test_an_alert_without_an_available_balance_queues_no_drift_check(env):
     assert rows(env, "SELECT balance_after_paise FROM bank_txn")[0][0] is None
     assert job(env, "drift_check") == []
     assert rows(env, "SELECT COUNT(*) FROM job WHERE status NOT IN ('done', 'queued')")[0][0] == 0
+
+
+def test_a_refused_ai_call_leaves_googles_reason_in_the_job_without_the_key(env):
+    import httpx
+
+    from app.ai.client import GeminiBackend
+
+    key = "AIzaSyFAKEFAKEFAKEFAKEFAKEFAKEFAKE1234567"
+    refuse = httpx.MockTransport(lambda req: httpx.Response(403, json={"error": {
+        "code": 403, "status": "PERMISSION_DENIED", "message": f"Permission denied for key {key}"}}))
+    backend = GeminiBackend(key, timeout_ms=1000, httpx_client=httpx.Client(transport=refuse))
+    deliver(env, DEBIT)
+    poll(env, backend)
+    (j,) = job(env, "process_document")
+    assert j["status"] == "dead"
+    assert "Permission denied for key ***REDACTED-KEY***" in j["last_error"]
+    assert key not in j["last_error"]
+    for trace in Path(env.settings.trace_dir).rglob("*.jsonl"):
+        assert key not in trace.read_text(encoding="utf-8")

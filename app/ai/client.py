@@ -19,6 +19,7 @@ Request shape (verified offline against google-genai 2.27.0):
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
@@ -35,14 +36,29 @@ RESULT_PREVIEW_CHARS = 200
 
 class AIUnavailable(Exception):
     """Gemini did not answer. `retryable` says whether the job queue should
-    try again later (server error, rate limit, timeout) or give up."""
+    try again later (server error, rate limit, timeout) or give up. `detail`
+    is the reason Google gave (e.g. "API key not valid" or "API not enabled"),
+    already redacted, so it is safe in job.last_error and the trace."""
 
     def __init__(self, message: str, *, retryable: bool, code: int | None = None,
-                 status: str | None = None) -> None:
-        super().__init__(message)
+                 status: str | None = None, detail: str | None = None) -> None:
+        super().__init__(f"{message}: {detail}" if detail else message)
         self.retryable = retryable
         self.code = code
         self.status = status
+        self.detail = detail
+
+
+REDACTED_KEY = "***REDACTED-KEY***"
+_GOOGLE_API_KEY = re.compile(r"AIza[0-9A-Za-z_\-]{30,}")
+
+
+def redact_key(text: str, key: str | None = None) -> str:
+    """Removes the API key from an error message: the literal key we sent, and
+    anything shaped like a Google API key, in case the server echoes one."""
+    if key:
+        text = text.replace(key, REDACTED_KEY)
+    return _GOOGLE_API_KEY.sub(REDACTED_KEY, text)
 
 
 @dataclass(frozen=True)
@@ -148,8 +164,13 @@ class GeminiBackend:
         from google.genai import types
 
         self._types = types
+        self._key = api_key  # kept only to redact it from error messages
         options = types.HttpOptions(timeout=timeout_ms, httpx_client=httpx_client)
         self._client = genai.Client(api_key=api_key, http_options=options)
+
+    def _detail(self, message: object) -> str | None:
+        text = str(message or "").strip()
+        return redact_key(text, self._key)[:500] or None
 
     def generate(self, *, model: str, system: str, contents: str, thinking: str,
                  json_schema: dict[str, Any] | None) -> RawAIResponse:
@@ -165,15 +186,18 @@ class GeminiBackend:
         )
         try:
             r = self._client.models.generate_content(model=model, contents=contents, config=config)
+        # `from None`: the SDK's own exception carries the unredacted message, so it
+        # is not chained into tracebacks; the redacted detail says the same thing.
         except errors.ServerError as e:
             raise AIUnavailable(f"Gemini server error {e.code}", retryable=True, code=e.code,
-                                status=e.status) from e
+                                status=e.status, detail=self._detail(e.message)) from None
         except errors.APIError as e:
             retryable = e.code is None or e.code == 429
             raise AIUnavailable(f"Gemini refused the request: {e.code} {e.status}", retryable=retryable,
-                                code=e.code, status=e.status) from e
+                                code=e.code, status=e.status, detail=self._detail(e.message)) from None
         except httpx.TransportError as e:  # timeouts and connection errors are not APIError
-            raise AIUnavailable(f"Gemini unreachable: {type(e).__name__}", retryable=True) from e
+            raise AIUnavailable(f"Gemini unreachable: {type(e).__name__}", retryable=True,
+                                detail=self._detail(str(e))) from None
         u = r.usage_metadata
         return RawAIResponse(
             text=r.text,

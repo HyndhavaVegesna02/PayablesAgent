@@ -9,7 +9,7 @@ changes:
   - id: CHG-020
     lane: direct
     board: in-progress
-    start_commit: null
+    start_commit: 4988a00
     blocked_question: null
     gate_evidence: []
     prepatch: null
