@@ -43,6 +43,9 @@ def test_load_app_config_parses_yaml(tmp_path):
 model:
   id: gemini-3.8-flash
   thinking: {sort: low, extract: medium, voice: medium, exception: medium, explain: low}
+  pricing: {input_micro_usd_per_mtok: 750000, output_micro_usd_per_mtok: 3750000}
+ai:
+  timeout_ms: 60000
 prompts:
   version: 2026-10-02.1
 escalation:
@@ -63,6 +66,8 @@ alerts:
     assert config.model.id == "gemini-3.8-flash"
     assert config.model.thinking.extract == "medium"
     assert config.escalation.default_stake_paise == 5_000_000
+    assert config.model.pricing.output_micro_usd_per_mtok == 3_750_000
+    assert config.ai.timeout_ms == 60_000
 
 
 def test_load_app_config_rejects_unknown_thinking_level(tmp_path):
@@ -71,6 +76,8 @@ def test_load_app_config_rejects_unknown_thinking_level(tmp_path):
 model:
   id: gemini-3.8-flash
   thinking: {sort: minimal, extract: medium, voice: medium, exception: medium, explain: low}
+  pricing: {input_micro_usd_per_mtok: 750000, output_micro_usd_per_mtok: 3750000}
+ai: {timeout_ms: 60000}
 prompts:
   version: 2026-10-02.1
 escalation: {max_steps: 6, default_stake_paise: 5000000, max_validation_failures: 2}

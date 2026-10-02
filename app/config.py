@@ -73,9 +73,22 @@ class ModelThinking(BaseModel):
     explain: ThinkingLevel
 
 
+class ModelPricing(BaseModel):
+    """Gemini list prices in integer micro-USD per million tokens (batch 2 plan,
+    Q2): no float holds a cost. Output includes thinking tokens."""
+
+    input_micro_usd_per_mtok: int = Field(ge=0)
+    output_micro_usd_per_mtok: int = Field(ge=0)
+
+
 class ModelConfig(BaseModel):
     id: str
     thinking: ModelThinking
+    pricing: ModelPricing
+
+
+class AIConfig(BaseModel):
+    timeout_ms: int = Field(gt=0)
 
 
 class PromptsConfig(BaseModel):
@@ -102,6 +115,7 @@ class AlertsConfig(BaseModel):
 
 class AppConfig(BaseModel):
     model: ModelConfig
+    ai: AIConfig
     prompts: PromptsConfig
     escalation: EscalationConfig
     matching: MatchingConfig

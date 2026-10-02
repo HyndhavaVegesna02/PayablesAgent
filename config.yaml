@@ -1,6 +1,10 @@
 model:
   id: gemini-3.8-flash
   thinking: {sort: low, extract: medium, voice: medium, exception: medium, explain: low}
+  # $0.75 / $3.75 per million input / output tokens; output includes thinking
+  pricing: {input_micro_usd_per_mtok: 750000, output_micro_usd_per_mtok: 3750000}
+ai:
+  timeout_ms: 60000
 prompts:
   version: 2026-10-02.1
 escalation:
