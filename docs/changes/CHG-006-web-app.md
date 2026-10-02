@@ -19,7 +19,7 @@ every route; CSRF on every POST; stale-plan approvals refused.
 ## Acceptance Criteria
 Batch 3 plan, docs/batches/2026-10-03-3/plan.md (these replace the drafted ones).
 
-- [ ] **AC1:** The owner plays through Part 1's worked example through the app's routes: confirm a bill, approve the plan, choose a shortfall option, mark a payment paid, and see the plan rerun to ₹3,83,000 after Nandi's credit. This is driven by `tests/test_phase5_exit.py` through the real routes and checked in a browser by the PO.
+- [ ] **AC1:** The owner plays through Part 1's worked example through the app's routes: confirm a bill, approve the plan, choose a shortfall option, mark a payment paid, and see the plan rerun to ₹3,83,000 after Nandi's credit. This is driven by `tests/test_phase5_exit.py` through the real routes and checked in a browser by the PO. The walkthrough's audit trail has an event for every owner action, with actor owner:1 (PO addition).
 - [ ] **AC2:**
   - Login uses argon2 and a signed session cookie (HttpOnly, SameSite=Lax).
   - Every POST needs a valid CSRF token.
@@ -59,8 +59,9 @@ Batch 3 plan, docs/batches/2026-10-03-3/plan.md (these replace the drafted ones)
 - `tests/test_states.py`
 
 ## Open Questions
-See the batch 3 plan's PO questions (each has a default).
+None. PO accepted every default on 2026-10-03 (see the plan's PO decisions).
 
 ## History
 - 2026-10-02: drafted from TDD v2.0 Part 2, Phase 5
 - 2026-10-03: planned for batch 3 (lane sliced: five screens and about 20 routes can't be shown on one screen; cross-module). PO scope: login with argon2 and itsdangerous, CSRF on every POST, role dependency on every route, the TDD routes minus Gmail, stale-plan refusal, plain-text AI output, vendored HTMX and Pico, demo login, helper 403 matrix, web never imports ai.
+- 2026-10-03: PO approved the batch 3 plan; status ready, batch 3.

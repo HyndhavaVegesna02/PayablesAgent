@@ -191,7 +191,7 @@ POST `/candidates/{id}/reject` marks the candidate REJECTED.
 
 ### Acceptance criteria (CHG-006)
 
-- **AC1:** The owner plays through Part 1's worked example through the app's routes: confirm a bill, approve the plan, choose a shortfall option, mark a payment paid, and see the plan rerun to ₹3,83,000 after Nandi's credit. This is driven by `tests/test_phase5_exit.py` through the real routes and checked in a browser by the PO.
+- **AC1:** The owner plays through Part 1's worked example through the app's routes: confirm a bill, approve the plan, choose a shortfall option, mark a payment paid, and see the plan rerun to ₹3,83,000 after Nandi's credit. This is driven by `tests/test_phase5_exit.py` through the real routes and checked in a browser by the PO. The walkthrough's audit trail has an event for every owner action, with actor owner:1 (PO addition).
 - **AC2:**
   - Login uses argon2 and a signed session cookie (HttpOnly, SameSite=Lax).
   - Every POST needs a valid CSRF token.
@@ -224,3 +224,11 @@ POST `/candidates/{id}/reject` marks the candidate REJECTED.
 | Q13 | Part 1's message examples ("Your 14-day plan is ready. Lowest projected balance ₹1.83L ..."). | Pages show figures built by code from the plan. The plain-language change summary is CHG-018 (explain_plan), so batch 3 has no AI-written prose. |
 | Q14 | Which CHG-019 items to fold in? | Only the `choices_json` candidate link, which this change reads in /questions/{id}/answer. Candidate "done" states: an owner-confirmed candidate becomes ACCEPTED; I'd leave bank-alert candidates, written by the pipeline, as they are. |
 | Q15 | Size. | This is the biggest batch so far, at about 20 routes. If you'd rather split it, the natural cut is S1 to S3 now (auth, This week, Needs attention and Add), with S4 to S6 as batch 4. My default is one batch, because the exit needs all six slices. |
+
+## PO decisions (2026-10-03, plan d2b1e87 approved by payablesagent-ac)
+- One batch (Q15). All Q1-Q15 defaults accepted.
+- Q1: CHG-021 (planner override for authorise_breach and delay_flexible) is MVP scope and lands in batch 4 with CHG-007. The override is an owner-recorded, evented input to the snapshot; the planner stays pure (the override is data in the snapshot, not a flag the planner reads from elsewhere).
+- Q2: the inline replan calls the same function the replan job uses (`app.jobs.replan.replan`), not a copy.
+- Q3: a date rollover making the plan stale is intended.
+- Q11: the HTMX and Pico download is accepted, with sha256 in VENDORED.md.
+- S6 addition: the exit test also asserts that the walkthrough's audit trail has an event for every owner action, with actor owner:1.

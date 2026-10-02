@@ -28,3 +28,4 @@ Found by the batch 2 smoke run (403 PERMISSION_DENIED). AIUnavailable kept only 
 
 ## History
 - 2026-10-03: drafted at PO request after the batch 2 smoke run
+- 2026-10-03: PO approved the batch 3 plan; status ready, batch 3.

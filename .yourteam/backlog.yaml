@@ -144,7 +144,7 @@ changes:
   - id: CHG-006
     title: Owner web app — five screens, roles, stale-plan refusal
     file: docs/changes/CHG-006-web-app.md
-    status: draft
+    status: ready
     priority: 6
     type: feature
     lane: sliced
@@ -173,7 +173,7 @@ changes:
       - tests/test_seed.py
       - tests/test_states.py
     depends_on: CHG-003
-    batch: null
+    batch: 3
   - id: CHG-007
     title: Bills and uploads — photos, PDF unlock, voice notes, duplicates
     file: docs/changes/CHG-007-bills-uploads.md
@@ -326,7 +326,7 @@ changes:
   - id: CHG-020
     title: AIUnavailable and its trace step carry the SDK's error message, redacted
     file: docs/changes/CHG-020-ai-error-message.md
-    status: draft
+    status: ready
     priority: 20
     type: defect
     lane: direct
@@ -335,7 +335,7 @@ changes:
       - app/trace/tracer.py
       - tests/test_ai_client.py
     depends_on: null
-    batch: null
+    batch: 3
 
   - id: CHG-021
     title: Planner honours the owner's authorise_breach and delay_flexible choices
