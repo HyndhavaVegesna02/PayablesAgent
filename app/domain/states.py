@@ -27,6 +27,30 @@ class InvalidActor(TransitionRefused):
     pass
 
 
+class ActorNotAllowed(TransitionRefused):
+    pass
+
+
+class IllegalTransition(TransitionRefused):
+    pass
+
+
+class VersionRequired(TransitionRefused):
+    pass
+
+
+class StaleVersion(TransitionRefused):
+    pass
+
+
+class FieldNotAllowed(TransitionRefused):
+    pass
+
+
+class RecordNotFound(TransitionRefused):
+    pass
+
+
 @dataclass(frozen=True)
 class Actor:
     role: Role
