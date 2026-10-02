@@ -26,8 +26,8 @@ changes:
     notes_resolved: true
   - id: CHG-003
     lane: planned
-    board: todo
-    start_commit: null
+    board: in-progress
+    start_commit: b617978
     blocked_question: null
     gate_evidence: []
     prepatch: null
