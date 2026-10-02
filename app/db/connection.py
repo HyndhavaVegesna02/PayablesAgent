@@ -15,8 +15,11 @@ import sqlite3
 from pathlib import Path
 
 
-def write_connection(db_path: str | Path) -> sqlite3.Connection:
-    conn = sqlite3.connect(db_path)
+def write_connection(db_path: str | Path, *, check_same_thread: bool = True) -> sqlite3.Connection:
+    """`check_same_thread=False` is for the web app, whose one connection per
+    request may pass between FastAPI's threadpool and its event loop, though
+    never to two threads at once."""
+    conn = sqlite3.connect(db_path, check_same_thread=check_same_thread)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn

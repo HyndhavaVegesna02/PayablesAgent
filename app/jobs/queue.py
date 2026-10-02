@@ -88,6 +88,15 @@ def claim_one(
     return row
 
 
+def enqueue_monday_plans(conn: sqlite3.Connection, *, clock: Clock) -> None:
+    """One monday_plan job per business for today; the key makes a repeat
+    (a coalesced cron, a demo advance) harmless."""
+    day = clock.today().isoformat()
+    for (business_id,) in conn.execute("SELECT id FROM business ORDER BY id").fetchall():
+        enqueue(conn, kind="monday_plan", payload={"business_id": business_id},
+                idempotency_key=f"monday_plan:{business_id}:{day}", clock=clock)
+
+
 def mark_done(conn: sqlite3.Connection, job_id: int) -> None:
     conn.execute("UPDATE job SET status = 'done' WHERE id = ?", (job_id,))
 

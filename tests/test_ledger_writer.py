@@ -104,8 +104,14 @@ def test_create_bank_txn_rules(conn):
     ev = events(conn)
     assert [e["event_type"] for e in ev] == ["BANK_TXN_CREATED", "BANK_TXN_CREATED"]
     assert {e["business_id"] for e in ev} == {1}  # derived through bank_account
+    # The owner may create an UNMATCHED txn when confirming an alert the checks
+    # could not settle (batch 3 plan, Q6); a helper or the planner may not.
+    o = writer.create_bank_txn(_txn("UNMATCHED", "k3"), actor="owner:1", conn=conn, **KW)
+    assert o.status == "UNMATCHED"
     with pytest.raises(ActorNotAllowed):
-        writer.create_bank_txn(_txn("UNMATCHED", "k3"), actor="owner:1", conn=conn, **KW)
+        writer.create_bank_txn(_txn("UNMATCHED", "k6"), actor="planner", conn=conn, **KW)
+    with pytest.raises(ActorNotAllowed):  # business 2's owner cannot either
+        writer.create_bank_txn(_txn("UNMATCHED", "k7"), actor="owner:3", conn=conn, **KW)
     with pytest.raises(ActorNotAllowed):
         writer.create_bank_txn(_txn("ADJUSTMENT", "k4"), actor="pipeline", conn=conn, **KW)
     with pytest.raises(ActorNotAllowed):  # business 2's owner cannot write business 1's account

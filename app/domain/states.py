@@ -139,7 +139,9 @@ CREATE_RULES: dict[EntityKind, dict[str, frozenset[Role]]] = {
         "UNKNOWN": frozenset({"owner"}),
     },
     "bank_txn": {
-        "UNMATCHED": frozenset({"pipeline"}),
+        # The owner too, when confirming an alert the rule checks could not settle
+        # (TDD pipeline step 5: "ask the owner to fill the fields that still fail").
+        "UNMATCHED": frozenset({"pipeline", "owner"}),
         "ADJUSTMENT": frozenset({"owner"}),
     },
 }

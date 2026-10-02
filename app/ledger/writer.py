@@ -537,6 +537,44 @@ def split_payable(
     return children[0], children[1]
 
 
+def link_payment(
+    payable_id: int,
+    txn_id: int,
+    actor: str,
+    reason: str,
+    source_ref: str | None,
+    *,
+    conn: sqlite3.Connection,
+    clock: Clock | None = None,
+    trace_run_id: str | None = None,
+) -> Payable:
+    """The bank debit for a bill the owner already marked PAID has arrived
+    (batch 3 plan, PO decision D12): matched_txn_id is set, the version bumps,
+    and a PAYABLE_PAYMENT_LINKED event is written. The bill stays PAID; from
+    now on the debit, not the bill, carries the outflow."""
+    who = parse_actor(actor)
+    _check_role(who, frozenset({"reconciler"}), "link a payment to a bill")
+    _require_fk(conn)
+    clock = clock or SystemClock()
+    with atomic(conn):
+        before = _get(conn, "payable", payable_id)
+        txn = _get(conn, "bank_txn", txn_id)
+        if before["status"] != "PAID":
+            raise IllegalTransition(f"payable {payable_id} is {before['status']}, not PAID")
+        if before["matched_txn_id"] is not None:
+            raise IllegalTransition(f"payable {payable_id} is already linked to bank_txn {before['matched_txn_id']}")
+        if txn["direction"] != "debit" or _business_of(conn, "bank_txn", txn) != before["business_id"]:
+            raise IllegalTransition(f"bank_txn {txn_id} is not a debit of this business")
+        _update_state(conn, "payable", before, {"matched_txn_id": txn_id})
+        after = _get(conn, "payable", payable_id)
+        _insert_event(
+            conn, business_id=before["business_id"], event_type="PAYABLE_PAYMENT_LINKED", entity="payable",
+            entity_id=payable_id, actor=actor, before=before, after=after, reason=reason,
+            source_ref=source_ref, trace_run_id=trace_run_id, clock=clock,
+        )
+    return Payable.model_validate(after)
+
+
 # --- bank accounts: reported balance and drift (batch 2 plan, CHG-005) --------------
 
 
@@ -704,3 +742,192 @@ def confirm_balance(
         _account_event(conn, before, after, "BANK_ACCOUNT_OK", actor=actor, reason=reason,
                        source_ref=source_ref, trace_run_id=trace_run_id, clock=clock)
     return adjustment
+
+
+# --- owner settings (batch 3 plan, Q7) ------------------------------------------------
+
+SETTINGS_FIELDS = frozenset({"safety_amount_paise", "escalation_stake_paise", "horizon_days", "payment_days",
+                             "language"})
+_PAYMENT_DAY_CODES = ("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN")
+
+
+def _check_settings(changes: Mapping[str, Any]) -> None:
+    unknown = set(changes) - SETTINGS_FIELDS
+    if unknown:
+        raise FieldNotAllowed(f"not a business setting: {sorted(unknown)}")
+    for name in ("safety_amount_paise", "escalation_stake_paise"):
+        if name in changes and (type(changes[name]) is not int or changes[name] < 0):
+            raise ValueError(f"{name} must be int paise, zero or more")
+    if "horizon_days" in changes and (type(changes["horizon_days"]) is not int
+                                      or not 1 <= changes["horizon_days"] <= 60):
+        raise ValueError("horizon_days must be a whole number of days from 1 to 60")
+    if "payment_days" in changes:
+        days = changes["payment_days"].split(",") if changes["payment_days"] else []
+        if not days or any(d not in _PAYMENT_DAY_CODES for d in days) or len(set(days)) != len(days):
+            raise ValueError("payment_days must be comma-separated day codes like MON,THU")
+    if "language" in changes and changes["language"] not in ("en",):
+        raise ValueError("only English is available for now")
+
+
+def update_business_settings(
+    business_id: int,
+    changes: Mapping[str, Any],
+    actor: str,
+    reason: str,
+    source_ref: str | None,
+    *,
+    conn: sqlite3.Connection,
+    clock: Clock | None = None,
+    trace_run_id: str | None = None,
+) -> dict[str, Any] | None:
+    """The owner changes the safety amount, escalation amount, horizon, payment
+    days or language. Every change is recorded as an event (TDD "HTTP routes",
+    /settings). Returns the new row, or None when nothing changed."""
+    who = parse_actor(actor)
+    _check_role(who, frozenset({"owner"}), "change the business settings")
+    _check_settings(changes)
+    _require_fk(conn)
+    clock = clock or SystemClock()
+    with atomic(conn):
+        _check_owner(conn, who, business_id)
+        before = _get(conn, "business", business_id)
+        sets = {k: v for k, v in changes.items() if before[k] != v}
+        if not sets:
+            return None
+        conn.execute(
+            f"UPDATE business SET {', '.join(f'{k} = ?' for k in sets)} WHERE id = ?",
+            [*sets.values(), business_id],
+        )
+        after = _get(conn, "business", business_id)
+        _insert_event(
+            conn, business_id=business_id, event_type="BUSINESS_SETTINGS_CHANGED", entity="business",
+            entity_id=business_id, actor=actor, before=before, after=after, reason=reason,
+            source_ref=source_ref, trace_run_id=trace_run_id, clock=clock,
+        )
+    return after
+
+
+_PRIORITY_EDITABLE = frozenset({"DRAFT", "CONFIRMED", "PLANNED", "REOPENED", "REVIEW"})
+
+
+def set_priority(
+    entity: EntityRef,
+    priority: str,
+    actor: str,
+    reason: str,
+    source_ref: str | None,
+    *,
+    conn: sqlite3.Connection,
+    expected_version: int | None,
+    clock: Clock | None = None,
+    trace_run_id: str | None = None,
+) -> Payable:
+    """The owner changes an open bill's priority (statutory, critical, normal,
+    flexible), which changes the order the planner places it in."""
+    who = parse_actor(actor)
+    if entity.kind != "payable":
+        raise IllegalTransition("only payables have a priority")
+    _check_role(who, frozenset({"owner"}), "change a bill's priority")
+    if priority not in ("statutory", "critical", "normal", "flexible"):
+        raise ValueError(f"not a priority: {priority!r}")
+    _require_fk(conn)
+    clock = clock or SystemClock()
+    with atomic(conn):
+        before = _get(conn, "payable", entity.id)
+        _check_owner(conn, who, before["business_id"])
+        _check_version("payable", who, before, expected_version)
+        if before["status"] not in _PRIORITY_EDITABLE:
+            raise IllegalTransition(f"payable {entity.id} is {before['status']}; its priority is fixed")
+        if before["priority"] == priority:
+            raise IllegalTransition(f"payable {entity.id} is already {priority}")
+        _update_state(conn, "payable", before, {"priority": priority})
+        after = _get(conn, "payable", entity.id)
+        _insert_event(
+            conn, business_id=before["business_id"], event_type="PAYABLE_PRIORITY_CHANGED", entity="payable",
+            entity_id=entity.id, actor=actor, before=before, after=after, reason=reason,
+            source_ref=source_ref, trace_run_id=trace_run_id, clock=clock,
+        )
+    return Payable.model_validate(after)
+
+
+# --- owner decisions outside the ledger tables (batch 3 plan, CHG-006 AC1) ----------
+# Choosing a shortfall option and accepting or rejecting an entry change no
+# ledger row by themselves, but each is an owner action, so each is an event.
+
+
+def choose_option(
+    option_id: int,
+    actor: str,
+    reason: str,
+    source_ref: str | None,
+    *,
+    conn: sqlite3.Connection,
+    clock: Clock | None = None,
+    trace_run_id: str | None = None,
+) -> dict[str, Any]:
+    """Records the owner's choice of a shortfall option (chosen_by, chosen_at)
+    with a SHORTFALL_OPTION_CHOSEN event. What the choice then does is the
+    caller's (app/web/actions.py)."""
+    who = parse_actor(actor)
+    _check_role(who, frozenset({"owner"}), "choose a shortfall option")
+    _require_fk(conn)
+    clock = clock or SystemClock()
+    with atomic(conn):
+        before = _get(conn, "shortfall_option", option_id)
+        run = _get(conn, "plan_run", before["plan_run_id"])
+        _check_owner(conn, who, run["business_id"])
+        if before["chosen_at"] is not None:
+            raise IllegalTransition(f"option {option_id} was already chosen")
+        conn.execute(
+            "UPDATE shortfall_option SET chosen_by = ?, chosen_at = ? WHERE id = ? AND chosen_at IS NULL",
+            (who.owner_id, clock.now().isoformat(), option_id),
+        )
+        after = _get(conn, "shortfall_option", option_id)
+        _insert_event(
+            conn, business_id=run["business_id"], event_type="SHORTFALL_OPTION_CHOSEN",
+            entity="shortfall_option", entity_id=option_id, actor=actor, before=before, after=after,
+            reason=reason, source_ref=source_ref, trace_run_id=trace_run_id, clock=clock,
+        )
+    return after
+
+
+_CANDIDATE_DECISIONS = {
+    ("VALID", "ACCEPTED"), ("VALID", "REJECTED"),
+    ("AWAITING_OWNER", "ACCEPTED"), ("AWAITING_OWNER", "REJECTED"),
+}
+
+
+def decide_candidate(
+    candidate_id: int,
+    to_status: str,
+    actor: str,
+    reason: str,
+    source_ref: str | None,
+    *,
+    conn: sqlite3.Connection,
+    clock: Clock | None = None,
+    trace_run_id: str | None = None,
+) -> dict[str, Any]:
+    """The owner accepts (after creating its record) or rejects an entry
+    waiting for confirmation: CANDIDATE_ACCEPTED or CANDIDATE_REJECTED."""
+    who = parse_actor(actor)
+    _check_role(who, frozenset({"owner"}), "accept or reject an entry")
+    _require_fk(conn)
+    clock = clock or SystemClock()
+    with atomic(conn):
+        before = _get(conn, "candidate", candidate_id)
+        business_id = _get(conn, "source_document", before["source_document_id"])["business_id"]
+        _check_owner(conn, who, business_id)
+        if (before["status"], to_status) not in _CANDIDATE_DECISIONS:
+            raise IllegalTransition(f"entry {candidate_id}: {before['status']} -> {to_status} is not allowed")
+        cur = conn.execute("UPDATE candidate SET status = ? WHERE id = ? AND status = ?",
+                           (to_status, candidate_id, before["status"]))
+        if cur.rowcount != 1:
+            raise StaleVersion(f"entry {candidate_id} changed underneath this write")
+        after = _get(conn, "candidate", candidate_id)
+        _insert_event(
+            conn, business_id=business_id, event_type=f"CANDIDATE_{to_status}", entity="candidate",
+            entity_id=candidate_id, actor=actor, before=before, after=after, reason=reason,
+            source_ref=source_ref, trace_run_id=trace_run_id, clock=clock,
+        )
+    return after

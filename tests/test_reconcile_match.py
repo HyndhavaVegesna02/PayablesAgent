@@ -240,3 +240,37 @@ def test_a_credit_outside_the_expected_date_window_is_a_case(env):
     _credit(env, t)
     assert status(env, "receivable", KAVERI) == "COMMITTED"
     assert cases(env)[0]["kind"] == "ambiguous_match"
+
+
+# --- D13: the date the owner asked a customer to pay by ---------------------------------
+
+
+def _choose_nandi_early(env, chosen=True):
+    from app.jobs.replan import replan
+    from app.ledger import writer
+
+    replan(env.conn, 1, triggered_by="test", clock=env.clock)
+    option_id = env.conn.execute("SELECT id FROM shortfall_option WHERE kind = 'early_receipt'").fetchone()[0]
+    if chosen:
+        writer.choose_option(option_id, "owner:1", "ask Nandi to pay by Fri 16", None, conn=env.conn, clock=env.clock)
+
+
+def test_a_credit_near_the_date_the_owner_asked_for_matches_the_receivable(env):
+    _choose_nandi_early(env)  # Nandi expected Wed 28 Oct; asked to pay by Fri 16 Oct
+    result = _credit(env, txn(env, "credit", 20_000_000, OCT(16), "NANDI FOODS"))
+    assert result.outcome == f"matched receivable {NANDI}: CONFIRMED"
+    assert status(env, "receivable", NANDI) == "CONFIRMED" and cases(env) == []
+
+
+def test_an_early_receipt_option_that_was_not_chosen_does_not_widen_the_window(env):
+    _choose_nandi_early(env, chosen=False)
+    _credit(env, txn(env, "credit", 20_000_000, OCT(16), "NANDI FOODS"))
+    assert status(env, "receivable", NANDI) == "EXPECTED"
+    assert cases(env)[0]["kind"] == "ambiguous_match"
+
+
+def test_the_asked_date_still_needs_the_name_and_the_amount(env):
+    _choose_nandi_early(env)
+    _credit(env, txn(env, "credit", 19_000_000, OCT(16), "NANDI FOODS"))
+    _credit(env, txn(env, "credit", 20_000_000, OCT(16), "SOMEONE ELSE"))
+    assert status(env, "receivable", NANDI) == "EXPECTED"

@@ -10,7 +10,7 @@ import pytest
 from app.db.read import build_snapshot
 from app.domain.states import ActorNotAllowed, AgentActorRefused, IllegalTransition
 from app.jobs import queue
-from app.jobs.replan import enqueue_replan, replan
+from app.jobs.replan import enqueue_replan, inputs_sha256, replan
 from app.ledger import writer
 from app.ledger.writer import EntityRef
 from app.planner.plan import PLANNER_VERSION, canonical_json
@@ -55,7 +55,7 @@ def test_a_replan_stores_the_worked_example_plan(env):
     assert run["business_id"] == 1
     assert run["triggered_by"] == "monday"
     assert run["created_at"] == env.clock.now().isoformat()
-    assert run["inputs_sha256"] == hashlib.sha256(canonical_json(snapshot)).hexdigest()
+    assert run["inputs_sha256"] == inputs_sha256(snapshot)
     assert run["planner_version"] == PLANNER_VERSION
     assert (run["opening_cash_paise"], run["lowest_balance_paise"], run["lowest_on"]) == (
         62_000_000, 18_300_000, "2026-10-22",
@@ -329,3 +329,25 @@ def test_the_rule_check_looks_from_the_pay_day_onward():
     later = next(ln for ln in r.lines if ln.payable_id == 2)
     assert later.pay_on == oct(19)
     assert "₹2,10,000 on Mon 19 Oct" in rule_check_text(r, later)
+
+
+def test_the_stored_hash_still_matches_after_the_runs_own_moves(env):
+    # The approve route compares this hash with a fresh snapshot (batch 3 plan, Q3).
+    # The run's own moves (CONFIRMED -> PLANNED with a date) must not make it stale.
+    run_id = _replan(env, "monday")
+    after = build_snapshot(env.conn, 1, env.clock.today())
+    assert {p.status for p in after.payables} >= {"PLANNED"}
+    stored = env.conn.execute("SELECT inputs_sha256 FROM plan_run WHERE id = ?", (run_id,)).fetchone()[0]
+    assert stored == inputs_sha256(after)
+    assert stored != hashlib.sha256(canonical_json(after)).hexdigest()  # the raw snapshot did change
+
+
+def test_the_stored_hash_changes_when_an_input_changes(env):
+    run_id = _replan(env, "monday")
+    stored = env.conn.execute("SELECT inputs_sha256 FROM plan_run WHERE id = ?", (run_id,)).fetchone()[0]
+    writer.transition(EntityRef("payable", 1), "PAYMENT_EXPECTED", "owner:1", "approved", None,
+                      conn=env.conn, clock=env.clock,
+                      expected_version=env.conn.execute("SELECT version FROM payable WHERE id = 1").fetchone()[0])
+    assert inputs_sha256(build_snapshot(env.conn, 1, env.clock.today())) != stored
+    later = build_snapshot(env.conn, 1, env.clock.today() + timedelta(days=1))
+    assert inputs_sha256(later) != stored

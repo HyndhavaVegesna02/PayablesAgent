@@ -51,6 +51,17 @@ def _date(value: str | None, what: str) -> date | None:
         raise ValueError(f"{what}: not an ISO date: {value!r}") from e
 
 
+def _planner_status(status: str) -> str:
+    """A bill the owner marked PAID whose bank debit has not arrived yet is
+    still money leaving the account: the planner sees it exactly as an
+    approved payment (PAYMENT_EXPECTED), dated on its planned date or today
+    (batch 3 plan, PO decision D12). Once the debit links to it, the debit
+    carries the outflow and the bill leaves the snapshot. Known limit: if
+    that debit never arrives, the outflow stays committed until the next
+    statement's drift check shows it."""
+    return "PAYMENT_EXPECTED" if status == "PAID" else status
+
+
 def build_snapshot(conn: sqlite3.Connection, business_id: int, today: date) -> PlanSnapshot:
     """Reads one business's plannable state into the planner's input. Every
     rule here is a row of the contract grid in docs/batches/2026-10-02-1/plan.md.
@@ -97,7 +108,8 @@ def _read_snapshot(conn: sqlite3.Connection, business_id: int, today: date) -> P
         conn,
         "SELECT id, amount_paise, due_date, priority, grace_days, discount_paise, discount_by, "
         f"status, planned_date FROM payable WHERE business_id = ? "
-        f"AND status IN ({','.join('?' for _ in _PLANNABLE)}) ORDER BY id",
+        f"AND (status IN ({','.join('?' for _ in _PLANNABLE)}) "
+        "OR (status = 'PAID' AND matched_txn_id IS NULL)) ORDER BY id",
         (business_id, *_PLANNABLE),
     ):
         what = f"payable {r['id']}"
@@ -111,7 +123,8 @@ def _read_snapshot(conn: sqlite3.Connection, business_id: int, today: date) -> P
         payables.append(PayableIn(
             payable_id=r["id"], amount_paise=r["amount_paise"], due_date=_date(r["due_date"], what),
             priority=r["priority"], grace_days=r["grace_days"], discount_paise=discount,
-            discount_by=discount_by, status=r["status"], planned_date=_date(r["planned_date"], what),
+            discount_by=discount_by, status=_planner_status(r["status"]),
+            planned_date=_date(r["planned_date"], what),
         ))
 
     inflows, uncounted = [], []

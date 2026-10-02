@@ -65,7 +65,7 @@ def test_create_rules():
         "receivable": {
             "COMMITTED": {"owner"}, "EXPECTED": {"owner"}, "UNKNOWN": {"owner"},
         },
-        "bank_txn": {"UNMATCHED": {"pipeline"}, "ADJUSTMENT": {"owner"}},
+        "bank_txn": {"UNMATCHED": {"pipeline", "owner"}, "ADJUSTMENT": {"owner"}},
     }
 
 

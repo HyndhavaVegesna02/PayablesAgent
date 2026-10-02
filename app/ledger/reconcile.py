@@ -165,8 +165,11 @@ def match_debit(conn: sqlite3.Connection, txn_id: int, *, window_days: int, cloc
     txn_day = date.fromisoformat(t["txn_date"])
     cands = [
         dict(r) for r in conn.execute(
-            "SELECT * FROM payable WHERE business_id = ? AND status = 'PAYMENT_EXPECTED' "
-            "AND amount_paise = ? ORDER BY id", (t["business_id"], t["amount_paise"]),
+            # D12: a bill the owner already marked PAID, whose debit has not been
+            # linked yet, is a candidate on the same terms as an approved one.
+            "SELECT * FROM payable WHERE business_id = ? AND amount_paise = ? "
+            "AND (status = 'PAYMENT_EXPECTED' OR (status = 'PAID' AND matched_txn_id IS NULL)) "
+            "ORDER BY id", (t["business_id"], t["amount_paise"]),
         )
         if _within(r["planned_date"], txn_day, window_days)
     ]
@@ -180,6 +183,10 @@ def match_debit(conn: sqlite3.Connection, txn_id: int, *, window_days: int, cloc
                f"{t['counterparty']} matches bill {bill['id']} planned for {bill['planned_date']}.")
         writer.transition(EntityRef("bank_txn", txn_id), "MATCHED", RECONCILER, why, f"payable:{bill['id']}",
                           fields={"party_id": bill["party_id"]}, **kw)
+        if bill["status"] == "PAID":
+            writer.link_payment(bill["id"], txn_id, RECONCILER, why + " The owner had already marked it paid.",
+                                ref, **kw)
+            return Result(f"linked to bill {bill['id']}, already PAID", replan=True)
         writer.transition(EntityRef("payable", bill["id"]), "PAID", RECONCILER, why, ref,
                           fields={"matched_txn_id": txn_id}, **kw)
         return Result(f"matched bill {bill['id']}: PAID", replan=True)
@@ -189,14 +196,16 @@ def match_debit(conn: sqlite3.Connection, txn_id: int, *, window_days: int, cloc
         why = ("several bills match this debit" if len(review) > 1
                else "a bill has this amount and date but not this payee's name")
         for bill in review:
+            if bill["status"] == "PAID":
+                continue  # already paid by the owner: it stays PAID and is listed in the case
             writer.transition(EntityRef("payable", bill["id"]), "REVIEW", RECONCILER,
                               f"Debit {ref} is ambiguous: {why}.", ref, **kw)
         case = open_case(
             conn, t["business_id"], "ambiguous_match", ref, t["amount_paise"],
             goal=f"Decide which bill, if any, debit {ref} paid.",
             facts=_txn_facts(t) + [
-                f"Candidate bill {b['id']}: {format_inr(b['amount_paise'])}, planned {b['planned_date']}, "
-                f"payee names {_party_names(conn, b['party_id'])}" for b in review
+                f"Candidate bill {b['id']} ({b['status']}): {format_inr(b['amount_paise'])}, "
+                f"planned {b['planned_date']}, payee names {_party_names(conn, b['party_id'])}" for b in review
             ],
             unknowns=["Which bill this debit paid"], clock=clock,
         )
@@ -212,6 +221,24 @@ def match_debit(conn: sqlite3.Connection, txn_id: int, *, window_days: int, cloc
     return Result("no bill matches: debit stays UNMATCHED", replan=True, case_ids=[case])
 
 
+def _asked_dates(conn: sqlite3.Connection, business_id: int) -> dict[int, list[str]]:
+    """Dates the owner asked a customer to pay by: the chosen early_receipt
+    options (batch 3 plan, D13). Choosing one changes no ledger row (Q1), so
+    the receivable keeps its expected date; a credit near the asked date is
+    that receivable paying early, and it matches on the same name and amount
+    rules as one near the expected date."""
+    asked: dict[int, list[str]] = {}
+    for rid, day in conn.execute(
+        "SELECT json_extract(o.params_json, '$.receivable_id'), json_extract(o.params_json, '$.to_date') "
+        "FROM shortfall_option o JOIN plan_run r ON r.id = o.plan_run_id "
+        "WHERE r.business_id = ? AND o.kind = 'early_receipt' AND o.chosen_at IS NOT NULL",
+        (business_id,),
+    ).fetchall():
+        if isinstance(rid, int) and isinstance(day, str):
+            asked.setdefault(rid, []).append(day)
+    return asked
+
+
 def match_credit(conn: sqlite3.Connection, txn_id: int, *, window_days: int, clock: Clock,
                  trace_run_id: str | None = None) -> Result:
     """A new credit: the same steps against open receivables. A receivable has
@@ -225,8 +252,10 @@ def match_credit(conn: sqlite3.Connection, txn_id: int, *, window_days: int, clo
         "ORDER BY id", (t["business_id"],),
     )]
     named = [r for r in open_rx if name_matches(t["counterparty"], _party_names(conn, r["party_id"]))]
+    asked = _asked_dates(conn, t["business_id"])
     exact = [r for r in named if r["amount_paise"] == t["amount_paise"]
-             and (r["expected_date"] is None or _within(r["expected_date"], txn_day, window_days))]
+             and (r["expected_date"] is None or _within(r["expected_date"], txn_day, window_days)
+                  or any(_within(d, txn_day, window_days) for d in asked.get(r["id"], ())))]
     ref = f"bank_txn:{txn_id}"
     kw = dict(conn=conn, clock=clock, trace_run_id=trace_run_id)
 

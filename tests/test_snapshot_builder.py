@@ -170,7 +170,27 @@ def test_only_plannable_statuses_are_read(conn):
                    "REVIEW", "SPLIT"):
         _payable(conn, status, planned_date="2026-10-15" if status != "DRAFT" else None)
     statuses = [p.status for p in build_snapshot(conn, 1, TODAY).payables]
-    assert statuses == ["CONFIRMED", "PLANNED", "PAYMENT_EXPECTED", "REOPENED"]
+    # The PAID bill has no linked debit, so it is still money to leave (D12).
+    assert statuses == ["CONFIRMED", "PLANNED", "PAYMENT_EXPECTED", "PAYMENT_EXPECTED", "REOPENED"]
+
+
+def test_a_paid_bill_counts_as_an_approved_payment_until_its_debit_links(conn):
+    # Batch 3 plan, PO decision D12: an owner-PAID bill with no matched debit is a
+    # committed outflow on its planned date; once linked, the debit carries it.
+    _payable(conn, "PAID", planned_date="2026-10-15", amount_paise=4_000_000)
+    (p,) = build_snapshot(conn, 1, TODAY).payables
+    assert (p.status, p.planned_date, p.amount_paise) == ("PAYMENT_EXPECTED", date(2026, 10, 15), 4_000_000)
+    assert plan(build_snapshot(conn, 1, TODAY)).days[-1].balance_paise == 62_000_000 - 4_000_000
+
+    t = writer.create_bank_txn(
+        BankTxnNew(account_id=1, direction="debit", amount_paise=4_000_000, txn_date=date(2026, 10, 12),
+                   dedup_key="paid-1", status="UNMATCHED"),
+        actor="pipeline", reason="t", source_ref=None, conn=conn,
+    )
+    _exec(conn, "UPDATE payable SET matched_txn_id = ? WHERE status = 'PAID'", t.id)
+    s = build_snapshot(conn, 1, TODAY)
+    assert s.payables == ()
+    assert plan(s).days[-1].balance_paise == 62_000_000 - 4_000_000  # subtracted once, by the debit
 
 
 def test_no_payables_means_no_lines(conn):

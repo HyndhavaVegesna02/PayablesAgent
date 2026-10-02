@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import sqlite3
+from dataclasses import replace
 from datetime import date
 from typing import TYPE_CHECKING
 
@@ -65,6 +66,20 @@ def handle_monday_plan(ctx: JobContext) -> None:
     )
 
 
+def inputs_sha256(snapshot: PlanSnapshot) -> str:
+    """The hash stored as plan_run.inputs_sha256, over what the planner reads.
+    A bill's planner-owned state (CONFIRMED, PLANNED or REOPENED, and its
+    planned date) is left out: the planner reads only whether a bill is
+    PAYMENT_EXPECTED, and that bill's planned date. Otherwise the run's own
+    moves (CONFIRMED -> PLANNED) would make every plan look stale the moment
+    it is stored, and no approval could ever pass (batch 3 plan, Q3)."""
+    normalised = replace(snapshot, payables=tuple(
+        p if p.status == "PAYMENT_EXPECTED" else replace(p, status="CONFIRMED", planned_date=None)
+        for p in snapshot.payables
+    ))
+    return hashlib.sha256(canonical_json(normalised)).hexdigest()
+
+
 def replan(
     conn: sqlite3.Connection,
     business_id: int,
@@ -110,7 +125,7 @@ def persist_plan(
         """,
         (
             business_id, clock.now().isoformat(), triggered_by,
-            hashlib.sha256(canonical_json(snapshot)).hexdigest(), PLANNER_VERSION,
+            inputs_sha256(snapshot), PLANNER_VERSION,
             result.opening_cash_paise, result.lowest_balance_paise, result.lowest_on.isoformat(),
             int(result.valid),
         ),
