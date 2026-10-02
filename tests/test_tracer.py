@@ -86,9 +86,11 @@ def _one_step(tmp_path, **fields):
     return json.loads((tmp_path / "2026-10-12" / "r.jsonl").read_text(encoding="utf-8"))
 
 
-def test_the_tokens_field_is_kept(tmp_path):
+def test_top_level_fields_are_redacted_too_but_tokens_is_kept(tmp_path):
     # Part 1's trace has a `tokens` field; it holds counts, not credentials.
-    entry = _one_step(tmp_path, tokens={"input": 120, "output": 40, "thoughts": 7})
+    entry = _one_step(tmp_path, api_key="k", password="p",
+                      tokens={"input": 120, "output": 40, "thoughts": 7})
+    assert (entry["api_key"], entry["password"]) == ("***REDACTED***", "***REDACTED***")
     assert entry["tokens"] == {"input": 120, "output": 40, "thoughts": 7}
 
 

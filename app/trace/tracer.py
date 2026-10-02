@@ -58,7 +58,7 @@ class Tracer:
             "run_id": self.run_id,
             "step": self._step_counter,
             "timestamp": self.clock.now().isoformat(),
-            **{k: _redact(v) for k, v in fields.items()},
+            **_redact(fields),  # top-level field names are checked too
         }
         day_dir = self.trace_dir / self.clock.today().isoformat()
         day_dir.mkdir(parents=True, exist_ok=True)
