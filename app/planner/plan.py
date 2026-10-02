@@ -107,6 +107,7 @@ class PlanLine:
 @dataclass(frozen=True)
 class Escalation:
     payable_id: int
+    target_on: date
     breach_on: date
     lowest_paise: int
     lowest_on: date
@@ -208,7 +209,7 @@ def _breach(curve, days, t: _Target, safety: int, payable_id: int) -> Escalation
     after = _after(curve, days, t.day, t.amount_paise)
     breach_on = next(d for d, b in after if b < safety)
     lowest_on, lowest = min(after, key=lambda x: (x[1], x[0]))
-    return Escalation(payable_id, breach_on, lowest, lowest_on, safety - lowest)
+    return Escalation(payable_id, t.day, breach_on, lowest, lowest_on, safety - lowest)
 
 
 def _breach_text(e: Escalation) -> str:
