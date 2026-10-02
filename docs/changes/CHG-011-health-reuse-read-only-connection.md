@@ -28,3 +28,4 @@ Replace `/api/health`'s inline connection code with a call to
 
 ## History
 - 2026-10-02: drafted from batch 0's re-review minor note
+- 2026-10-02: ACCEPTED at batch 1 verdict (PO).

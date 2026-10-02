@@ -67,7 +67,7 @@ This change adds four modules:
 - tests/test_seed.py
 
 ## Open Questions
-- Open for the PO (raised at batch 1 verdict): how is a tax obligation with a MISSING amount tracked? The writer currently refuses it, because the TDD has every obligation create a payable and a payable needs an amount.
+- Answered at batch 1 verdict: MISSING tax amounts stay refused here; the design (D11) lands in CHG-007.
 
 Answered by the PO on 2026-10-02:
 - Q1: the seed creates `app_user` 1, an owner whose sentinel hash can never verify.
@@ -81,3 +81,4 @@ Answered by the PO on 2026-10-02:
 - 2026-10-02: drafted from TDD v2.0 Part 2, Phase 1
 - 2026-10-02: refined for batch 1 with PO decisions D2–D5 and D7; AC5–AC12 added
 - 2026-10-02: batch 1 fix round 1 (review FIX_REQUIRED). Two rigged tests un-rigged, dead code removed, payable_amount_paise must be positive int paise, PayableNew refuses discount >= amount or unpaired discount fields. Two deviations recorded: (1) create_tax_obligation REFUSES a MISSING amount; it no longer creates an obligation with no payable. How a MISSING tax amount is tracked is an open question for the PO (the TDD has every obligation create a payable, and a payable needs an amount). (2) PAYABLE_SPLIT carries the caller's source_ref (e.g. shortfall_option:1); the two child PAYABLE_CREATED events carry payable:<parent id>.
+- 2026-10-02: ACCEPTED at batch 1 verdict (PO). MISSING tax amounts: refusal kept; the final design is D11, recorded in CHG-007.

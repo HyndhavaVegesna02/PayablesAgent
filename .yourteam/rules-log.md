@@ -83,3 +83,25 @@ rest of the codebase now has to know — a class, a public function, a config ke
 column. New vocabulary is what is costly to get wrong, because changing it later means
 changing everything that learned it. If this distinction keeps predicting cost across
 two or three more batches, propose it as a trigger with that falsifier.
+
+## R008
+Batch 1 (2026-10-02), PO decision D4. "Only the ledger writer writes ledger
+tables" was prose in CLAUDE.md and the DoD. A static AST test now fails on any
+SQL string outside writer.py that writes payable, receivable, bank_txn,
+tax_obligation or event, or that UPDATEs/DELETEs bank_account (D10). At the start
+commit it caught the old seed's raw INSERT/DELETE. Known limit: SQL with a runtime
+table name is not caught. Approved by PO at batch 1 verdict.
+
+## R009
+Batch 0 review caught app/jobs/queue.py calling datetime.now() directly. The fix
+added an AST guard test; batch 1 recorded it here as a rule at its rung. Approved
+by PO at batch 1 verdict.
+
+## R010
+Batch 1: yt_prepatch.py runs `python -m pytest`, which resolved to a system
+miniconda python without Hypothesis. A test could then "fail at the start
+commit" with ModuleNotFoundError for hypothesis instead of for the missing
+change, which makes the gate vacuous for it. Batch 1 ran prepatch under
+`uv run` by hand. The fix is in the config the script already reads, so it is a
+config rung, landed between batches 1 and 2 (R002). Approved by PO at batch 1
+verdict.

@@ -20,6 +20,9 @@ an audit can see the whole surface in one place.
 - R005 [agent-def] Reviewers never modify the tree, including via Bash. — falsifier: any tracked file changed during a review
 - R006 [checklist] A consumed contract answers all four questions — units/scale, empty, absent, failure — with empty and absent answered separately. Lives in review-checklist.md. — falsifier: a merged change whose plan leaves a cell blank, or whose tests drive empty but not absent
 - R007 [prose] After a fix round changes emitted output, the demo is regenerated at the post-fix HEAD and the superseded snapshot kept beside it, marked. — falsifier: a committed evidence file whose output does not match the code at that commit
+- R008 [test] Only app/ledger/writer.py writes ledger tables or changes bank_account. Lives in tests/test_ledger_write_guard.py. — falsifier: that test fails
+- R009 [test] All time reads go through app/clock.py. Lives in tests/test_no_direct_clock_calls.py. — falsifier: that test fails
+- R010 [config] The prepatch gate runs in the project venv: .yourteam/config.yaml test_command is `uv run python -m pytest {files} -q`. — falsifier: a prepatch run whose start-commit failures are ModuleNotFoundError for a dev dependency
 
 ## Retired
 

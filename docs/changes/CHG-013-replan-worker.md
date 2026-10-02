@@ -32,3 +32,4 @@ CHG-003's plan flagged this gap: nothing in the backlog owned plan persistence o
 ## History
 - 2026-10-02: drafted at PO request during batch 1 planning
 - 2026-10-02: from batch 1 review: shortfall options' what-if runs use synthetic payable ids (-payable_id for a split's second part). Persist only real ids; never write what-if plan lines to plan_line (FK to payable).
+- 2026-10-02: PO folded in a batch 1 review note. fixtures/seed.py reads DATABASE_PATH from os.environ while the app reads Settings (.env), so `make reseed` could delete a different file than `make run` uses. Make the seed read Settings().database_path. Also handle Windows PermissionError on --fresh when the DB is open.

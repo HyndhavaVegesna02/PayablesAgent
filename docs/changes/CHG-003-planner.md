@@ -43,7 +43,7 @@ Out of scope: persisting plan runs and applying the planner's transitions. The p
 - [ ] AC5: The golden test locks the D6 early_receipt rule (Fri 16 Oct for Nandi). The option is not offered when the computed date falls before today.
 - [ ] AC6: Every snapshot input row in the plan's contract grid has its empty, absent and failure behaviour driven by a test against a real migrated DB.
 - [ ] AC7: Seed → build_snapshot(today=2026-10-12) → plan() produces the same canonical bytes as the hand-built golden snapshot.
-- [ ] AC8: ESCALATE reasons include the breach day and the gap. Bills due after the horizon get WAIT. Overdue bills target the next payment day on or after today.
+- [ ] AC8: ESCALATE reasons include the breach day and the gap. WAIT is decided on the computed target: a bill gets WAIT when neither its target (latest payment day on or before the due date, else the next payment day on or after today) nor a safe discount day falls inside the horizon. Overdue bills target the next payment day on or after today.
 - [ ] AC9 (D9): All three discount branches have tests:
   - discount taken;
   - discount skipped, so the bill pays on its due date;
@@ -79,3 +79,4 @@ None. PO answered both on 2026-10-02:
 - 2026-10-02: drafted from TDD v2.0 Part 2, Phase 2
 - 2026-10-02: refined for batch 1 with PO decisions D1 and D6; AC2 revised; AC5–AC8 added
 - 2026-10-02: batch 1 fix round 1 (review FIX_REQUIRED). build_snapshot now reads inside one read transaction. WAIT is decided on the computed target, as approved plan step 4(d) says: a bill due after the horizon still gets a PAY line if its latest payment day before the due date, or a safe discount day, is inside the horizon. This narrows AC8's literal wording; flagged to the PO at verdict. ask_ca keeps PAYMENT_EXPECTED bills in its statutory-only rerun, because they are approved commitments. bank_account.status (no defined values) is not read.
+- 2026-10-02: ACCEPTED at batch 1 verdict (PO). AC8 reworded to match plan step 4(d): WAIT is decided on the computed target, not the due date.

@@ -1,6 +1,6 @@
 # Every change, ever. Entries are never deleted -- done and rejected are history.
 # Status is a field, never a folder.
-next_id: 14
+next_id: 18
 changes:
   - id: CHG-001
     title: Repo skeleton — layout, config, schema, Clock, tracer, job table, CI
@@ -37,7 +37,7 @@ changes:
   - id: CHG-002
     title: Ledger core — domain models, ledger writer, transition table, event triggers
     file: docs/changes/CHG-002-ledger-core.md
-    status: ready
+    status: done
     priority: 2
     type: feature
     lane: planned
@@ -63,7 +63,7 @@ changes:
   - id: CHG-003
     title: Planner — plan(), options(), diff(), snapshot builder
     file: docs/changes/CHG-003-planner.md
-    status: ready
+    status: done
     priority: 3
     type: feature
     lane: planned
@@ -156,7 +156,7 @@ changes:
   - id: CHG-011
     title: main.py's /api/health should reuse read.py's read_only_connection()
     file: docs/changes/CHG-011-health-reuse-read-only-connection.md
-    status: ready
+    status: done
     priority: 11
     type: chore
     lane: direct
@@ -182,6 +182,47 @@ changes:
     lane: null
     expected_paths: []
     depends_on: CHG-003
+    batch: null
+
+  - id: CHG-014
+    title: Planner test gaps from batch 1 review (split rest grace days, caller-held transaction, sqlite errors)
+    file: docs/changes/CHG-014-planner-test-gaps.md
+    status: draft
+    priority: 14
+    type: chore
+    lane: null
+    expected_paths: []
+    depends_on: null
+    batch: null
+  - id: CHG-015
+    title: Define bank_account.status values and whether closed accounts count in the snapshot
+    file: docs/changes/CHG-015-bank-account-status.md
+    status: draft
+    priority: 15
+    type: chore
+    lane: null
+    expected_paths: []
+    depends_on: null
+    batch: null
+  - id: CHG-016
+    title: Seed robustness: AlreadySeeded check inside the write transaction
+    file: docs/changes/CHG-016-seed-toctou.md
+    status: draft
+    priority: 16
+    type: chore
+    lane: null
+    expected_paths: []
+    depends_on: null
+    batch: null
+  - id: CHG-017
+    title: create_tax_obligation link path refuses PAID or SPLIT payables
+    file: docs/changes/CHG-017-tax-link-status.md
+    status: draft
+    priority: 17
+    type: chore
+    lane: null
+    expected_paths: []
+    depends_on: null
     batch: null
 
 # Shape of an entry:
