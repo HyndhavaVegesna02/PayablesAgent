@@ -6,6 +6,9 @@ gap, and the owner's confirm_balance writes the adjustment."""
 from datetime import date, datetime, timedelta
 
 import pytest
+from hypothesis import given
+from hypothesis import settings as hsettings
+from hypothesis import strategies as st
 
 from app.clock import TIMEZONE
 from app.domain.states import ActorNotAllowed, AgentActorRefused, IllegalTransition
@@ -282,3 +285,82 @@ def test_a_non_owner_cannot_confirm_even_when_no_adjustment_is_needed(env):
         with pytest.raises(error):
             writer.confirm_balance(1, 58_500_000, actor, "x", None, conn=env.conn, clock=env.clock)
     assert account(env)["drift_status"] == "ASK_OWNER"
+
+
+# --- review round 1: report times are instants, whatever their UTC offset ------------
+
+
+def test_a_later_report_written_in_utc_replaces_an_earlier_one_written_in_ist(env):
+    # A at 10:00 IST; B at 15:00 IST whose Date header says 09:30+00:00. As strings
+    # "09:30+00:00" sorts before "10:00+05:30", but B is the later report.
+    kw = dict(conn=env.conn, reconciled=False, clock=env.clock)
+    writer.record_reported_balance(1, 58_500_000, "2026-10-15T10:00:00+05:30", "reconciler", "A", None, **kw)
+    writer.record_reported_balance(1, 57_500_000, "2026-10-15T09:30:00+00:00", "reconciler", "B", None, **kw)
+    a = account(env)
+    assert (a["reported_balance_paise"], a["reported_at"]) == (57_500_000, "2026-10-15T15:00:00+05:30")
+
+
+def test_an_earlier_report_in_another_offset_is_still_ignored(env):
+    kw = dict(conn=env.conn, reconciled=False, clock=env.clock)
+    writer.record_reported_balance(1, 1, "2026-10-15T15:00:00+05:30", "reconciler", "x", None, **kw)
+    writer.record_reported_balance(1, 2, "2026-10-15T09:00:00+00:00", "reconciler", "x", None, **kw)  # 14:30 IST
+    assert account(env)["reported_balance_paise"] == 1
+
+
+def test_a_report_time_without_an_offset_is_refused(env):
+    with pytest.raises(ValueError):
+        writer.record_reported_balance(1, 1, "2026-10-15T10:00:00", "reconciler", "x", None, conn=env.conn,
+                                       reconciled=False, clock=env.clock)
+
+
+def test_two_agreeing_alerts_in_different_offsets_open_no_drift_case(env):
+    txn(env, "debit", 3_500_000, date(2026, 10, 15), "CITY ELECTRICITY BOARD")
+    check_drift(env.conn, 1, source="alert", clock=env.clock, reported_paise=58_500_000,
+                reported_at=datetime(2026, 10, 15, 10, 0, tzinfo=TIMEZONE))
+    txn(env, "debit", 1_000_000, date(2026, 10, 15), "BANK CHARGES")
+    r = check_drift(env.conn, 1, source="alert", clock=env.clock, reported_paise=57_500_000,
+                    reported_at=datetime.fromisoformat("2026-10-15T09:30:00+00:00"))
+    assert r.recheck_at is None and r.outcome == "balances agree"
+    assert check_drift(env.conn, 1, source="recheck", clock=env.clock).outcome == "balances agree"
+    assert cases(env) == []
+
+
+def test_a_gap_that_persists_while_checking_opens_no_second_case(env):
+    _missed_debit_alert(env)
+    check_drift(env.conn, 1, source="recheck", clock=env.clock)
+    again = check_drift(env.conn, 1, source="recheck", clock=env.clock)
+    assert again.outcome.startswith("still CHECKING") and not again.case_ids
+    assert account(env)["drift_status"] == "CHECKING" and len(cases(env)) == 1
+
+
+# --- review round 1: one definition of the calculated balance ------------------------
+
+_TXN = st.tuples(
+    st.sampled_from(["debit", "credit"]), st.integers(1, 5_000_000), st.integers(-3, 10),
+    st.sampled_from(["UNMATCHED", "MATCHED", "EXPLAINED", "REVERSED", "ADJUSTMENT"]),
+)
+
+
+@hsettings(max_examples=40, deadline=None)
+@given(txns=st.lists(_TXN, max_size=12), cut=st.integers(-2, 12))
+def test_calculated_balance_is_the_account_balance_view(tmp_path_factory, txns, cut):
+    e = make_env(tmp_path_factory.mktemp("calc"), seeded=True)
+    try:
+        for i, (direction, paise, offset, state) in enumerate(txns):
+            e.conn.execute(
+                "INSERT INTO bank_txn (account_id, direction, amount_paise, txn_date, dedup_key, status) "
+                "VALUES (1, ?, ?, ?, ?, ?)",
+                (direction, paise, (date(2026, 10, 12) + timedelta(days=offset)).isoformat(), f"k{i}", state),
+            )
+        view = e.conn.execute("SELECT calculated_balance_paise FROM account_balance WHERE account_id = 1").fetchone()[0]
+        assert writer.calculated_balance(e.conn, 1) == view
+        # cut at a day after every transaction, it is the same number
+        assert writer.calculated_balance(e.conn, 1, date(2026, 10, 30)) == view
+        day = date(2026, 10, 12) + timedelta(days=cut)
+        expected = 62_000_000 + sum(
+            (p if d == "credit" else -p) for d, p, off, s in txns
+            if s != "REVERSED" and 0 <= off and date(2026, 10, 12) + timedelta(days=off) <= day
+        )
+        assert writer.calculated_balance(e.conn, 1, day) == expected
+    finally:
+        e.conn.close()

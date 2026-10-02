@@ -20,6 +20,11 @@ from typing import Any
 from app.clock import Clock, SystemClock
 
 
+# One business per installation (TDD Part 2, schema); a payload without
+# business_id means this one.
+DEFAULT_BUSINESS_ID = 1
+
+
 class PermanentJobError(Exception):
     """Raised by a job handler when retrying cannot help (a malformed payload,
     a request the API refused): the worker dead-letters the job at once."""
@@ -133,7 +138,16 @@ def queued_job_id(conn: sqlite3.Connection, kind: str, business_id: int | None =
 
 def requeue_running(conn: sqlite3.Connection) -> int:
     """At worker start: a job left `running` was interrupted by a stopped worker
-    (there is one worker per installation), so it goes back to the queue.
-    The attempt is not counted, because the handler never reported a result."""
-    cur = conn.execute("UPDATE job SET status = 'queued', locked_at = NULL WHERE status = 'running'")
+    (there is one worker per installation), so it goes back to the queue. The
+    interrupted run counts as an attempt, so a job that crashes the worker
+    itself is dead-lettered after max_attempts instead of looping forever."""
+    cur = conn.execute(
+        """
+        UPDATE job
+        SET attempts = attempts + 1, locked_at = NULL,
+            last_error = 'interrupted: the worker stopped while this job ran',
+            status = CASE WHEN attempts + 1 >= max_attempts THEN 'dead' ELSE 'queued' END
+        WHERE status = 'running'
+        """
+    )
     return cur.rowcount

@@ -15,6 +15,7 @@ from app.clock import Clock
 from app.db.read import build_snapshot
 from app.domain.money import format_inr
 from app.jobs import queue
+from app.jobs.queue import DEFAULT_BUSINESS_ID
 from app.ledger import writer
 from app.ledger.writer import EntityRef
 from app.planner.options import OptionResult, options
@@ -30,8 +31,6 @@ from app.planner.plan import (
 
 if TYPE_CHECKING:
     from app.worker import JobContext
-
-DEFAULT_BUSINESS_ID = 1
 
 
 def enqueue_replan(
@@ -160,7 +159,7 @@ def rule_check_text(result: PlanResult, line: PlanLine) -> str:
     )
     passed = lowest >= result.safety_paise
     return (
-        f" Projected minimum {format_inr(lowest)} on {format_day(lowest_on)};"
+        f" Projected minimum with the bills this plan pays {format_inr(lowest)} on {format_day(lowest_on)};"
         f" safety amount {format_inr(result.safety_paise)}; rule check {'PASSED' if passed else 'FAILED'}."
     )
 

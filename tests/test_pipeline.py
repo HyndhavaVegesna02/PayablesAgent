@@ -271,7 +271,7 @@ def test_a_return_email_queues_reconcile_failure(env):
     deliver(env, RETURN)
     poll(env, fixture_backend(RETURN))
     (cand,) = rows(env, "SELECT * FROM candidate")
-    assert cand["status"] == "VALID"
+    assert cand["status"] == "ACCEPTED"  # valid, then reconciled by reconcile_failure
     payload = json.loads(cand["payload_json"])
     assert payload["doc_type"] == "failure_notice"
     assert payload["record"] == {
@@ -395,3 +395,13 @@ def test_an_email_with_no_from_header_is_never_listed(env):
         f.write(raw)
     poll(env, FakeBackend())
     assert rows(env, "SELECT * FROM source_document") == []
+
+
+def test_an_alert_without_an_available_balance_queues_no_drift_check(env):
+    deliver(env, DEBIT)
+    backend = FakeBackend().queue("SortResult", {"doc_type": "bank_alert", "reason": "r"})
+    backend.queue("BankAlertExtract", _alert(available_balance_text=None))
+    poll(env, backend)
+    assert rows(env, "SELECT balance_after_paise FROM bank_txn")[0][0] is None
+    assert job(env, "drift_check") == []
+    assert rows(env, "SELECT COUNT(*) FROM job WHERE status NOT IN ('done', 'queued')")[0][0] == 0

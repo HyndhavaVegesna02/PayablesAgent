@@ -15,10 +15,10 @@ import sqlite3
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 
-from app.clock import Clock, SystemClock
+from app.clock import TIMEZONE, Clock, SystemClock
 from app.domain.models import (
     BankTxn,
     BankTxnNew,
@@ -577,16 +577,22 @@ def record_reported_balance(
 ) -> dict[str, Any]:
     """Stores a balance the bank reported (drift check, step 1). `reconciled`
     means it equals the calculated balance, so last_reconciled_at moves too.
-    A report older than the one stored is ignored: the newest one wins."""
+    A report older than the one stored is ignored: the newest one wins. Times
+    are compared as instants and stored in Asia/Kolkata, because an email's
+    Date header may carry any UTC offset."""
     who = parse_actor(actor)
     _check_role(who, frozenset({"reconciler"}), "record a reported balance")
     if type(reported_paise) is not int:
         raise TypeError("reported_paise must be int paise")
     _require_fk(conn)
     clock = clock or SystemClock()
+    at = datetime.fromisoformat(reported_at)
+    if at.tzinfo is None:
+        raise ValueError("reported_at needs a UTC offset")
+    reported_at = at.astimezone(TIMEZONE).isoformat()
     with atomic(conn):
         before = _account(conn, account_id)
-        if before["reported_at"] is not None and before["reported_at"] > reported_at:
+        if before["reported_at"] is not None and datetime.fromisoformat(before["reported_at"]) > at:
             return before
         sets: dict[str, Any] = {"reported_balance_paise": reported_paise, "reported_at": reported_at}
         if reconciled:
@@ -634,16 +640,23 @@ def set_drift_status(
 
 def calculated_balance(conn: sqlite3.Connection, account_id: int, on_or_before: date | None = None) -> int:
     """Opening balance plus every non-reversed transaction from the opening
-    date (up to `on_or_before`, when given): drift check, step 2."""
+    date (up to `on_or_before`, when given): drift check, step 2. With no date
+    it is the account_balance view the planner reads; with one it is the same
+    rule cut at that day (tests/test_drift.py checks the two agree)."""
+    if on_or_before is None:
+        row = conn.execute(
+            "SELECT calculated_balance_paise FROM account_balance WHERE account_id = ?", (account_id,)
+        ).fetchone()
+        if row is None:
+            raise RecordNotFound(f"bank_account {account_id} does not exist")
+        return row[0]
     acct = _account(conn, account_id)
     sql = (
         "SELECT COALESCE(SUM(CASE WHEN direction = 'credit' THEN amount_paise ELSE -amount_paise END), 0) "
         "FROM bank_txn WHERE account_id = ? AND status <> 'REVERSED' AND txn_date >= ?"
     )
-    args: list[Any] = [account_id, acct["opening_balance_at"]]
-    if on_or_before is not None:
-        sql += " AND txn_date <= ?"
-        args.append(on_or_before.isoformat())
+    args: list[Any] = [account_id, acct["opening_balance_at"], on_or_before.isoformat()]
+    sql += " AND txn_date <= ?"
     return acct["opening_balance_paise"] + conn.execute(sql, args).fetchone()[0]
 
 

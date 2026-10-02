@@ -43,7 +43,7 @@ from app.ingest.eml_folder import EmlFolderSource, parse_message, sender_address
 from app.ingest.mail_source import MailSource
 from app.ingest.store import DocumentStore, StoreKeyError
 from app.jobs import queue
-from app.jobs.queue import PermanentJobError
+from app.jobs.queue import DEFAULT_BUSINESS_ID, PermanentJobError
 from app.ledger import writer
 from app.validate import failures
 from app.validate.alert import (
@@ -59,7 +59,6 @@ from app.validate.duplicates import bank_txn_with_key, failure_candidate_with_ke
 if TYPE_CHECKING:
     from app.worker import Handler, JobContext
 
-DEFAULT_BUSINESS_ID = 1
 LATER = {"statement", "invoice", "challan", "payment_confirmation"}  # CHG-007
 
 

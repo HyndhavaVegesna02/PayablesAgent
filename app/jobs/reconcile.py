@@ -6,6 +6,7 @@ exception agent's run_case (which waits until CHG-008 registers it), or a
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -23,7 +24,7 @@ def _queue_follow_ups(ctx: JobContext, business_id: int, account_id: int | None,
                       result: reconcile.Result) -> None:
     conn = ctx.conn
     if result.replan:
-        (last_event,) = conn.execute("SELECT MAX(id) FROM event").fetchone()
+        (last_event,) = conn.execute("SELECT MAX(id) FROM event WHERE business_id = ?", (business_id,)).fetchone()
         enqueue_replan(conn, business_id, f"event:{last_event}", clock=ctx.clock)
     for case_id in result.case_ids:
         queue.enqueue(conn, kind="run_case", payload={"case_id": case_id},
@@ -45,6 +46,15 @@ def _account(conn: sqlite3.Connection, account_id: int) -> sqlite3.Row:
     return row
 
 
+def _recheck_if_checking(ctx: JobContext, business_id: int, account_id: int) -> None:
+    """Drift check step 5, code side: a transaction found, or one reversed,
+    while the account is CHECKING may close the gap."""
+    if _account(ctx.conn, account_id)["drift_status"] == "CHECKING":
+        closed = reconcile.check_drift(ctx.conn, account_id, source="new_txn", clock=ctx.clock,
+                                       trace_run_id=ctx.tracer.run_id)
+        _queue_follow_ups(ctx, business_id, account_id, closed)
+
+
 def handle_reconcile_txn(ctx: JobContext) -> None:
     conn, txn_id = ctx.conn, ctx.payload.get("bank_txn_id")
     txn = conn.execute("SELECT * FROM bank_txn WHERE id = ?", (txn_id,)).fetchone()
@@ -56,25 +66,27 @@ def handle_reconcile_txn(ctx: JobContext) -> None:
               trace_run_id=ctx.tracer.run_id)
     with writer.atomic(conn):
         _queue_follow_ups(ctx, acct["business_id"], acct["id"], match(conn, txn_id, **kw))
-        if _account(conn, acct["id"])["drift_status"] == "CHECKING":
-            # Drift check step 5, code side: a transaction found while CHECKING may close the gap.
-            closed = reconcile.check_drift(conn, acct["id"], source="new_txn", clock=ctx.clock,
-                                           trace_run_id=ctx.tracer.run_id)
-            _queue_follow_ups(ctx, acct["business_id"], acct["id"], closed)
+        _recheck_if_checking(ctx, acct["business_id"], acct["id"])
 
 
 def handle_reconcile_failure(ctx: JobContext) -> None:
     conn, candidate_id = ctx.conn, ctx.payload.get("candidate_id")
     row = conn.execute(
-        "SELECT d.business_id FROM candidate c JOIN source_document d ON d.id = c.source_document_id "
-        "WHERE c.id = ? AND c.status = 'VALID'", (candidate_id,)
+        "SELECT c.status, c.payload_json, d.business_id FROM candidate c "
+        "JOIN source_document d ON d.id = c.source_document_id WHERE c.id = ?", (candidate_id,)
     ).fetchone()
-    if row is None:
+    if row is not None and row["status"] == "ACCEPTED":
+        ctx.tracer.step(tool="reconcile", result=f"candidate {candidate_id} was already reconciled")
+        return  # a re-run after a crash before mark_done
+    if row is None or row["status"] != "VALID":
         raise PermanentJobError(f"candidate {candidate_id} is not a valid failure notice")
+    account_id = json.loads(row["payload_json"])["record"]["account_id"]
     with writer.atomic(conn):
         result = reconcile.handle_failure(conn, candidate_id, window_days=ctx.app_config.matching.window_days,
                                           clock=ctx.clock, trace_run_id=ctx.tracer.run_id)
-        _queue_follow_ups(ctx, row["business_id"], None, result)
+        conn.execute("UPDATE candidate SET status = 'ACCEPTED' WHERE id = ?", (candidate_id,))
+        _queue_follow_ups(ctx, row["business_id"], account_id, result)
+        _recheck_if_checking(ctx, row["business_id"], account_id)
 
 
 def handle_drift_check(ctx: JobContext) -> None:
@@ -83,6 +95,8 @@ def handle_drift_check(ctx: JobContext) -> None:
     source = p.get("source")
     if source not in ("alert", "statement", "recheck"):
         raise PermanentJobError(f"unknown drift_check source {source!r}")
+    if source in ("alert", "statement") and (p.get("reported_paise") is None or not p.get("reported_at")):
+        raise PermanentJobError(f"a {source} drift_check needs reported_paise and reported_at")
     reported_at = datetime.fromisoformat(p["reported_at"]) if p.get("reported_at") else None
     with writer.atomic(ctx.conn):
         result = reconcile.check_drift(ctx.conn, acct["id"], source=source, clock=ctx.clock,

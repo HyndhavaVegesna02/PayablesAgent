@@ -2,6 +2,7 @@
 retry with backoff, dead-letter, permanent errors, unregistered kinds, the
 heartbeat, and recovery of a job a stopped worker left running."""
 
+import sqlite3
 import threading
 from datetime import timedelta
 
@@ -143,7 +144,7 @@ def test_mark_failed_permanent_is_dead_even_with_attempts_left(env):
     assert (_job(env, job_id)["status"], _job(env, job_id)["attempts"]) == ("dead", 1)
 
 
-def test_run_requeues_a_job_left_running_writes_a_heartbeat_and_stops(env):
+def test_run_requeues_a_job_left_running_counting_the_attempt_and_stops(env):
     stuck = _enqueue(env)
     env.conn.execute("UPDATE job SET status = 'running', locked_at = 'x' WHERE id = ?", (stuck,))
     env.conn.commit()
@@ -163,7 +164,7 @@ def test_run_requeues_a_job_left_running_writes_a_heartbeat_and_stops(env):
     t.join(timeout=10)
     assert not t.is_alive()
     assert ran == [stuck]
-    assert _job(env, stuck)["status"] == "done"
+    assert (_job(env, stuck)["status"], _job(env, stuck)["attempts"]) == ("done", 1)
     assert worker.read_heartbeat(env.settings) == env.clock.now().isoformat()
 
 
@@ -176,3 +177,71 @@ def test_default_handlers_cover_the_jobs_this_change_owns():
         "replan", "monday_plan", "reconcile_txn", "reconcile_failure", "drift_check",
     }
 
+
+def test_a_job_that_keeps_killing_the_worker_is_dead_lettered(env):
+    job_id = _enqueue(env, max_attempts=2)
+    for _ in range(2):  # the worker dies while the job runs, twice
+        env.conn.execute("UPDATE job SET status = 'running' WHERE id = ?", (job_id,))
+        queue.requeue_running(env.conn)
+    row = _job(env, job_id)
+    assert (row["status"], row["attempts"]) == ("dead", 2)
+    assert row["last_error"].startswith("interrupted")
+
+
+def test_no_handlers_claims_nothing(env):
+    job_id = _enqueue(env)
+    assert _run(env, {}) is False
+    assert _job(env, job_id)["status"] == "queued"
+
+
+def _run_in_thread(env, handlers, stop):
+    t = threading.Thread(target=worker.run, args=(env.settings, env.app_config, handlers),
+                         kwargs={"clock": env.clock, "stop": stop, "idle_seconds": 0.01})
+    t.start()
+    t.join(timeout=10)
+    assert not t.is_alive()
+
+
+def test_a_heartbeat_the_os_refuses_does_not_stop_the_worker(env, monkeypatch, capsys):
+    def refuse(*a, **kw):
+        raise PermissionError(5, "Access is denied")  # Windows, when the health check has it open
+
+    monkeypatch.setattr(worker, "write_heartbeat", refuse)
+    stop, ran = threading.Event(), []
+    _enqueue(env)
+    _run_in_thread(env, {"replan": lambda ctx: (ran.append(1), stop.set())}, stop)
+    assert ran == [1]
+    assert "heartbeat not written" in capsys.readouterr().err
+
+
+def test_a_busy_database_does_not_stop_the_worker(env, monkeypatch, capsys):
+    real, calls = worker.process_one, []
+
+    def busy_once(*a, **kw):
+        calls.append(1)
+        if len(calls) == 1:
+            raise sqlite3.OperationalError("database is locked")
+        return real(*a, **kw)
+
+    monkeypatch.setattr(worker, "process_one", busy_once)
+    stop, ran = threading.Event(), []
+    _enqueue(env)
+    _run_in_thread(env, {"replan": lambda ctx: (ran.append(1), stop.set())}, stop)
+    assert ran == [1] and len(calls) >= 2
+    assert "database busy" in capsys.readouterr().err
+
+
+def test_main_starts_the_scheduler_and_the_loop_and_exits_cleanly(env, monkeypatch, capsys):
+    # What `make worker` runs, with test Settings (never .env) and no AI key.
+    settings = env.settings.model_copy(update={"gemini_api_key": ""})
+    monkeypatch.setattr(worker, "Settings", lambda: settings)
+
+    def one_tick(*a, **kw):
+        raise KeyboardInterrupt  # Ctrl-C after the first heartbeat
+
+    monkeypatch.setattr(worker, "process_one", one_tick)
+    assert worker.main() == 0
+    out = capsys.readouterr()
+    assert "worker: running ['drift_check', 'monday_plan', 'reconcile_failure', 'reconcile_txn', 'replan']" in out.out
+    assert "GEMINI_API_KEY is not set" in out.err
+    assert worker.read_heartbeat(settings) is not None  # written before the first job claim

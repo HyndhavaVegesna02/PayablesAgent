@@ -69,6 +69,8 @@ def process_one(
     app_config: AppConfig,
 ) -> bool:
     """Claims and runs one due job. Returns False when there was none."""
+    if not handlers:
+        return False  # claim_one with no kinds would claim every kind
     job = queue.claim_one(conn, kinds=sorted(handlers), clock=clock)
     conn.commit()
     if job is None:
@@ -138,6 +140,7 @@ def schedule_jobs(
         scheduler.add_job(
             enqueue_monday_plan, CronTrigger(day_of_week="mon", hour=7, minute=0, timezone=TIMEZONE),
             kwargs={"db_path": db_path, "clock": clock}, id="monday_plan", replace_existing=True,
+            misfire_grace_time=6 * 3600, coalesce=True,  # a worker started late on Monday still plans
         )
     if "poll_mail" in kinds:
         scheduler.add_job(
@@ -196,13 +199,25 @@ def run(
     stop: threading.Event,
     idle_seconds: float = 1.0,
 ) -> None:
+    """Runs jobs until `stop` is set. A heartbeat the OS will not let us write
+    (Windows refuses to replace a file another process has open) or a busy
+    database is logged and retried on the next loop; it never stops the worker."""
     conn = write_connection(settings.database_path)
     try:
         queue.requeue_running(conn)
         conn.commit()
         while not stop.is_set():
-            write_heartbeat(settings, clock)
-            if not process_one(conn, handlers, clock=clock, settings=settings, app_config=app_config):
+            try:
+                write_heartbeat(settings, clock)
+            except OSError as e:
+                print(f"worker: heartbeat not written ({e}); will retry", file=sys.stderr)
+            try:
+                worked = process_one(conn, handlers, clock=clock, settings=settings, app_config=app_config)
+            except sqlite3.OperationalError as e:
+                conn.rollback()
+                print(f"worker: database busy ({e}); will retry", file=sys.stderr)
+                worked = False
+            if not worked:
                 stop.wait(idle_seconds)
     finally:
         conn.close()

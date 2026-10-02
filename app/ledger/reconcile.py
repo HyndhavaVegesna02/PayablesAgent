@@ -104,7 +104,15 @@ def open_case(
     clock: Clock,
 ) -> int:
     """Opens an exception case. It starts at high thinking when the stake is
-    above the owner's escalation amount, otherwise at medium."""
+    above the owner's escalation amount, otherwise at medium. A case of the
+    same kind already open for the same subject is returned instead, so a job
+    that runs twice (a crash before mark_done) opens one case."""
+    open_already = conn.execute(
+        "SELECT id FROM agent_case WHERE business_id = ? AND kind = ? AND subject_ref = ? AND status = 'OPEN'",
+        (business_id, kind, subject_ref),
+    ).fetchone()
+    if open_already is not None:
+        return open_already[0]
     threshold = conn.execute(
         "SELECT escalation_stake_paise FROM business WHERE id = ?", (business_id,)
     ).fetchone()[0]
@@ -195,7 +203,8 @@ def match_debit(conn: sqlite3.Connection, txn_id: int, *, window_days: int, cloc
         goal=f"Find out what debit {ref} was.", facts=_txn_facts(t) + ["No approved payment matches it"],
         unknowns=["What this payment was for"], clock=clock,
     )
-    return Result("no bill matches: debit stays UNMATCHED", case_ids=[case])
+    # The debit already lowers the balance the next plan starts from.
+    return Result("no bill matches: debit stays UNMATCHED", replan=True, case_ids=[case])
 
 
 def match_credit(conn: sqlite3.Connection, txn_id: int, *, window_days: int, clock: Clock,

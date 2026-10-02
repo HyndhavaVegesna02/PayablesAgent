@@ -125,7 +125,7 @@ def test_the_planned_event_carries_part_1s_rule_check(env):
     # the projected minimum: from Mon 12 Oct the lowest is ₹3,03,000 on Mon 19 Oct.
     assert paper["reason"] == (
         "Pay ₹1,80,000 on Mon 12 Oct: latest payment day on or before the due date (Wed 14 Oct)."
-        " Projected minimum ₹3,03,000 on Mon 19 Oct; safety amount ₹2,50,000; rule check PASSED."
+        " Projected minimum with the bills this plan pays ₹3,03,000 on Mon 19 Oct; safety amount ₹2,50,000; rule check PASSED."
     )
     assert json.loads(paper["after_json"])["planned_date"] == "2026-10-12"
 
@@ -139,7 +139,8 @@ def test_a_statutory_bill_paid_through_a_breach_records_a_failed_rule_check(env)
     gst = [e for e in _events(env, "PAYABLE_PLANNED") if e["entity_id"] == 4]
     assert len(gst) == 1
     assert gst[0]["reason"].endswith(
-        "Projected minimum ₹5,18,000 on Mon 19 Oct; safety amount ₹5,50,000; rule check FAILED."
+        "Projected minimum with the bills this plan pays ₹5,18,000 on Mon 19 Oct; safety amount ₹5,50,000;"
+        " rule check FAILED."
     )
 
 
@@ -287,3 +288,44 @@ def test_another_business_gets_its_own_replan(env):
     a = enqueue_replan(env.conn, 1, "event:1", clock=env.clock)
     b = enqueue_replan(env.conn, 2, "event:2", clock=env.clock)
     assert a != b
+
+
+def test_a_planned_bill_that_now_waits_goes_back_to_confirmed(env):
+    _replan(env)
+    # Paper's due date moves past the horizon (what CHG-006's edit will do): WAIT
+    env.conn.execute("UPDATE payable SET due_date = '2026-12-31' WHERE id = 1")
+    env.conn.commit()
+    run_id = _replan(env)
+    line = env.conn.execute("SELECT decision FROM plan_line WHERE plan_run_id = ? AND payable_id = 1",
+                            (run_id,)).fetchone()
+    assert line[0] == "WAIT"
+    assert _bills(env)[1] == ("CONFIRMED", None)
+
+
+def test_a_replan_job_with_an_empty_payload_plans_the_one_business(env):
+    from app.jobs.replan import handle_replan
+    from app.worker import process_one
+
+    queue.enqueue(env.conn, kind="replan", payload={}, clock=env.clock)
+    env.conn.commit()
+    assert process_one(env.conn, {"replan": handle_replan}, clock=env.clock, settings=env.settings,
+                       app_config=env.app_config)
+    (run,) = env.conn.execute("SELECT business_id, triggered_by FROM plan_run").fetchall()
+    assert run["business_id"] == 1 and run["triggered_by"].startswith("job:")
+
+
+def test_the_rule_check_looks_from_the_pay_day_onward():
+    # ₹1,00,000 opening; ₹80,000 paid Mon 12 leaves ₹20,000; ₹2,00,000 arrives Wed 14;
+    # ₹10,000 paid Mon 19 leaves ₹2,10,000. From Mon 19 the lowest is ₹2,10,000,
+    # not the ₹20,000 of Mon 12.
+    from app.jobs.replan import rule_check_text
+    from app.planner.plan import AccountCash, InflowIn, PayableIn, plan
+    from tests.planner_fixtures import oct, snapshot
+
+    s = snapshot(accounts=(AccountCash(1, 10_000_000, None, False),),
+                 payables=(PayableIn(1, 8_000_000, oct(12), "normal"), PayableIn(2, 1_000_000, oct(19), "normal")),
+                 inflows=(InflowIn(1, 20_000_000, oct(14), "COMMITTED"),))
+    r = plan(s)
+    later = next(ln for ln in r.lines if ln.payable_id == 2)
+    assert later.pay_on == oct(19)
+    assert "₹2,10,000 on Mon 19 Oct" in rule_check_text(r, later)

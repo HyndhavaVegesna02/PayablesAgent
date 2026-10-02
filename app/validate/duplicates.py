@@ -33,7 +33,7 @@ def bank_txn_with_key(conn: sqlite3.Connection, key: str) -> int | None:
 
 def failure_candidate_with_key(conn: sqlite3.Connection, key: str) -> int | None:
     row = conn.execute(
-        "SELECT id FROM candidate WHERE status = 'VALID' "
+        "SELECT id FROM candidate WHERE status IN ('VALID', 'ACCEPTED') "
         "AND json_extract(payload_json, '$.dedup_key') = ?", (key,)
     ).fetchone()
     return None if row is None else row[0]

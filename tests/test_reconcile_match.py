@@ -5,7 +5,6 @@ from datetime import date
 
 import pytest
 
-from app.ledger import reconcile
 from app.ledger.reconcile import match_credit, match_debit, name_matches, normalise_name
 from tests.reconcile_helpers import (
     ELEC,
@@ -97,20 +96,8 @@ def test_the_debit_may_be_three_days_either_side_of_the_planned_date(env, day):
     assert status(env, "payable", PAPER) == "PAID"
 
 
-def test_a_match_and_its_bill_move_together_or_not_at_all(env, monkeypatch):
-    plan_and_approve(env, PAPER)
-    t = txn(env, "debit", 18_000_000, OCT(12), "ASHIRWAD PAPER SUPPLIERS")
-    real = reconcile.writer.transition
-
-    def fail_on_paid(ref, to, *a, **kw):
-        if to == "PAID":
-            raise RuntimeError("crash between the two writes")
-        return real(ref, to, *a, **kw)
-
-    monkeypatch.setattr(reconcile.writer, "transition", fail_on_paid)
-    with pytest.raises(RuntimeError), reconcile.writer.atomic(env.conn):
-        _debit(env, t)
-    assert (status(env, "bank_txn", t), status(env, "payable", PAPER)) == ("UNMATCHED", "PAYMENT_EXPECTED")
+# The match and its bill moving together is driven through the real job handler in
+# tests/test_reconcile_jobs.py (the review found a test here that supplied its own transaction).
 
 
 # --- AC3: ambiguous and unknown debits ---------------------------------------------------
@@ -149,7 +136,7 @@ def test_a_debit_matching_no_bill_stays_unmatched_with_an_unknown_txn_case(env):
     plan_and_approve(env, PAPER)
     t = txn(env, "debit", 1_234_500, OCT(12), "ASHIRWAD PAPER SUPPLIERS")
     result = _debit(env, t)
-    assert result.replan is False
+    assert result.replan is True  # the debit lowers the cash the next plan starts from
     assert status(env, "bank_txn", t) == "UNMATCHED"
     assert status(env, "payable", PAPER) == "PAYMENT_EXPECTED"
     (case,) = cases(env)
@@ -246,3 +233,10 @@ def test_payment_expected_without_a_planned_date_is_never_matched(env):
     _debit(env, txn(env, "debit", 18_000_000, OCT(12), "ASHIRWAD PAPER SUPPLIERS"))
     assert status(env, "payable", PAPER) == "PAYMENT_EXPECTED"
     assert cases(env)[0]["kind"] == "unknown_txn"
+
+
+def test_a_credit_outside_the_expected_date_window_is_a_case(env):
+    t = txn(env, "credit", 3_300_000, OCT(17), "KAVERI TRADERS")  # Kaveri expected Tue 13: 4 days off
+    _credit(env, t)
+    assert status(env, "receivable", KAVERI) == "COMMITTED"
+    assert cases(env)[0]["kind"] == "ambiguous_match"

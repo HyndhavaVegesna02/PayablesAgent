@@ -76,3 +76,8 @@ def test_the_monday_job_runs_a_replan_triggered_by_monday(env):
     run = env.conn.execute("SELECT triggered_by, is_current FROM plan_run").fetchall()
     assert [tuple(r) for r in run] == [("monday", 1)]
     assert env.conn.execute("SELECT status FROM job").fetchone()[0] == "done"
+
+
+def test_a_monday_plan_missed_while_the_worker_was_down_still_runs_once(env):
+    job = _scheduled(env, ["monday_plan"])["monday_plan"]
+    assert job.misfire_grace_time == 6 * 3600 and job.coalesce is True
