@@ -271,3 +271,14 @@ def test_confirm_balance_only_answers_an_ask_owner_account(env, state):
     with pytest.raises(IllegalTransition):
         writer.confirm_balance(1, 1, "owner:1", "x", None, conn=env.conn, clock=env.clock)
     assert env.conn.execute("SELECT COUNT(*) FROM bank_txn").fetchone()[0] == 0
+
+
+def test_a_non_owner_cannot_confirm_even_when_no_adjustment_is_needed(env):
+    # With no gap there is no ADJUSTMENT to refuse the actor, so the role check
+    # itself must stop a reconciler or the agent from clearing ASK_OWNER.
+    _ask_owner(env)
+    for actor, error in (("reconciler", ActorNotAllowed), ("pipeline", ActorNotAllowed),
+                         ("agent:case:1", AgentActorRefused)):
+        with pytest.raises(error):
+            writer.confirm_balance(1, 58_500_000, actor, "x", None, conn=env.conn, clock=env.clock)
+    assert account(env)["drift_status"] == "ASK_OWNER"
