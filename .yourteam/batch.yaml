@@ -8,15 +8,16 @@ started: "2026-10-03T05:00:00+05:30"
 changes:
   - id: CHG-020
     lane: direct
-    board: in-progress
+    board: done
     start_commit: 4988a00
     blocked_question: null
-    gate_evidence: []
-    prepatch: null
-    notes_resolved: false
+    gate_evidence:
+      - {command: "make test", exit_code: 0, output_tail: "ports | --------- | Contracts | --------- | Analyzed 43 files, 82 dependencies. | ----------------------------------- | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | Contracts: 4 kept, 0 broken.", commit: 66be9f0, at: 2026-10-02T22:56:39+00:00}
+    prepatch: {exit_code: 0, tests: 5, note: "replayed at 4988a00 against tests/test_ai_client.py and tests/test_pipeline.py: the 5 new tests fail (AttributeError: detail; key in message), 57 pass; no collection errors"}
+    notes_resolved: true
   - id: CHG-006
     lane: sliced
-    board: todo
+    board: in-progress
     start_commit: null
     blocked_question: null
     gate_evidence: []
