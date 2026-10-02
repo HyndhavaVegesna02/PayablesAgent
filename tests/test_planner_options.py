@@ -116,6 +116,23 @@ def test_no_split_when_the_gap_is_the_whole_bill():
     assert "split" not in [o.kind for o in _opts(s)]
 
 
+def test_delay_flexible_rerun_applies_the_delay_it_names_and_drops_the_discount():
+    s = snapshot(
+        accounts=(AccountCash(1, 100_000, None, False),), safety_paise=50_000,
+        payables=(
+            PayableIn(1, 10_000, oct(19), "flexible", grace_days=7,
+                      discount_paise=1_000, discount_by=oct(12)),
+            PayableIn(2, 60_000, oct(22), "normal"),
+        ),
+    )
+    r = plan(s)
+    assert next(x for x in r.lines if x.payable_id == 1).pay_on == oct(12)  # paid early, discounted
+    delay = next(o for o in _opts(s) if o.kind == "delay_flexible")
+    assert delay.params == {"payable_id": 1, "from_date": "2026-10-12", "to_date": "2026-10-26"}
+    line = next(x for x in delay.plan.lines if x.payable_id == 1)
+    assert (line.decision, line.amount_paise) == ("WAIT", 10_000)  # 26 Oct is after the horizon
+
+
 def test_delay_flexible_not_offered_when_grace_reaches_no_later_payment_day():
     # Due Mon 12 with 2 grace days: the latest payment day by Wed 14 is still Mon 12.
     s = snapshot(

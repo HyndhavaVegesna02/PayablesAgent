@@ -67,7 +67,9 @@ This change adds four modules:
 - tests/test_seed.py
 
 ## Open Questions
-None. PO answered them on 2026-10-02:
+- Open for the PO (raised at batch 1 verdict): how is a tax obligation with a MISSING amount tracked? The writer currently refuses it, because the TDD has every obligation create a payable and a payable needs an amount.
+
+Answered by the PO on 2026-10-02:
 - Q1: the seed creates `app_user` 1, an owner whose sentinel hash can never verify.
 - Q2: one PFESI payable, linked to PF ₹36,000 and ESI ₹9,000. Both obligations are ESTIMATED, and the split is fixture-invented.
 - Q5/Q6: deferred to CHG-005. Those moves stay refused until then.

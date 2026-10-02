@@ -400,7 +400,7 @@ def test_split_is_atomic_when_the_second_child_fails(conn, monkeypatch):
     with pytest.raises(RuntimeError, match="disk full"):
         writer.split_payable(ref, 5_300_000, date(2026, 10, 26), "owner:1", "x", None, conn=conn,
                              expected_version=1)
-    assert len(calls) == 2  # the parent move and the first child really were written
+    assert len(calls) == 2  # the first child was really written before the second failed
     assert (_row(conn, ref)["status"], _row(conn, ref)["version"]) == ("CONFIRMED", 1)
     assert conn.execute("SELECT COUNT(*) FROM payable").fetchone()[0] == 1
     assert events(conn) == []

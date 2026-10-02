@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, get_args
+
+from app.domain.models import PayableStatus
 
 Role = Literal["owner", "planner", "reconciler", "pipeline"]
 EntityKind = Literal["payable", "receivable", "bank_txn"]
@@ -74,10 +76,7 @@ def parse_actor(actor: str) -> Actor:
     raise InvalidActor(f"unrecognised actor {actor!r}")
 
 
-PAYABLE_STATES = (
-    "DRAFT", "CONFIRMED", "PLANNED", "PAYMENT_EXPECTED",
-    "PAID", "REOPENED", "REVIEW", "SPLIT",
-)
+PAYABLE_STATES: tuple[str, ...] = get_args(PayableStatus)
 
 PAYABLE_TRANSITIONS: dict[tuple[str, str], frozenset[Role]] = {
     ("DRAFT", "CONFIRMED"): frozenset({"owner"}),
