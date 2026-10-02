@@ -55,10 +55,11 @@ Batch 2 plan, docs/batches/2026-10-02-2/plan.md (these replace the drafted ones)
 - `tests/test_jobs_queue.py`
 
 ## Open Questions
-See the batch 2 plan's PO questions (each has a default).
+None. PO accepted every default on 2026-10-02 (see the plan's PO decisions).
 
 ## History
 - 2026-10-02: drafted at PO request during batch 1 planning
 - 2026-10-02: from batch 1 review: shortfall options' what-if runs use synthetic payable ids (-payable_id for a split's second part). Persist only real ids; never write what-if plan lines to plan_line (FK to payable).
 - 2026-10-02: PO folded in a batch 1 review note. fixtures/seed.py reads DATABASE_PATH from os.environ while the app reads Settings (.env), so `make reseed` could delete a different file than `make run` uses. Make the seed read Settings().database_path. Also handle Windows PermissionError on --fresh when the DB is open.
 - 2026-10-02: planned for batch 2 (lane planned: consumes APScheduler CronTrigger and CHG-003's PlanResult). ACs and design in docs/batches/2026-10-02-2/plan.md; Q1, Q5, Q6, Q9, Q10 there.
+- 2026-10-02: PO approved the batch 2 plan; status ready, batch 2.

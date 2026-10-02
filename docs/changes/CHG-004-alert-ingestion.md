@@ -27,6 +27,7 @@ Batch 2 plan, docs/batches/2026-10-02-2/plan.md (these replace the drafted ones)
 - [ ] AC7: SDK errors map to retryable or permanent as in the contract grid. Offline tests cover 429, 500, 400 and timeout.
 - [ ] AC8: No test makes a network connection; an autouse guard blocks non-loopback connects. `make smoke-gemini` exists, makes at most 3 live calls, and is not run in this batch.
 - [ ] AC9: `app.ai.client` is the only module that imports `google.genai`. This is enforced by an import-linter contract, and `app.ai` still never imports ledger, db or web.
+- [ ] AC10: `parse_inr` accepts `Rs.1,20,000.00`, `INR 120000` and `₹ 1,20,000`; it refuses `1.2 lakh` (word forms are ambiguous), negatives and garbage, and a refusal is a failed check, never a guess (PO, Q4). `poll_mail` refuses a blank FERNET_KEY with a message naming the one-line command that generates a key, and never prints `.env` (PO, Q8).
 
 ## Expected paths
 - `app/ingest/mail_source.py`
@@ -57,8 +58,9 @@ Batch 2 plan, docs/batches/2026-10-02-2/plan.md (these replace the drafted ones)
 - `tests/test_tracer.py`
 
 ## Open Questions
-See the batch 2 plan's PO questions (each has a default).
+None. PO accepted every default on 2026-10-02 (see the plan's PO decisions).
 
 ## History
 - 2026-10-02: drafted from TDD v2.0 Part 2, Phase 3
 - 2026-10-02: planned for batch 2 (lane planned, cap: Gemini SDK and RFC 2822). ACs rewritten in the plan: scoped to bank alerts and failure notices; GSTIN, invoice and statement checks recorded not_applicable and built in CHG-007 (Q3); amounts come back as text and code parses them (Q4).
+- 2026-10-02: PO approved the batch 2 plan; status ready, batch 2.

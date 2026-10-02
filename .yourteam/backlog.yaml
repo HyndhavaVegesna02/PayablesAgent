@@ -86,7 +86,7 @@ changes:
   - id: CHG-004
     title: Alert ingestion — MailSource, test inbox, ai.client, sort/extract/validate
     file: docs/changes/CHG-004-alert-ingestion.md
-    status: draft
+    status: ready
     priority: 4
     type: feature
     lane: planned
@@ -118,11 +118,11 @@ changes:
       - tests/test_money.py
       - tests/test_tracer.py
     depends_on: CHG-001
-    batch: null
+    batch: 2
   - id: CHG-005
     title: Reconciliation — matching, failures, reversals, drift check
     file: docs/changes/CHG-005-reconciliation.md
-    status: draft
+    status: ready
     priority: 5
     type: feature
     lane: planned
@@ -140,7 +140,7 @@ changes:
       - tests/test_states.py
       - tests/test_ledger_transitions.py
     depends_on: CHG-004
-    batch: null
+    batch: 2
   - id: CHG-006
     title: Owner web app — five screens, roles, stale-plan refusal
     file: docs/changes/CHG-006-web-app.md
@@ -214,7 +214,7 @@ changes:
   - id: CHG-013
     title: Worker and replan — job runner loop, replan/monday_plan jobs, plan persistence
     file: docs/changes/CHG-013-replan-worker.md
-    status: draft
+    status: ready
     priority: 13
     type: feature
     lane: planned
@@ -235,7 +235,7 @@ changes:
       - tests/test_seed.py
       - tests/test_jobs_queue.py
     depends_on: CHG-003
-    batch: null
+    batch: 2
 
   - id: CHG-014
     title: Planner test gaps from batch 1 review (split rest grace days, caller-held transaction, sqlite errors)

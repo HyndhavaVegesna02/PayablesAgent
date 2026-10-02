@@ -266,10 +266,11 @@ GSTIN, invoice arithmetic and statement arithmetic are recorded `not_applicable`
 - AC7: SDK errors map to retryable or permanent as in the contract grid. Offline tests cover 429, 500, 400 and timeout.
 - AC8: No test makes a network connection; an autouse guard blocks non-loopback connects. `make smoke-gemini` exists, makes at most 3 live calls, and is not run in this batch.
 - AC9: `app.ai.client` is the only module that imports `google.genai`. This is enforced by an import-linter contract, and `app.ai` still never imports ledger, db or web.
+- AC10: `parse_inr` accepts `Rs.1,20,000.00`, `INR 120000` and `₹ 1,20,000`; it refuses `1.2 lakh` (word forms are ambiguous), negatives and garbage, and a refusal is a failed check, never a guess (PO, Q4). `poll_mail` refuses a blank FERNET_KEY with a message naming the one-line command that generates a key, and never prints `.env` (PO, Q8).
 
 ### Steps (CHG-004)
 - [ ] A1 Tracer redaction fix and test (`tokens` survives; `refresh_token`, `api_key` and `password` are still redacted).
-- [ ] A2 `parse_inr` and its tests, including a Hypothesis round-trip with `format_inr`.
+- [ ] A2 `parse_inr` and its tests: a Hypothesis round-trip with `format_inr`, plus a table of Indian formats (`Rs.1,20,000.00`, `INR 120000`, `₹ 1,20,000`), `1.2 lakh` refused, negatives refused, garbage refused (PO, Q4).
 - [ ] A3 `ai.client.call` with the FakeBackend: thinking validation, schema parse, usage `or 0`, micro-USD cost, the trace step.
 - [ ] A4 `GeminiBackend` offline tests through `httpx.MockTransport`: the request shape, a 200 parse, 429/500/400 and timeout mapping.
 - [ ] A5 The no-network guard (`tests/conftest.py`) and the google.genai import contract.
@@ -381,6 +382,7 @@ It then queues `run_case`. That job stays queued until CHG-008 registers a handl
 - AC6: While drift is unresolved, every planner snapshot uses the lower of the two balances. This is shown through the persisted replan, not only through the planner.
 - AC7: Every bank_account and ledger change in this change goes through the writer. The guard (R008) is green, and agent actors are refused for the drift moves.
 - AC8: The Phase 4 exit test runs all three scenarios end to end through the worker on the seeded DB with the fake AI. It also shows the debit's trace.
+- AC9: Re-delivering the same debit alert (a second `.eml` copy of it, or the same message seen twice) leaves exactly one `bank_txn` and one match. It is stopped by `bank_txn.dedup_key` and the `source_document` unique keys (PO addition).
 
 ### Steps (CHG-005)
 - [ ] R1 `DRIFT_TRANSITIONS`, the bank_txn UNMATCHED→REVERSED row, and the writer functions `record_reported_balance`, `set_drift_status` and `confirm_balance`, with tests.
@@ -390,6 +392,7 @@ It then queues `run_case`. That job stays queued until CHG-008 registers a handl
 - [ ] R5 `open_case`: thinking by stake and the case file.
 - [ ] R6 `check_drift`: the alert recheck at 23:00 with the FakeClock advanced, statements acted on at once, gap closing, `confirm_balance`.
 - [ ] R7 Register handlers with the worker. The pipeline queues `drift_check` for a reported balance.
+- [ ] R7b Re-delivery test: a second copy of the debit `.eml` and the same message polled twice leave one bank_txn and one match (AC9).
 - [ ] R8 `tests/test_phase4_exit.py`: debit → PAID; return email → REOPENED and replan; missing alert → CHECKING. Each runs through the real worker loop. Then gate.
 
 ---
@@ -422,3 +425,11 @@ It then queues `run_case`. That job stays queued until CHG-008 registers a handl
 | Q12 | Fixture sender domain. | `alerts@hdfcbank.example`, fictional, set in the seed's `alert_senders_json`. |
 | Q13 | CHG-005's drafted AC3 says the agent recovering the missing transaction from Gmail closes the gap. The agent is CHG-008. | Split it. Here: the code side (a later transaction that closes the gap returns CHECKING→OK; a gap that stays is CHECKING with a drift case). CHG-008: the agent's search and the CHECKING→ASK_OWNER move when it gives up. |
 | — | Latent bug, flagged: the tracer currently redacts any field whose name contains "token", so the TDD's `tokens` trace field is always blanked. | Fixed in CHG-004 A1. Only fields named or ending in password, token or key are redacted. |
+
+## PO decisions (2026-10-02, plan aa4e871 approved by payablesagent-ac)
+- All defaults Q1–Q13 accepted as written, and the A1 tracer redaction fix.
+- Q4: add table tests for Indian formats: `Rs.1,20,000.00`, `INR 120000`, `₹ 1,20,000`; `1.2 lakh` refused unless unambiguous (refused); negatives; garbage. Anything that doesn't parse is a validation failure, never a guess. → CHG-004 AC10, step A2.
+- Q8: the FERNET_KEY error names the exact one-line command that generates a key, and never prints `.env`. → CHG-004 AC10.
+- Q11: a statement mismatch is still acted on at once.
+- CHG-005 addition: re-delivering the same debit alert leaves one bank_txn and no double match (dedup_key, source_document unique keys). → CHG-005 AC9, step R7b.
+- `make smoke-gemini` stays unrun; the PO authorises it at review time once the batch is green.
