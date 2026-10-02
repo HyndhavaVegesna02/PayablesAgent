@@ -31,3 +31,4 @@ CHG-003's plan flagged this gap: nothing in the backlog owned plan persistence o
 
 ## History
 - 2026-10-02: drafted at PO request during batch 1 planning
+- 2026-10-02: from batch 1 review: shortfall options' what-if runs use synthetic payable ids (-payable_id for a split's second part). Persist only real ids; never write what-if plan lines to plan_line (FK to payable).

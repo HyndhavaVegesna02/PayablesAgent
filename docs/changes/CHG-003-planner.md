@@ -78,3 +78,4 @@ None. PO answered both on 2026-10-02:
 ## History
 - 2026-10-02: drafted from TDD v2.0 Part 2, Phase 2
 - 2026-10-02: refined for batch 1 with PO decisions D1 and D6; AC2 revised; AC5–AC8 added
+- 2026-10-02: batch 1 fix round 1 (review FIX_REQUIRED). build_snapshot now reads inside one read transaction. WAIT is decided on the computed target, as approved plan step 4(d) says: a bill due after the horizon still gets a PAY line if its latest payment day before the due date, or a safe discount day, is inside the horizon. This narrows AC8's literal wording; flagged to the PO at verdict. ask_ca keeps PAYMENT_EXPECTED bills in its statutory-only rerun, because they are approved commitments. bank_account.status (no defined values) is not read.
