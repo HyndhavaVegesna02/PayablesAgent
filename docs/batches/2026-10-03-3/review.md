@@ -47,9 +47,47 @@ Criteria:
 - The seed imports `app.web.auth`.
 - The async routes run sync sqlite on the event loop.
 
-### Reviewer B: ledger, planner input, reconcile, demo, AI
+### Reviewer B: ledger, planner input, reconcile, demo, AI: FIX_REQUIRED
 
-Pending.
+Criteria:
+- CHG-020: all three criteria MET; no findings.
+- CHG-006 (non-web half) MET: AC1, AC6 (writer side), D13, the inputs-hash normalisation and D15.
+- CHG-006 PARTIAL: AC9/D12 (C1, C2, M1) and D14 (C3).
+- Tests: the 13 in-scope files plus the write-guard and clock guards, 257 passed. lint-imports: 5 kept.
+
+**Critical** (all verified by the reviewer):
+1. **C1: a retried bill drops out of the plan** (`app/ledger/writer.py:419`).
+   - **What happens:** PAID → REOPENED keeps matched_txn_id pointing at the reversed debit. After a failure, a retry and an owner mark-paid, the bill leaves the snapshot, so the plan overstates cash by ₹1,80,000. Its retry debit then becomes an unknown_txn.
+   - **Fix:** clear matched_txn_id when a payable moves to REOPENED, or use the predicate "no MATCHED txn linked".
+   - **Test:** failure → retry → owner marks paid.
+2. **C2: a REVIEW bill marked paid loses its outflow on a return** (`app/web/actions.py:106`).
+   - **What happens:** marking a REVIEW bill paid links the debit but leaves the txn UNMATCHED and the case OPEN. handle_failure only recognises a MATCHED txn, so a return email reverses the debit and leaves the bill PAID: the outflow is lost and the bill is never reopened. `_reviewed_debit` can also link a txn that is already REVERSED.
+   - **Fix:** handle_failure honours the payable link; link only an UNMATCHED debit; resolve or annotate the case.
+   - **Tests:** cover both paths.
+3. **C3: DemoClock crashes on Windows when two processes touch the file** (`app/clock.py:84`).
+   - **What happens:** reading and replacing the file at the same time raises PermissionError (2,715 of about 4,400 writes failed in a two-process probe). One failed read in process_one ends the worker. A failed set gives a 500 on /demo/time and a traceback from `make demo-time`.
+   - **Fix:** a short bounded retry on PermissionError; OSError becomes a plain refusal.
+   - **Test:** two processes, or a monkeypatched PermissionError.
+
+**Major:**
+- **M1: a PAID-unmatched bill can be subtracted twice with no owner remedy** (`app/ledger/reconcile.py:194`; verified).
+  - **What happens:** the debit arrives but doesn't auto-match: a different payee name, a different amount (TDS), outside the window, or twin bills. The debit stays UNMATCHED and lowers the balance, while the bill stays an outflow. Conservative, but a false shortfall the owner can't dismiss.
+  - **Fix: needs a PO call.** Either a known limit with a pinning test, or an owner "this debit paid this bill" link, or excluding a PAID bill named in an open case from the snapshot.
+
+**Minor:**
+- link_payment: its version bump and refusals are untested, and it checks neither the txn's status nor whether another payable already holds the txn.
+- The role and owner checks in the new writer functions are untested with system actors or another business's owner; the 'helper:2' test fails at parse_actor before the role check.
+- demo.advance writes the clock before the enqueue and commit; it should enqueue first.
+- In demo mode, retry backoff and the heartbeat both use the frozen clock.
+- The Monday job is keyed by the new day, not the Monday crossed, unlike the demo.py docstring.
+- parse_time and the DEMO_NOW validator disagree about a time with no offset.
+- The tmp name is fixed, and the forward-only check is not atomic across processes.
+- The pyproject comment wrongly says the web process never loads the worker.
+- match_credit's reason text names the expected date even when the D13 asked date matched.
+- FixtureBackend needs an empty-text guard.
+- The `_planner_status` docstring understates the CHECKING-drift double count.
+- demo.advance repeats enqueue_poll_mail's logic.
+- Pre-existing, not this batch: REVIEW twins.
 
 ## Fix round 1
 
