@@ -45,4 +45,5 @@ interrupts: []
 review_rounds:
   - {round: 1, reviewers: ["ledger and jobs (CHG-013, CHG-005)", "AI and ingestion (CHG-004)"], verdicts: [FIX_REQUIRED, FIX_REQUIRED], fixes: [7f54ded, c0727b2]}
   - {round: 2, reviewers: ["ledger and jobs (CHG-013, CHG-005)", "AI and ingestion (CHG-004)"], verdicts: [FIX_REQUIRED, FIX_REQUIRED], fixes: [e66e55b], note: "ledger critical was a regression from the round-1 case dedup; ingestion critical was a CRLF-fragile test missed in round 1"}
+  - {round: 3, reviewers: ["ledger and jobs (CHG-013, CHG-005)", "AI and ingestion (CHG-004)"], verdicts: [APPROVE, APPROVE], reviewed: 4ae3d45}
 hotfixes: []      # {branch, reason, merged_sha, caused_by}
