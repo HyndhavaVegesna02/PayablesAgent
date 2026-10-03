@@ -1,6 +1,6 @@
 # Every change, ever. Entries are never deleted -- done and rejected are history.
 # Status is a field, never a folder.
-next_id: 26
+next_id: 29
 changes:
   - id: CHG-001
     title: Repo skeleton — layout, config, schema, Clock, tracer, job table, CI
@@ -423,6 +423,26 @@ changes:
     status: draft
     priority: 26
     type: chore
+    lane: null
+    expected_paths: []
+    depends_on: null
+    batch: null
+  - id: CHG-027
+    title: Full-workflow runs - two scripted fortnights through the real web routes, worker and demo clock
+    file: docs/changes/CHG-027-full-workflow-runs.md
+    status: ready
+    priority: 27
+    type: feature
+    lane: planned
+    expected_paths: ['evals/workflow.py', 'evals/workflow_runs.py', 'scripts/make_workflow_fixtures.py', 'fixtures/agent_inbox/', 'fixtures/ai_replies.json', 'app/web/actions.py', 'Makefile', 'tests/', 'docs/']
+    depends_on: CHG-010a
+    batch: 7
+  - id: CHG-028
+    title: Statutory debits never match on their own (no party name to match a challan debit)
+    file: docs/changes/CHG-028-statutory-debit-matching.md
+    status: draft
+    priority: 28
+    type: defect
     lane: null
     expected_paths: []
     depends_on: null

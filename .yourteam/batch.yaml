@@ -5,6 +5,8 @@ goal: "TDD Phase 9 plus the non-Gmail half of Phase 8: owner alerts by fixed-tem
 branch: batch-7
 start_tag: null
 started: "2026-10-03T19:30:00+05:30"
+interrupts:
+  - {at: "2026-10-03T22:05:00+05:30", text: "PO (payablesagent-ac, for the user): add CHG-027 Full-workflow runs to batch 7, after CHG-010c and before the review; planned inline as a plan.md addendum, no separate approval round", became_change: CHG-027}
 changes:
   - id: CHG-010b
     lane: planned
@@ -36,8 +38,17 @@ changes:
     notes_resolved: false
   - id: CHG-010c
     lane: planned
-    board: in_progress
+    board: done
     start_commit: 1fe0722
+    blocked_question: null
+    gate_evidence:
+      - {command: "make test", exit_code: 0, output_tail: "s, 282 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | agent never imports the ledger writer, web or the pipeline KEPT | the AI and the agent never reach owner email KEPT | notify is pure text and sending: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 9 kept, 0 broken. | Uninstalled 1 package in 1ms | Installed 1 package in 37ms", commit: d284214, at: 2026-10-03T16:35:49+00:00}
+    prepatch: "PASS at f0f4c40: the evidence-doc tests fail (no scripts.make_docs/make_traces, no pages); the two that pass on the old tree are docs/evals/README.md path and figure checks"
+    notes_resolved: false
+  - id: CHG-027
+    lane: planned
+    board: in_progress
+    start_commit: null
     blocked_question: null
     gate_evidence: []
     prepatch: null

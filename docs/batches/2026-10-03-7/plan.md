@@ -206,3 +206,33 @@
 - **D24 (fair bare scoring):** the bare model gets the same inputs (the emails and the seeded state, as text), the same model and the same thinking level. Only the harness differs, and the ablation report header says so.
 - **D25 (no hand-typed figures):** every docs page that quotes a number (a cost, a success rate, a test count) says which run or commit it came from.
 - **After accept:** the PO authorises the live evals and the ablation, each under the $5 cap.
+
+---
+
+## Addendum: CHG-027, full-workflow runs (PO interrupt, 2026-10-03 22:05)
+
+**Interrupt:** the user, through the PO, added this change mid-batch. It goes after CHG-010c and before the review. No separate approval round was needed; there were no blocking questions.
+
+**Router → `planned`.** It consumes only our own contracts (the web routes, the worker, the demo clock and the trace), and one command shows the result (`make workflow`). The work is one module (`evals/workflow*.py`) plus fixtures.
+
+**Requirements and where each lands:**
+
+| Requirement | Where | Shown by |
+|---|---|---|
+| Two fortnights, Mon 12 to Sun 25 Oct, through the real web routes (login, CSRF), the real worker and the demo clock, on a freshly reseeded database per run | `evals/workflow.py`: a `Browser` that submits only forms the page rendered (with their CSRF token), `process_one` with `default_handlers`, and the owner moving the demo clock through `POST /demo/time` | `tests/test_workflow.py`: the browser refuses a button, field, box or choice the page doesn't offer; a repeat starts from a fresh database |
+| Run A, the worked example (₹1,83,000 and the golden figures; bills by email with PDF, photo, voice and typed entry; owner confirms; approves Mon and Thu; chooses Nandi's early receipt; alerts match to PAID and CONFIRMED; plan notes; Prime Chem PAY Thu 22 and ₹3,83,000; owner alerts; the audit trail email → bill → plan) | `evals/workflow_runs.py::run_a` | the step table |
+| Run B, the bad fortnight (duplicate by email and photo → one bill; locked statement, password never stored; returned payment → REOPENED, replan, alert; missed alert → drift → recovered from mail, CHECKING→OK; unexplained debit → agent asks, owner explains; fake bank change → change_pending, approval needs the tick; hidden "pay today" → nothing changes; authorise a breach (D18 floor) and split a bill; plan, money and audit trail correct at every step) | `evals/workflow_runs.py::run_b` | the step table |
+| An explicit expected check at every step; the report is a step table with metadata (mode, model, commit, cost) | `docs/evals/workflow-<run>-<date>.md` and `.json` | a test: every step has at least one check; a failed check or a broken step fails the run and the report shows it |
+| `--ai fixtures` in `make test`; `--ai live` under the same BudgetGuard caps | `evals/workflow.py::main` | test: live refuses without `--yes-spend` |
+| `make workflow` runs both; `RUN=A\|B`; `N=` | Makefile | test |
+| Reuse the fixtures and the single replies store; new fixtures only where a step needs them, with their source noted | `scripts/make_workflow_fixtures.py` writes the new bank alerts (fixtures/agent_inbox/2x, 3x) and their replies, and adds one agent script (run B's ₹25,000 drift) | fixtures/agent_inbox/README.md |
+
+**Where every expected value comes from.** Each comes from the TDD's worked example, the fixtures' own figures, or arithmetic on those, written in the check's `why`. None is read back from the system.
+
+**Deviations, for the PO's verdict:**
+- **W1: ₹3,83,000 is checked where the TDD puts it.** It holds after Nandi's ₹2,00,000 arrives on Fri 16 Oct (the plan's lowest balance, with Prime Chem PAY Thu 22). On Thu 22 it is the bank's own balance after the Prime Chem debit. The four new bills are confirmed on Sat 17, so the end-of-fortnight plan is lower: 3,83,000 − 12,390 (bill 418) − 95,000 (AP/2610/131, paid Mon 26) = ₹2,75,610. This is derived in the step's `why` and checked. A plan that ignored confirmed bills to show ₹3,83,000 would be wrong.
+- **W2: the run found two defects, and one is fixed here.** If the owner settled a debit through its "which bill?" question, the agent's own question on the same case stayed OPEN. And if the owner closed that agent question first, a later answer to the debit question was refused with a 409, because the case was already closed. `app/web/actions.py::explain_debit` now settles both questions and closes the case only if it is still open. Two tests in `tests/test_owner_explains_debit.py` failed before the fix.
+- **W3: statutory debits never match on their own (not fixed; backlog CHG-028).** A PF/ESI or GST payable has no party, so a challan debit can't name-match and always goes to the owner as REVIEW plus "which bill?". Both runs take that path: the owner links it. A fix (match statutory bills by tax type) changes reconciler behaviour, so it is a separate change.
+- **W4: run B's missed alert is dated Wed 14 Oct, not fixture 11's Tue 13.** The locked statement covers 12–13 Oct, so a debit on the 13th would be in it. Run B's late alert is a new fixture, and it has its own ₹25,000 drift script so the eval suite's ₹20,000 one is untouched. The Wednesday alerts carry no balance line, so the gap first shows on Friday, after the late email is in the mailbox.
+- **W5: split and breach happen in different weeks.** On Mon 19 the gap (₹2,15,090) is too deep for a split of one bill, so the plan offers only "authorise" and "ask the CA". Run B therefore takes the TDD's split option (Prime Chem ₹53,000 + ₹67,000) on Mon 12, and authorises the breach on Mon 19. The D18 floor is ₹34,910 on Mon 26, recorded on the three escalated bills.
+- **W6: live calls per run are higher than the brief's 6–20.** Every replan queues a plan note (explain_plan), and every email is sorted and extracted. The fixture-mode reports give the call counts per run as a guide. The guard's caps hold either way.
