@@ -68,3 +68,50 @@
 ee819fa. The gate is recorded under CHG-007: green, 1034 passed, ruff clean, 6 contracts kept.
 
 `yt_prepatch --since 3ac8f76`: PASS. 16 tests fail at 3ac8f76. The ones that pass there are guards that hold before and after: a bare tail after hazaar or sau, and "minus pachaas hazaar", which was already refused.
+
+## Round 2: lean re-review of ee819fa (one reviewer): FIX_REQUIRED
+
+The other round-1 fixes were confirmed. These hold:
+- the bank-change flag only flags;
+- several proposals behave correctly;
+- statement ordinals can't add a row twice;
+- the typed-entry duplicate rule;
+- `normalise_invoice_number` is acceptable.
+
+**Critical:**
+1. **C1 was only partly fixed.** A bill read as vendor A and confirmed as vendor B (both with details) flagged B but asked nothing: "already asked" was keyed on the bill alone. B stayed change_pending with no question to clear it, and A kept a question about B's bill. Verified by probe.
+   - **Fix (856eb9f):**
+     - "already asked" is keyed on (vendor, bill);
+     - confirming for another vendor withdraws the bill's question about A;
+     - A goes back to its details on record unless another proposal is open for it.
+   - **Test:** `test_r2_…moves_the_question`.
+
+**Minors (fixed):**
+- A bare tail of 1000 or more after lakh reads again ("1 lakh 50000").
+- The voice transcript match ignores punctuation.
+
+## Round 3: lean re-review of 856eb9f: FIX_REQUIRED
+
+The probes confirmed these cases: B's details differ from the bill; B's details match it; A has a second proposal open.
+
+**Major** (same defect as C1, so it does not count toward the cap): the withdrawal ran only when the chosen vendor already had details. For a vendor with no details, or one created on confirm, A's question stayed open.
+- **Fix (a57ee6e):** the withdrawal runs for every confirmed bill.
+- **Test:** `test_r3_…withdraws_the_other_question`.
+
+**Minor (fixed):** the voice match falls on word boundaries, with digit groups joined first, so "50,000" no longer matches inside "1,50,000".
+- **Test:** `test_r3_…`.
+
+## Round 4: lean re-review of a57ee6e: APPROVE
+
+The probes pass. A concept sweep confirms one bill-creating path, `_create_record`, reached by both confirm routes. Typed and voice bills carry no bank details.
+
+**Minors, to the backlog (CHG-025):**
+- The voice match also joins a decimal point, so "15 lakh" matches "1.5 lakh".
+- A word-level suffix ("pachaas hazaar" inside "ek lakh pachaas hazaar") still matches.
+
+Every voice bill still waits for the owner, with the transcript beside it.
+
+### Fix commits
+
+- **856eb9f** and **a57ee6e:** gates recorded under CHG-007, green, 1040 passed.
+- **Prepatch:** passes for each fix commit; the new tests fail at the commit before.

@@ -1,6 +1,6 @@
 # Every change, ever. Entries are never deleted -- done and rejected are history.
 # Status is a field, never a folder.
-next_id: 25
+next_id: 26
 changes:
   - id: CHG-001
     title: Repo skeleton — layout, config, schema, Clock, tracer, job table, CI
@@ -372,6 +372,16 @@ changes:
     file: docs/changes/CHG-024-batch4-review-notes.md
     status: draft
     priority: 24
+    type: chore
+    lane: null
+    expected_paths: []
+    depends_on: null
+    batch: null
+  - id: CHG-025
+    title: Batch 5 review notes not fixed in the batch
+    file: docs/changes/CHG-025-batch5-review-notes.md
+    status: draft
+    priority: 25
     type: chore
     lane: null
     expected_paths: []
