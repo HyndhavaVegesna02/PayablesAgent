@@ -164,13 +164,16 @@ def test_linking_refuses_a_non_statutory_or_foreign_payable(conn):
         )
 
 
-def test_missing_amount_obligation_is_refused_until_the_po_decides(conn):
-    with pytest.raises(ValueError, match="MISSING"):
-        writer.create_tax_obligation(
-            _tax(amount_paise=None, amount_status="MISSING"), actor="owner:1", conn=conn, **KW
-        )
-    assert conn.execute("SELECT COUNT(*) FROM tax_obligation").fetchone()[0] == 0
-    assert events(conn) == []
+def test_a_missing_amount_obligation_has_no_payable_and_asks_the_owner(conn):
+    # D11 (batch 1 verdict), landed with CHG-007: the planner never invents an amount.
+    ob = writer.create_tax_obligation(_tax(amount_paise=None, amount_status="MISSING"), actor="owner:1",
+                                      conn=conn, **KW)
+    assert ob.payable_id is None and conn.execute("SELECT COUNT(*) FROM payable").fetchone()[0] == 0
+    q = conn.execute("SELECT kind, choices_json FROM owner_question").fetchone()
+    assert q[0] == "ca_reminder" and q[1] == f'{{"tax_obligation_id": {ob.id}}}'
+    with pytest.raises(ValueError, match="D11"):
+        writer.create_tax_obligation(_tax(amount_paise=None, amount_status="MISSING"), actor="owner:1",
+                                     conn=conn, payable_amount_paise=100, **KW)
 
 
 @pytest.mark.parametrize("bad", [4_500_000.5, 4_500_000.0, True, 0, -1, "4500000"])

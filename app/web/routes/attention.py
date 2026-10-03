@@ -148,4 +148,10 @@ async def answer(question_id: int, request: Request, user: User = Depends(owner_
         except actions.FieldErrors as e:
             return attention_page(request, conn, user, message=" ".join(e.errors.values()), status=422)
         return done(request, "/attention")
+    if q["kind"] == "ca_reminder" and type(choices.get("tax_obligation_id")) is int:
+        try:
+            actions.supply_tax_amount(conn, user, choices["tax_obligation_id"], values, clock=clock)
+        except actions.FieldErrors as e:
+            return attention_page(request, conn, user, message=" ".join(e.errors.values()), status=422)
+        return done(request, "/attention")
     raise actions.Refused("Answers to this kind of question come with the agent (a later change).")

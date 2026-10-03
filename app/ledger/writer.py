@@ -285,13 +285,32 @@ def create_tax_obligation(
     """Each obligation is backed by a statutory payable (Part 2, "Taxes as payables").
     With payable_id None it creates that payable (DRAFT, amount `payable_amount_paise`
     or the obligation's own); otherwise it links to an existing statutory payable,
-    e.g. PF and ESI sharing one combined bill."""
+    e.g. PF and ESI sharing one combined bill.
+
+    A MISSING amount (PO decision D11) is stored with no payable, since the
+    planner never invents an amount; recording it asks the owner for the
+    amount (a ca_reminder question). supply_tax_amount() then creates the
+    payable."""
     who = parse_actor(actor)
     _check_role(who, CREATE_RULES["payable"]["DRAFT"], "create a tax obligation")
     if new.amount_status == "MISSING":
-        # A payable needs an amount, and the TDD has every obligation create one;
-        # how a MISSING amount is tracked is undecided (raised with the PO).
-        raise ValueError("a tax obligation with a MISSING amount cannot be recorded yet")
+        if payable_id is not None or payable_amount_paise is not None or invoice_number is not None:
+            raise ValueError("a MISSING obligation has no payable until its amount is known (D11)")
+        _require_fk(conn)
+        clock = clock or SystemClock()
+        with atomic(conn):
+            _check_owner(conn, who, new.business_id)
+            row = _create(conn, "tax_obligation", {**new.model_dump(), "payable_id": None}, actor=actor,
+                          reason=reason, source_ref=source_ref, trace_run_id=trace_run_id, clock=clock)
+            conn.execute(
+                "INSERT INTO owner_question (business_id, kind, body_text, choices_json, status) "
+                "VALUES (?, 'ca_reminder', ?, ?, 'OPEN')",
+                (new.business_id,
+                 f"The {new.tax_type} amount for {new.period}, due {new.due_date.strftime('%a %d %b')}, is "
+                 "missing. Ask your CA and enter it here: until then the plan can't count it.",
+                 json.dumps({"tax_obligation_id": row["id"]})),
+            )
+        return TaxObligation.model_validate(row)
     if payable_amount_paise is not None:
         if payable_id is not None:
             raise ValueError("payable_amount_paise only applies when a new payable is created")
@@ -325,6 +344,51 @@ def create_tax_obligation(
             payable_id = payable["id"]
         row = _create(conn, "tax_obligation", {**new.model_dump(), "payable_id": payable_id}, **kw)
     return TaxObligation.model_validate(row)
+
+
+def supply_tax_amount(
+    obligation_id: int,
+    amount_paise: int,
+    amount_status: str,
+    actor: str,
+    reason: str,
+    source_ref: str | None,
+    *,
+    conn: sqlite3.Connection,
+    clock: Clock | None = None,
+    trace_run_id: str | None = None,
+) -> TaxObligation:
+    """The owner (or his CA, through him) gives a MISSING obligation its
+    amount (D11): it becomes CONFIRMED or ESTIMATED and its statutory payable
+    is created and confirmed, so the next plan counts it. Owner only; a
+    TAX_OBLIGATION_AMOUNT_SET event."""
+    who = parse_actor(actor)
+    _check_role(who, frozenset({"owner"}), "supply a tax amount")
+    if amount_status not in ("CONFIRMED", "ESTIMATED"):
+        raise ValueError("a supplied tax amount is CONFIRMED or ESTIMATED")
+    if type(amount_paise) is not int or amount_paise <= 0:
+        raise TypeError("amount_paise must be positive int paise")
+    _require_fk(conn)
+    clock = clock or SystemClock()
+    kw = dict(actor=actor, reason=reason, source_ref=source_ref, trace_run_id=trace_run_id, clock=clock)
+    with atomic(conn):
+        before = _get(conn, "tax_obligation", obligation_id)
+        _check_owner(conn, who, before["business_id"])
+        if before["amount_status"] != "MISSING" or before["payable_id"] is not None:
+            raise IllegalTransition(f"tax obligation {obligation_id} already has its amount")
+        payable = _create(conn, "payable", {
+            "business_id": before["business_id"], "invoice_number": f"{before['tax_type']}-{before['period']}",
+            "amount_paise": amount_paise, "due_date": before["due_date"], "priority": "statutory",
+            "status": "DRAFT",
+        }, **kw)
+        conn.execute("UPDATE tax_obligation SET amount_paise = ?, amount_status = ?, payable_id = ? WHERE id = ?",
+                     (amount_paise, amount_status, payable["id"], obligation_id))
+        after = _get(conn, "tax_obligation", obligation_id)
+        _insert_event(conn, business_id=before["business_id"], event_type="TAX_OBLIGATION_AMOUNT_SET",
+                      entity="tax_obligation", entity_id=obligation_id, before=before, after=after, **kw)
+        transition(EntityRef("payable", payable["id"]), "CONFIRMED", actor, reason, source_ref, conn=conn,
+                   expected_version=payable["version"], clock=clock, trace_run_id=trace_run_id)
+        return TaxObligation.model_validate(after)
 
 
 # --- state changes -----------------------------------------------------------

@@ -18,6 +18,8 @@
   </p>
 </article>
 
+{% for w in view.warnings %}<p class="below" role="note">{{ w }}</p>{% endfor %}
+
 {% if view.to_approve %}
 <article>
   <header>Approve payments for {{ view.next_pay_day | day }}</header>

@@ -13,6 +13,7 @@ from datetime import date
 from typing import Any
 
 from app.domain.money import format_inr
+from app.db.read import missing_tax_warnings
 from app.ledger.reconcile import early_receipt_requests
 from app.ledger.writer import calculated_balance
 from app.planner.plan import format_day
@@ -188,6 +189,7 @@ class PlanView:
     options: list[Option]
     authorised: set[int] = field(default_factory=set)  # bills paid under an owner's authorisation (CHG-021)
     bank_pending: set[int] = field(default_factory=set)  # bills to a vendor whose bank change is pending (D20)
+    warnings: list[str] = field(default_factory=list)  # e.g. a statutory amount still missing (D11)
 
 
 def plan_view(conn: sqlite3.Connection, business_id: int) -> PlanView | None:
@@ -246,7 +248,14 @@ def plan_view(conn: sqlite3.Connection, business_id: int) -> PlanView | None:
             "SELECT payable_id FROM plan_override WHERE business_id = ? AND kind = 'authorise_breach' "
             "AND status = 'ACTIVE'", (business_id,))},
         bank_pending=bank_change_pending_bills(conn, business_id),
+        warnings=missing_tax_warnings(conn, business_id, date.fromisoformat(run["created_at"][:10]),
+                                      run_horizon_days(conn, business_id)),
     )
+
+
+def run_horizon_days(conn: sqlite3.Connection, business_id: int) -> int:
+    row = conn.execute("SELECT horizon_days FROM business WHERE id = ?", (business_id,)).fetchone()
+    return row[0] if row else 14
 
 
 def bank_change_pending_bills(conn: sqlite3.Connection, business_id: int) -> set[int]:

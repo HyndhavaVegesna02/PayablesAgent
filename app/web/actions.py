@@ -184,6 +184,44 @@ def unlock_document(conn: sqlite3.Connection, user: User, document_id: int, pass
         )
 
 
+def supply_tax_amount(conn: sqlite3.Connection, user: User, obligation_id: int, values: dict[str, str], *,
+                      clock: Clock) -> int:
+    """The owner answers a missing-amount ca_reminder (D11) with the amount
+    his CA gave, confirmed or estimated; the statutory bill is created and
+    the plan counts it."""
+    status = values.get("amount_status") or "CONFIRMED"
+    errors: dict[str, str] = {}
+    amount = None
+    try:
+        amount = parse_inr(values.get("amount") or "")
+        if amount <= 0:
+            errors["amount"] = "Enter an amount above zero."
+    except ValueError:
+        errors["amount"] = "Enter the amount in rupees, like 90,000."
+    if status not in ("CONFIRMED", "ESTIMATED"):
+        errors["amount_status"] = "Choose confirmed or estimated."
+    if errors:
+        raise FieldErrors(errors, values)
+    with writer.atomic(conn):
+        ob = conn.execute("SELECT * FROM tax_obligation WHERE id = ? AND business_id = ?",
+                          (obligation_id, user.business_id)).fetchone()
+        if ob is None:
+            raise repo.NotFound(f"tax obligation {obligation_id}")
+        if ob["amount_status"] != "MISSING":
+            raise Refused("This tax amount has already been given.")
+        writer.supply_tax_amount(obligation_id, amount, status, user.actor,
+                                 f"Owner gave the {ob['tax_type']} {ob['period']} amount ({status.lower()})",
+                                 f"tax_obligation:{obligation_id}", conn=conn, clock=clock)
+        conn.execute(
+            "UPDATE owner_question SET status = 'ANSWERED', answer_json = ?, answered_by = ?, answered_at = ? "
+            "WHERE business_id = ? AND status = 'OPEN' AND kind = 'ca_reminder' "
+            "AND json_extract(choices_json, '$.tax_obligation_id') = ?",
+            (json.dumps({"amount_paise": amount, "amount_status": status}), user.id, clock.now().isoformat(),
+             user.business_id, obligation_id),
+        )
+        return _replan(conn, user, clock)
+
+
 def mark_paid(conn: sqlite3.Connection, user: User, payable_id: int, version: int | None, *,
               clock: Clock) -> int:
     """PAYMENT_EXPECTED or REVIEW -> PAID by the owner (the table refuses any

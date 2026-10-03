@@ -263,3 +263,18 @@ def statement_with_key(conn: sqlite3.Connection, key: str) -> int | None:
         "AND json_extract(payload_json, '$.dedup_key') = ?", (key,)
     ).fetchone()
     return None if row is None else row[0]
+
+
+def missing_tax_warnings(conn: sqlite3.Connection, business_id: int, today: date, horizon_days: int) -> list[str]:
+    """D11: a statutory amount still MISSING and due inside the horizon makes
+    the plan optimistic. Said beside the plan; the planner never invents it."""
+    end = today + timedelta(days=horizon_days - 1)
+    return [
+        f"{tax_type} {period} amount missing (due {date.fromisoformat(due).strftime('%a %d %b')}): "
+        "plan may be optimistic"
+        for tax_type, period, due in conn.execute(
+            "SELECT tax_type, period, due_date FROM tax_obligation WHERE business_id = ? "
+            "AND amount_status = 'MISSING' AND due_date BETWEEN ? AND ? ORDER BY due_date, id",
+            (business_id, today.isoformat(), end.isoformat()),
+        ).fetchall()
+    ]
