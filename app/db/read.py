@@ -5,6 +5,7 @@ write to the ledger even if the rest of the agent code is wrong (TDD Part 2,
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 import sqlite3
 from datetime import date, timedelta
 from pathlib import Path
@@ -285,3 +286,30 @@ def missing_tax_warnings(conn: sqlite3.Connection, business_id: int, today: date
             (business_id, end.isoformat()),
         ).fetchall()
     ]
+
+
+def what_if_snapshot(conn: sqlite3.Connection, business_id: int, today: date, *,
+                     drop_payables: list[int] = (), receivable_dates: dict[int, date] | None = None,
+                     safety_paise: int | None = None) -> PlanSnapshot:
+    """The current snapshot with what-if changes (POST /api/what-if, and the
+    agent's run_planner): bills left out, receivables moved to a date (and
+    counted), another safety amount. It only reads. ValueError for a change
+    that names nothing open in this business."""
+    s = build_snapshot(conn, business_id, today)
+    if safety_paise is not None:
+        if type(safety_paise) is not int or safety_paise < 0:
+            raise ValueError("safety_paise must be int paise, zero or more")
+        s = replace(s, safety_paise=safety_paise)
+    if any(type(i) is not int for i in drop_payables):
+        raise ValueError("drop_payables must be a list of bill ids")
+    s = replace(s, payables=tuple(p for p in s.payables if p.payable_id not in set(drop_payables)))
+    for rid, when in (receivable_dates or {}).items():
+        row = conn.execute("SELECT amount_paise FROM receivable WHERE id = ? AND business_id = ? "
+                           "AND confidence IN ('COMMITTED', 'EXPECTED', 'UNKNOWN')", (rid, business_id)).fetchone()
+        if row is None:
+            raise ValueError(f"receivable {rid} is not open in this business")
+        def keep(i, rid=rid):
+            return i.receivable_id != rid
+        s = replace(s, inflows=tuple(filter(keep, s.inflows)) + (InflowIn(rid, row[0], when, "COMMITTED"),),
+                    uncounted_inflows=tuple(filter(keep, s.uncounted_inflows)))
+    return s

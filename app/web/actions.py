@@ -17,12 +17,12 @@ import hashlib
 import json
 import mimetypes
 import sqlite3
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
 from app.clock import Clock
-from app.db.read import bank_txn_with_key, build_snapshot, invoice_on_record
+from app.db.read import bank_txn_with_key, build_snapshot, invoice_on_record, what_if_snapshot
 from app.domain.models import BankTxnNew, PayableNew, ReceivableNew
 from app.domain.money import format_inr, parse_inr
 from app.jobs import queue
@@ -32,7 +32,7 @@ from app.domain.names import name_matches, normalise_name
 from app.ledger.reconcile import party_names
 from app.ledger.writer import EntityRef
 from app.planner.options import options
-from app.planner.plan import InflowIn, canonical_json, effective_snapshot, format_day, plan
+from app.planner.plan import canonical_json, effective_snapshot, format_day, plan
 from app.validate import CHECK_NAMES, NOT_APPLICABLE, PASSED, failed, failures
 from app.ingest import pdf
 from app.validate.bank import account_last4, account_mask, normalise_ifsc
@@ -888,29 +888,16 @@ def what_if(conn: sqlite3.Connection, user: User, body: dict[str, Any], *, clock
     unknown = set(body) - {"receivable_dates", "drop_payables", "safety_paise"}
     if unknown:
         raise Refused(f"Unknown fields: {', '.join(sorted(unknown))}.")
-    s = build_snapshot(conn, user.business_id, clock.today())
     try:
-        if "safety_paise" in body:
-            if type(body["safety_paise"]) is not int or body["safety_paise"] < 0:
-                raise ValueError("safety_paise must be int paise, zero or more")
-            s = replace(s, safety_paise=body["safety_paise"])
         drop = body.get("drop_payables", [])
-        if not isinstance(drop, list) or any(type(i) is not int for i in drop):
+        if not isinstance(drop, list):
             raise ValueError("drop_payables must be a list of bill ids")
-        s = replace(s, payables=tuple(p for p in s.payables if p.payable_id not in set(drop)))
         moves = body.get("receivable_dates", {})
         if not isinstance(moves, dict):
             raise ValueError("receivable_dates must map receivable ids to dates")
-        for key, day in moves.items():
-            rid, when = int(key), date.fromisoformat(day)
-            row = conn.execute("SELECT amount_paise FROM receivable WHERE id = ? AND business_id = ? "
-                               "AND confidence IN ('COMMITTED', 'EXPECTED', 'UNKNOWN')",
-                               (rid, user.business_id)).fetchone()
-            if row is None:
-                raise ValueError(f"receivable {rid} is not open in this business")
-            keep = lambda i: i.receivable_id != rid  # noqa: E731
-            s = replace(s, inflows=tuple(filter(keep, s.inflows)) + (InflowIn(rid, row[0], when, "COMMITTED"),),
-                        uncounted_inflows=tuple(filter(keep, s.uncounted_inflows)))
+        s = what_if_snapshot(conn, user.business_id, clock.today(), drop_payables=drop,
+                             receivable_dates={int(k): date.fromisoformat(v) for k, v in moves.items()},
+                             safety_paise=body.get("safety_paise"))
     except (TypeError, ValueError) as e:
         raise Refused(str(e)) from None
     result = plan(s)
