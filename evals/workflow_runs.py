@@ -232,6 +232,11 @@ def run_a(run: Run) -> None:
             "SELECT json_extract(payload_json, '$.record.amount_paise') FROM candidate c JOIN source_document d "
             "ON d.id = c.source_document_id WHERE d.kind = 'voice'"), money("1,50,000"),
                    "'dedh lakh' is 1.5 lakh; code reads the spoken words, not a model's figure")
+        run.expect("due-date-flagged-not-guessed", run.one(
+            "SELECT c.status || ' ' || json_extract(c.checks_json, '$.dates') FROM candidate c JOIN source_document d "
+            "ON d.id = c.source_document_id WHERE d.kind = 'voice'"), "AWAITING_OWNER failed: no due date was given: "
+                   "fill it in", "'paanch November' has no year: the date is left for the owner, never guessed "
+                   "(CHG-030)")
 
     with run.step("helper", "Types a bill: Laxmi Transport LT/2610/88, ₹18,000, due Mon 2 Nov"):
         run.helper.submit("/add", "/entries", {"party": "Laxmi Transport", "invoice_number": "LT/2610/88",
@@ -239,7 +244,7 @@ def run_a(run: Run) -> None:
                                                "due_date": "2026-11-02"})
         run.drain()
         waiting = run.rows("SELECT d.kind FROM candidate c JOIN source_document d ON d.id = c.source_document_id "
-                           "WHERE c.record_type = 'payable' AND c.status = 'VALID' ORDER BY c.id")
+                           "WHERE c.record_type = 'payable' AND c.status IN ('VALID', 'AWAITING_OWNER') ORDER BY c.id")
         run.expect("four-channels-waiting", [k for (k,) in waiting], ["email", "photo", "voice", "typed"],
                    "one bill from each channel, all waiting for the owner")
         token = run.helper.form("/add", "/entries").fields["csrf_token"]  # the helper's own, valid token
@@ -285,11 +290,20 @@ def run_a(run: Run) -> None:
                    "a 'what changed' note is on the plan; offline it is code's template (the fixture AI has no "
                    "canned note); live, Gemini's, or the template when Gemini's fails its check")
 
-    with run.step("owner", "Sat: confirms the four new bills on Needs attention"):
+    with run.step("owner", "Sat: confirms the four new bills on Needs attention, typing in the voice note's due "
+                           "date (Thu 5 Nov), the one field marked for them"):
         run.move_to("2026-10-17T10:00")
-        for (cid,) in run.rows("SELECT id FROM candidate WHERE record_type = 'payable' AND status = 'VALID' "
-                               "ORDER BY id"):
-            confirm(run, cid)
+        voice = run.one("SELECT c.id FROM candidate c JOIN source_document d ON d.id = c.source_document_id "
+                        "WHERE d.kind = 'voice'")
+        run.expect("due-date-marked-on-the-form", "Not given on the document: fill it in." in run.owner.get(
+            "/attention"), True, "the empty field is marked on the page, not left to fail on Confirm")
+        for (cid,) in run.rows("SELECT id FROM candidate WHERE record_type = 'payable' AND status IN "
+                               "('VALID', 'AWAITING_OWNER') ORDER BY id"):
+            if cid == voice:
+                run.owner.submit("/attention", f"/candidates/{cid}/confirm", {"due_date": "2026-11-05"})
+                run.drain()
+            else:
+                confirm(run, cid)
         p = plan(run)
         run.expect("bills-in-the-ledger", sorted(i or "" for (i,) in run.rows(
             "SELECT invoice_number FROM payable WHERE id > 5")), ["", "418", "AP/2610/131", "LT/2610/88"],

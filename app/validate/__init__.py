@@ -16,6 +16,11 @@ CHECK_NAMES = (
     "schema", "amount", "balance", "account", "dates", "duplicates", "confidence",
     "gstin", "invoice_arithmetic", "statement_arithmetic",
 )
+# A bill read from a document with no due date (CHG-030): the owner fills it in.
+# Asking the model again can't give a date that wasn't on the document or said,
+# and would only invite it to guess one, so this failure stops the retries.
+NO_DUE_DATE = "no due date was given: fill it in"
+
 # Checks for bills, invoices and statements; they land with CHG-007 (batch 2 plan, Q3).
 NOT_FOR_MAIL_ALERTS = ("gstin", "invoice_arithmetic", "statement_arithmetic")
 

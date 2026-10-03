@@ -62,7 +62,7 @@ from app.ingest.store import DocumentStore, StoreKeyError
 from app.jobs import queue
 from app.jobs.queue import DEFAULT_BUSINESS_ID, PermanentJobError
 from app.ledger import writer
-from app.validate import failures
+from app.validate import NO_DUE_DATE, failures
 from app.validate.alert import (
     AlertRecord,
     FailureRecord,
@@ -213,6 +213,8 @@ def extract_with_retries(ctx: JobContext, backend: Backend, doc_type: str, conte
     - a field the model marks as uncertain goes to the owner (TDD Part 1:
       "fields the model marks as uncertain are flagged for the owner"); asking
       the model again would only invite it to drop the flag;
+    - a bill with no due date goes to the owner to fill in (CHG-030); asking
+      again would only invite the model to guess one;
     - a reply that only repeats a record already in the ledger is not
       retried: reading it again cannot change that."""
     first = ctx.app_config.model.thinking.extract
@@ -235,7 +237,7 @@ def extract_with_retries(ctx: JobContext, backend: Backend, doc_type: str, conte
                         result="all checks passed" if record else f"failed: {sorted(fails)}")
         if record is not None:
             return Outcome("VALID", attempts, record, reading)
-        if "confidence" in fails or (doc_type == "voice_note" and "amount" in fails):
+        if "confidence" in fails or fails.get("dates") == NO_DUE_DATE or (doc_type == "voice_note" and "amount" in fails):
             # an amount the code can't read stays unreadable however often it is asked (Q8)
             return Outcome("AWAITING_OWNER", attempts, None, reading)
         if set(fails) == {"duplicates"}:

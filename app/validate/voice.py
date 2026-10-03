@@ -12,7 +12,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from app.domain.money import parse_spoken_inr
-from app.validate import CHECK_NAMES, NOT_APPLICABLE, PASSED, failed, skipped
+from app.validate import CHECK_NAMES, NO_DUE_DATE, NOT_APPLICABLE, PASSED, failed, skipped
 from app.validate.duplicates import normalise_invoice_number
 from app.validate.invoice import ExistingInvoice, InvoiceKey, InvoiceRecord
 
@@ -51,8 +51,7 @@ def check_voice(
         except ValueError:
             checks["amount"] = failed(f"{x.amount_spoken!r} is not an amount this app can read from what was "
                                       "said: type it in")
-    if x.due_date is not None:
-        checks["dates"] = PASSED
+    checks["dates"] = PASSED if x.due_date is not None else failed(NO_DUE_DATE)
     if amount is not None and x.vendor_name:
         dup = existing(InvoiceKey(x.vendor_name, None, normalise_invoice_number(x.invoice_number), amount, None))
         checks["duplicates"] = PASSED if dup is None else failed(dup)

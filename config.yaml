@@ -6,7 +6,7 @@ model:
 ai:
   timeout_ms: 60000
 prompts:
-  version: 2026-10-02.1
+  version: 2026-10-04.1   # CHG-030: extract_voice says never to guess a year
 escalation:
   max_steps: 6
   default_stake_paise: 5000000  # ₹50,000; the owner can change it in Settings

@@ -505,7 +505,7 @@
         "vendor_name": "Sharma Packaging",
         "amount_spoken": "dedh lakh",
         "invoice_number": null,
-        "due_date": "2026-11-05",
+        "due_date": null,
         "uncertain_fields": []
       }
     }

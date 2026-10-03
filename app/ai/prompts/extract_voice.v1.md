@@ -12,8 +12,9 @@ Return JSON with exactly these fields:
 - amount_spoken: the amount exactly as said, in words or figures, e.g.
   "dedh lakh" or "45 hazaar". Do not convert it to a number.
 - invoice_number: as said, or null.
-- due_date: the date to pay by as YYYY-MM-DD, only if a full date is said;
-  otherwise null.
+- due_date: the date to pay by as YYYY-MM-DD, only if a full date with its
+  year is said; otherwise null. Never guess a year or a date: the owner fills
+  in what wasn't said.
 - uncertain_fields: the names of any fields above you are not sure of. Use an
   empty list when you are sure of all of them.
 

@@ -34,6 +34,7 @@ from app.db.connection import write_connection
 from app.db.migrate import apply_migrations
 from app.ingest.store import DocumentStore
 from app.jobs import queue
+from app.validate import NO_DUE_DATE, failed
 from app.web import actions, repo
 from app.web.auth import User
 from app.web.routes.attention import prefill
@@ -188,10 +189,28 @@ def _approve(env: RunEnv, _: Any) -> None:
     drain(env)
 
 
-def _confirm_waiting(env: RunEnv, _: Any) -> None:
+class OwnerFormRefused(Exception):
+    """The owner's form refused an entry as it was read: the extraction failed,
+    the app didn't crash (CHG-030)."""
+
+
+def flagged_fields(cand: dict[str, Any]) -> set[str]:
+    """The fields the entry flags for the owner to fill, as the page marks them."""
+    return {"due_date"} if cand["checks"].get("dates") == failed(NO_DUE_DATE) else set()
+
+
+def _confirm_waiting(env: RunEnv, spec: Any) -> None:
+    """The owner confirms each waiting entry as the page filled it, typing in
+    only what the entry flags (`fill`), as a real owner would."""
+    fill = spec.get("fill", {}) if isinstance(spec, dict) else {}
     for cand in repo.waiting_candidates(env.conn, OWNER.business_id):
-        actions.confirm_candidate(env.conn, OWNER, cand["id"], prefill(cand, repo.accounts(env.conn, 1)),
-                                  clock=env.clock)
+        values = prefill(cand, repo.accounts(env.conn, 1))
+        values.update({k: v for k, v in fill.items() if k in flagged_fields(cand) and not values.get(k)})
+        try:
+            actions.confirm_candidate(env.conn, OWNER, cand["id"], values, clock=env.clock)
+        except actions.FieldErrors as e:
+            raise OwnerFormRefused(f"the owner's form refused entry {cand['id']} as it was read: "
+                                   + "; ".join(f"{k}: {v}" for k, v in sorted(e.errors.items()))) from e
         env.conn.commit()
     drain(env)
 
@@ -314,6 +333,9 @@ def run_once(scenario: Scenario, backend: Backend, app_config: AppConfig, run: i
                 result.status, result.component = "FAILED", first_failed_component(result.checks)
         except StopRun as e:
             result.status, result.error = "ERRORED", str(e)
+        except OwnerFormRefused as e:  # what was read failed the form: an extraction failure
+            result.status, result.error, result.component = "FAILED", str(e), "extract"
+            result.checks = [check(env.conn, e2) for e2 in scored_expectations(scenario, live=live)]
         except Exception as e:  # noqa: BLE001 - a crash is the system failing the scenario
             result.status, result.error, result.component = "FAILED", f"{type(e).__name__}: {e}", "crash"
             result.checks = [check(env.conn, e2) for e2 in scored_expectations(scenario, live=live)]

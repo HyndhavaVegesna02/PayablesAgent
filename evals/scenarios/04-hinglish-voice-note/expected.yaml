@@ -3,8 +3,17 @@ title: Hinglish voice note saying "dedh lakh"
 passes_when: Amount extracted as ₹1,50,000 and shown with the transcript
 steps:
   - upload: {file: voice-note-sharma.wav, kind: voice}   # machine-spoken (scripts/make_voice_fixture.ps1, D22)
-  - confirm_waiting: true                                 # the owner confirms it, with the transcript beside it
+  - confirm_waiting: {fill: {due_date: "2026-11-05"}}    # the owner confirms it, with the transcript beside it,
+                                                          # typing the due date only if the entry flags it (CHG-030)
 expect:
+  - id: missing-due-date-flagged-not-guessed
+    component: extract
+    sql: SELECT json_extract(checks_json, '$.dates') FROM candidate ORDER BY id LIMIT 1
+    equals: "failed: no due date was given: fill it in"   # "paanch November" gives no year: never guessed
+  - id: bill-due-as-the-owner-said
+    component: validate
+    sql: SELECT due_date FROM payable WHERE amount_paise = 15000000
+    equals: "2026-11-05"
   - id: amount-is-150000
     component: extract
     sql: SELECT json_extract(payload_json, '$.record.amount_paise') FROM candidate ORDER BY id LIMIT 1

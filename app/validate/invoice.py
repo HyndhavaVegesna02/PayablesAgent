@@ -18,7 +18,7 @@ from pydantic import BaseModel
 
 from app.domain.money import parse_inr
 from app.domain.names import normalise_name
-from app.validate import CHECK_NAMES, NOT_APPLICABLE, PASSED, failed, skipped
+from app.validate import CHECK_NAMES, NO_DUE_DATE, NOT_APPLICABLE, PASSED, failed, skipped
 from app.validate.arithmetic import check_invoice_arithmetic
 from app.validate.duplicates import normalise_invoice_number
 from app.validate.gstin import check_gstin, normalise_gstin
@@ -128,7 +128,9 @@ def check_invoice(
     bad = [g for g in gstins if g.startswith("failed")]
     checks["gstin"] = bad[0] if bad else (PASSED if PASSED in gstins else NOT_APPLICABLE)
 
-    if x.invoice_date and x.due_date and x.due_date < x.invoice_date:
+    if kind != "invoice" and x.due_date is None:  # a bill, or one not yet known to be a sales invoice
+        checks["dates"] = failed(NO_DUE_DATE)
+    elif x.invoice_date and x.due_date and x.due_date < x.invoice_date:
         checks["dates"] = failed(f"the due date {x.due_date} is before the invoice date {x.invoice_date}")
     else:
         checks["dates"] = PASSED
