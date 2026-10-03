@@ -22,7 +22,7 @@ from datetime import date
 from typing import Any
 
 from app.clock import Clock
-from app.db.read import build_snapshot
+from app.db.read import bank_txn_with_key, build_snapshot
 from app.domain.models import BankTxnNew, PayableNew, ReceivableNew
 from app.domain.money import format_inr, parse_inr
 from app.jobs import queue
@@ -33,7 +33,7 @@ from app.ledger.writer import EntityRef
 from app.planner.options import options
 from app.planner.plan import InflowIn, canonical_json, effective_snapshot, format_day, plan
 from app.validate import CHECK_NAMES, NOT_APPLICABLE, PASSED, failed, failures
-from app.validate.duplicates import bank_txn_with_key, txn_dedup_key
+from app.validate.duplicates import txn_dedup_key
 from app.web import repo
 from app.web.auth import User
 from app.web.routes._common import int_or_none

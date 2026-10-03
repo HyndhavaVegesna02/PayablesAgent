@@ -40,6 +40,7 @@ from app.ai.extract import extract_document, prompt_version
 from app.ai.sort import sort_document
 from app.clock import TIMEZONE
 from app.config import Settings
+from app.db.read import bank_txn_with_key, failure_candidate_with_key
 from app.domain.models import BankTxnNew
 from app.ingest.eml_folder import EmlFolderSource, parse_message, sender_address, sent_at
 from app.ingest.mail_source import MailSource
@@ -56,7 +57,6 @@ from app.validate.alert import (
     check_bank_alert,
     check_failure_notice,
 )
-from app.validate.duplicates import bank_txn_with_key, failure_candidate_with_key
 
 if TYPE_CHECKING:
     from app.worker import Handler, JobContext

@@ -64,6 +64,16 @@ forbidden_modules = [
 ]
 
 [[tool.importlinter.contracts]]
+name = "validate is pure: imports only domain"
+type = "forbidden"
+source_modules = ["app.validate"]
+forbidden_modules = [
+    "app.config", "app.clock", "app.main", "app.demo", "app.worker",
+    "app.db", "app.ledger", "app.planner", "app.ingest",
+    "app.ai", "app.agent", "app.web", "app.notify", "app.jobs", "app.trace",
+]
+
+[[tool.importlinter.contracts]]
 name = "ai never imports ledger, db or web"
 type = "forbidden"
 source_modules = ["app.ai"]

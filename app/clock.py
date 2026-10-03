@@ -9,9 +9,8 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import Protocol, TypeVar
-from zoneinfo import ZoneInfo
 
-TIMEZONE = ZoneInfo("Asia/Kolkata")
+from app.domain.time import TIMEZONE  # re-exported: the clock and its callers share it
 _T = TypeVar("_T")
 
 

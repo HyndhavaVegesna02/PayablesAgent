@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta
 
-from app.clock import TIMEZONE
+from app.domain.time import TIMEZONE
 from app.validate import PASSED, failed
 
 MAX_ALERT_AGE = timedelta(days=7)
