@@ -1,0 +1,52 @@
+X-Fixture-Note: fictional data; a vendor invoice with its PDF attached; the
+ same invoice as fixtures/uploads/ap-2610-131-photo.png
+From: Ashirwad Paper Suppliers <accounts@ashirwadpaper.example>
+To: owner@example.test
+Subject: Invoice AP/2610/131
+Date: Tue, 13 Oct 2026 11:05:00 +0530
+Message-ID: <fixture-08@example.test>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="==fixture-08=="
+
+--==fixture-08==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+Dear Sir,
+
+Please find attached our invoice AP/2610/131 for Rs.95,000.00, due 28-10-2026.
+
+Regards,
+Accounts, Ashirwad Paper Suppliers
+
+--==fixture-08==
+Content-Type: application/pdf
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="AP-2610-131.pdf"
+MIME-Version: 1.0
+
+JVBERi0xLjcKJcK1wrYKJSBXcml0dGVuIGJ5IE11UERGIDEuMjguMgoKMSAwIG9iago8PC9UeXBl
+L0NhdGFsb2cvUGFnZXMgMiAwIFIvSW5mbzw8L1Byb2R1Y2VyKE11UERGIDEuMjguMik+Pj4+CmVu
+ZG9iagoKMiAwIG9iago8PC9UeXBlL1BhZ2VzL0NvdW50IDEvS2lkc1s0IDAgUl0+PgplbmRvYmoK
+CjMgMCBvYmoKPDwvRm9udDw8L2hlbHYgNSAwIFI+Pj4+CmVuZG9iagoKNCAwIG9iago8PC9UeXBl
+L1BhZ2UvTWVkaWFCb3hbMCAwIDU5NSA0MjBdL1JvdGF0ZSAwL1Jlc291cmNlcyAzIDAgUi9QYXJl
+bnQgMiAwIFIvQ29udGVudHNbNiAwIFJdPj4KZW5kb2JqCgo1IDAgb2JqCjw8L1R5cGUvRm9udC9T
+dWJ0eXBlL1R5cGUxL0Jhc2VGb250L0hlbHZldGljYS9FbmNvZGluZy9XaW5BbnNpRW5jb2Rpbmc+
+PgplbmRvYmoKCjYgMCBvYmoKPDwvTGVuZ3RoIDQyOS9GaWx0ZXIvRmxhdGVEZWNvZGU+PgpzdHJl
+YW0KeNq9U7tu20AQ7PkVVxuIs7dPEjBcBEmTzgA7I4VE8ZAiLtz4+z17kiPGsQI4hXU4cbVczexj
+dngcvsxDLYRTi1KRoDI/DJ9/rr+eSoXdyv2NVhMddTK20KrKZAQfqRnDFjNLz6JTekxuf8zfByqf
+qlyHElEt89cBMIFQRdDKJCxhuzzqthPqp8LCNesA8xWoEV9tZMp/mWvDU9SY4Fm9MZAyEW7Ac6mS
+VhWRmhF4p14DBOCDlw894oDY5PeXmLAewTK+jtjm4U12WSwQGVciOvaUzYDHXHwKXG+OrCy8wbsP
+4QUcb1cuvyvXU+XjmfFs6T4Z3QONDwIruQX3mpDnEV0PqGW9cMgYeaxiiF6OjPiF7w0HQIC7ABnd
+dkYVWaf+A/USi3QWcKGfr1nk2AnkPrG9A/tvlgAHC1qYtvBmUh/Bgf5ANWv2B53C5908xPs+BftT
+ZdpS8br8V97b3CdkfWHWG75UExQcJ3UrdO0jdMypbu+LftabSWqkq2RKz0nblZsLup0Tr50vn6nN
+1ChG3ndq6TvsmI4kknJuw8veI1ZEe17f5uFueAbHgRecCmVuZHN0cmVhbQplbmRvYmoKCjcgMCBv
+YmoKPDwvUHJvZHVjZXIoZml4dHVyZXMpL0NyZWF0b3Ioc2NyaXB0cy9tYWtlX2ZpeHR1cmVzLnB5
+KS9DcmVhdGlvbkRhdGUoRDoyMDI2MTAxMzAwMDAwMCkvTW9kRGF0ZShEOjIwMjYxMDEzMDAwMDAw
+KT4+CmVuZG9iagoKeHJlZgowIDgKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDQyIDAwMDAw
+IG4gCjAwMDAwMDAxMjAgMDAwMDAgbiAKMDAwMDAwMDE3MiAwMDAwMCBuIAowMDAwMDAwMjEzIDAw
+MDAwIG4gCjAwMDAwMDAzMjAgMDAwMDAgbiAKMDAwMDAwMDQwOSAwMDAwMCBuIAowMDAwMDAwOTA3
+IDAwMDAwIG4gCgp0cmFpbGVyCjw8L1NpemUgOC9JbmZvIDcgMCBSL1Jvb3QgMSAwIFI+PgpzdGFy
+dHhyZWYKMTAzOAolJUVPRgo=
+
+--==fixture-08==--

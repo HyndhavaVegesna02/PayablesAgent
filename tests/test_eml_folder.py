@@ -32,14 +32,15 @@ def test_emails_are_released_day_by_day_by_the_clock():
     ]
     assert _names(EmlFolderSource(INBOX, at(14)).list_new(date(2026, 10, 1), [BANK])) == [
         "01-debit-ashirwad-paper.eml", "02-credit-kaveri-traders.eml", "03-return-ashirwad-paper.eml",
-        "06-debit-ashirwad-paper-resent.eml",
+        "06-debit-ashirwad-paper-resent.eml", "10-statement-hdfc-locked.eml",
     ]
 
 
 def test_only_the_given_senders_are_listed_whatever_their_case():
     source = EmlFolderSource(INBOX, at(31))
     assert source.list_new(date(2026, 10, 1), ["billing@vendor.example"]) == []
-    assert len(source.list_new(date(2026, 10, 1), ["ALERTS@HDFCBANK.EXAMPLE"])) == 7
+    assert len(source.list_new(date(2026, 10, 1), ["ALERTS@HDFCBANK.EXAMPLE"])) == 8  # 7 alerts, 1 statement
+    assert len(source.list_new(date(2026, 10, 1), ["Accounts@AshirwadPaper.example"])) == 2  # invoices 08, 09
 
 
 def test_since_is_a_day_in_kolkata():
@@ -76,8 +77,8 @@ def test_fetch_refuses_anything_outside_the_inbox(ref):
 def test_search_matches_every_word_among_released_emails_newest_first():
     found = EmlFolderSource(INBOX, at(31)).search("ashirwad paper")
     assert _names(s.ref for s in found) == [
-        "03-return-ashirwad-paper.eml", "06-debit-ashirwad-paper-resent.eml",
-        "01-debit-ashirwad-paper.eml",
+        "03-return-ashirwad-paper.eml", "09-invoice-ashirwad-new-bank.eml", "08-invoice-ashirwad-ap131.eml",
+        "06-debit-ashirwad-paper-resent.eml", "01-debit-ashirwad-paper.eml",
     ]
     assert found[0].sender == BANK
     assert found[0].subject.startswith("NEFT transaction returned")

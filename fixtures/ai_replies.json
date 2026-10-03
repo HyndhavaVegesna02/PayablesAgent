@@ -85,7 +85,187 @@
         "uncertain_fields": []
       }
     },
-    "06-debit-ashirwad-paper-resent.eml": "01-debit-ashirwad-paper.eml"
+    "06-debit-ashirwad-paper-resent.eml": "01-debit-ashirwad-paper.eml",
+    "08-invoice-ashirwad-ap131.eml": {
+      "SortResult": {
+        "doc_type": "invoice",
+        "reason": "A vendor's tax invoice."
+      },
+      "InvoiceExtract": {
+        "seller_name": "Ashirwad Paper Suppliers",
+        "seller_gstin": "27ZZZFZ0001Z1ZU",
+        "buyer_name": "Saraswati Precision Works",
+        "buyer_gstin": "27ZZZCZ0004Z1ZX",
+        "invoice_number": "AP/2610/131",
+        "invoice_date": "2026-10-13",
+        "due_date": "2026-10-28",
+        "lines": [
+          {
+            "description": "Kraft paper 120 GSM",
+            "amount_text": "Rs.50,000.00"
+          },
+          {
+            "description": "Duplex board",
+            "amount_text": "Rs.30,508.00"
+          }
+        ],
+        "gst_texts": [
+          "Rs.7,245.72",
+          "Rs.7,245.72"
+        ],
+        "round_off_text": "+0.56",
+        "total_text": "Rs.95,000.00",
+        "payee_account_number": "50100 1122 4410",
+        "payee_ifsc": "SBIN0001234",
+        "uncertain_fields": []
+      }
+    },
+    "09-invoice-ashirwad-new-bank.eml": {
+      "SortResult": {
+        "doc_type": "invoice",
+        "reason": "A vendor's tax invoice."
+      },
+      "InvoiceExtract": {
+        "seller_name": "Ashirwad Paper Suppliers",
+        "seller_gstin": "27ZZZFZ0001Z1ZU",
+        "buyer_name": null,
+        "buyer_gstin": null,
+        "invoice_number": "AP/2610/140",
+        "invoice_date": "2026-10-14",
+        "due_date": "2026-10-27",
+        "lines": [
+          {
+            "description": "Kraft paper",
+            "amount_text": "Rs.40,000.00"
+          }
+        ],
+        "gst_texts": [
+          "Rs.3,600.00",
+          "Rs.3,600.00"
+        ],
+        "round_off_text": null,
+        "total_text": "Rs.47,200.00",
+        "payee_account_number": "50100 2233 9921",
+        "payee_ifsc": "HDFC0004567",
+        "uncertain_fields": []
+      }
+    },
+    "10-statement-hdfc-locked.eml": {
+      "SortResult": {
+        "doc_type": "statement",
+        "reason": "A bank account statement."
+      },
+      "StatementExtract": {
+        "account_last4": "4821",
+        "period_from": "2026-10-12",
+        "period_to": "2026-10-13",
+        "opening_balance_text": "Rs.6,20,000.00",
+        "closing_balance_text": "Rs.4,72,410.00",
+        "rows": [
+          {
+            "txn_date": "2026-10-12",
+            "direction": "debit",
+            "amount_text": "1,80,000.00",
+            "counterparty": "ASHIRWAD PAPER SUPPLIERS",
+            "reference": "N286261234567"
+          },
+          {
+            "txn_date": "2026-10-13",
+            "direction": "credit",
+            "amount_text": "33,000.00",
+            "counterparty": "KAVERI TRADERS",
+            "reference": "N287265551210"
+          },
+          {
+            "txn_date": "2026-10-13",
+            "direction": "debit",
+            "amount_text": "590.00",
+            "counterparty": "SMS AND ACCOUNT CHARGES",
+            "reference": null
+          }
+        ],
+        "uncertain_fields": []
+      }
+    }
   },
-  "uploads": {}
+  "uploads": {
+    "ap-2610-131-photo.png": {
+      "SortResult": {
+        "doc_type": "invoice",
+        "reason": "A photo of a vendor's tax invoice."
+      },
+      "InvoiceExtract": {
+        "seller_name": "Ashirwad Paper Suppliers",
+        "seller_gstin": "27ZZZFZ0001Z1ZU",
+        "buyer_name": "Saraswati Precision Works",
+        "buyer_gstin": "27ZZZCZ0004Z1ZX",
+        "invoice_number": "AP/2610/131",
+        "invoice_date": "2026-10-13",
+        "due_date": "2026-10-28",
+        "lines": [
+          {
+            "description": "Kraft paper 120 GSM",
+            "amount_text": "Rs.50,000.00"
+          },
+          {
+            "description": "Duplex board",
+            "amount_text": "Rs.30,508.00"
+          }
+        ],
+        "gst_texts": [
+          "Rs.7,245.72",
+          "Rs.7,245.72"
+        ],
+        "round_off_text": "+0.56",
+        "total_text": "Rs.95,000.00",
+        "payee_account_number": "50100 1122 4410",
+        "payee_ifsc": "SBIN0001234",
+        "uncertain_fields": []
+      }
+    },
+    "handwritten-bill-ganesh.png": {
+      "SortResult": {
+        "doc_type": "invoice",
+        "reason": "A handwritten bill from a hardware supplier."
+      },
+      "InvoiceExtract": {
+        "seller_name": "Shree Ganesh Hardware",
+        "seller_gstin": "27ZZZPZ0005Z1Z5",
+        "buyer_name": "M/s Saraswati Precision Works",
+        "buyer_gstin": null,
+        "invoice_number": "418",
+        "invoice_date": "2026-10-14",
+        "due_date": "2026-10-24",
+        "lines": [
+          {
+            "description": "Hex bolts M10 x 200",
+            "amount_text": "10,000"
+          },
+          {
+            "description": "Washers",
+            "amount_text": "500"
+          }
+        ],
+        "gst_texts": [
+          "945",
+          "945"
+        ],
+        "round_off_text": null,
+        "total_text": "12,390",
+        "payee_account_number": null,
+        "payee_ifsc": null,
+        "uncertain_fields": []
+      }
+    },
+    "voice-note-ashirwad.wav": {
+      "VoiceBillExtract": {
+        "transcript": "Ashirwad Paper ka naya bill aaya hai, dedh lakh rupaye, invoice AP/2610/150, 30 October tak dena hai.",
+        "vendor_name": "Ashirwad Paper",
+        "amount_spoken": "dedh lakh",
+        "invoice_number": "AP/2610/150",
+        "due_date": "2026-10-30",
+        "uncertain_fields": []
+      }
+    }
+  }
 }
