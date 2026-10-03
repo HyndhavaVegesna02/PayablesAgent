@@ -74,6 +74,12 @@ forbidden_modules = [
 ]
 
 [[tool.importlinter.contracts]]
+name = "agent never imports the ledger writer, web or the pipeline"
+type = "forbidden"
+source_modules = ["app.agent"]
+forbidden_modules = ["app.ledger.writer", "app.web", "app.ingest.pipeline", "app.jobs", "app.worker", "app.main"]
+
+[[tool.importlinter.contracts]]
 name = "ai never imports ledger, db or web"
 type = "forbidden"
 source_modules = ["app.ai"]

@@ -213,22 +213,7 @@ CREATE TABLE agent_case (
     CHECK (status IN ('OPEN','RESOLVED','ASK_OWNER','CLOSED_BY_OWNER')),
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
-);
-
-CREATE TABLE owner_question (
-  id INTEGER PRIMARY KEY,
-  business_id INTEGER NOT NULL REFERENCES business(id),
-  case_id INTEGER REFERENCES agent_case(id),
-  kind TEXT NOT NULL CHECK (kind IN
-    ('confirm_record','unlock_pdf','explain_txn','confirm_balance','choose_option',
-     'approve_bank_change','reconnect_gmail','ca_reminder')),
-  body_text TEXT NOT NULL,              -- shown as plain text
-  choices_json TEXT,
-  answer_json TEXT,
-  answered_by INTEGER REFERENCES app_user(id),
-  answered_at TEXT,
-  status TEXT NOT NULL CHECK (status IN ('OPEN','ANSWERED','EXPIRED'))
-);
+, state_json TEXT NOT NULL DEFAULT '{}');
 
 CREATE TABLE job (
   id INTEGER PRIMARY KEY,
@@ -288,6 +273,21 @@ CREATE TABLE plan_override (
   status TEXT NOT NULL CHECK (status IN ('ACTIVE','ENDED','LAPSED')),
   ended_at TEXT,
   CHECK (kind <> 'authorise_breach' OR floor_paise IS NOT NULL)
+);
+
+CREATE TABLE "owner_question" (
+  id INTEGER PRIMARY KEY,
+  business_id INTEGER NOT NULL REFERENCES business(id),
+  case_id INTEGER REFERENCES agent_case(id),
+  kind TEXT NOT NULL CHECK (kind IN
+    ('confirm_record','unlock_pdf','explain_txn','confirm_balance','choose_option',
+     'approve_bank_change','reconnect_gmail','ca_reminder','agent_question')),
+  body_text TEXT NOT NULL,              -- shown as plain text
+  choices_json TEXT,
+  answer_json TEXT,
+  answered_by INTEGER REFERENCES app_user(id),
+  answered_at TEXT,
+  status TEXT NOT NULL CHECK (status IN ('OPEN','ANSWERED','EXPIRED'))
 );
 
 CREATE VIEW account_balance AS
