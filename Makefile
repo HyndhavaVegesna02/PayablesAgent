@@ -32,9 +32,9 @@ test:
 smoke-gemini:
 	uv run python -m app.ai.smoke --yes-call-gemini
 
+# make evals ARGS="--ai fixtures --runs 5"   (live: --ai live --yes-spend; see README)
 evals:
-	@echo "make evals: not yet implemented (lands with Phase 9)" >&2
-	@exit 1
+	uv run python -m evals.runner $(ARGS)
 
 ablation:
 	@echo "make ablation: not yet implemented (lands with Phase 9)" >&2

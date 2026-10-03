@@ -48,6 +48,11 @@ MAX_JOBS = 500  # per drain: a scenario that queues more is looping
 MAX_RETRY_WAIT_S = 3600  # a retry due within an hour of fake time is waited for
 
 
+def never() -> str | None:
+    """A stop hook that never stops (fixture mode)."""
+    return None
+
+
 class StopRun(Exception):
     """Raised by a should_stop hook (the budget guard): the run stops, ERRORED."""
 
@@ -61,7 +66,7 @@ class RunEnv:
     handlers: dict
     store: DocumentStore
     scenario: Scenario
-    should_stop: Callable[[], str | None] = lambda: None
+    should_stop: Callable[[], str | None] = never
 
 
 @dataclass
@@ -235,7 +240,7 @@ def make_env(tmp: Path, scenario: Scenario, backend: Backend, app_config: AppCon
 
 
 def run_once(scenario: Scenario, backend: Backend, app_config: AppConfig, run: int = 1, *,
-             should_stop: Callable[[], str | None] = lambda: None,
+             should_stop: Callable[[], str | None] = never,
              inspect: Callable[[RunEnv], dict[str, Any]] | None = None, keep: Path | None = None) -> RunResult:
     """Plays the scenario once and checks it. `inspect` reads the finished run
     (its traces and jobs) before the run's files are removed; `keep` copies
@@ -265,29 +270,97 @@ def run_once(scenario: Scenario, backend: Backend, app_config: AppConfig, run: i
     return result
 
 
-# --- command line (the report is evals/report.py's) ------------------------------------------
+# --- a suite: scenarios x runs, under one config -------------------------------------------
+
+
+def load_config(variant: Path | None = None) -> tuple[AppConfig, str]:
+    """config.yaml, with a variant's keys merged over it (TDD change control:
+    the model and prompt settings live in config), and the merged result's hash."""
+    import hashlib
+    import json
+
+    import yaml
+
+    raw = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
+
+    def merge(base: dict, over: dict) -> dict:
+        return {**base, **{k: merge(base.get(k, {}), v) if isinstance(v, dict) and isinstance(base.get(k), dict)
+                           else v for k, v in over.items()}}
+
+    if variant is not None:
+        raw = merge(raw, yaml.safe_load(Path(variant).read_text(encoding="utf-8")) or {})
+    digest = hashlib.sha256(json.dumps(raw, sort_keys=True).encode()).hexdigest()
+    return AppConfig.model_validate(raw), digest
+
+
+def run_suite(scenarios: list[Scenario], backend_factory: Callable[[], Backend], config: AppConfig, runs: int, *,
+              should_stop: Callable[[], str | None] = never, keep: Path | None = None,
+              progress: Callable[[RunResult], None] = lambda r: None) -> tuple[list[RunResult], str | None]:
+    """Every scenario, `runs` times, one after another. Returns the results and,
+    if the stop hook ended the suite early, why."""
+    from evals import metrics
+
+    results: list[RunResult] = []
+    for s in scenarios:
+        for i in range(1, runs + 1):
+            reason = should_stop()
+            if reason:
+                return results, reason
+            r = run_once(s, backend_factory(), config, i, should_stop=should_stop, inspect=metrics.inspect, keep=keep)
+            results.append(r)
+            progress(r)
+    return results, None
+
+
+# --- command line ---------------------------------------------------------------------------------
 
 
 def main(argv: list[str] | None = None) -> int:
     import argparse
 
     from app.ai.fixture_backend import FixtureBackend
-    from app.config import load_app_config
+    from app.clock import SystemClock
+    from evals import report
     from evals import scenario as scenarios
 
-    p = argparse.ArgumentParser(prog="python -m evals.runner", description="Run the eval scenarios.")
-    p.add_argument("--ai", choices=["fixtures"], required=True)
-    p.add_argument("--runs", type=int, default=1)
-    p.add_argument("--scenario", action="append")
+    p = argparse.ArgumentParser(prog="python -m evals.runner", description="Run the eval scenarios and write a report.")
+    p.add_argument("--ai", choices=["fixtures", "live"], required=True,
+                   help="fixtures: canned replies, offline; live: Gemini, behind the budget guard")
+    p.add_argument("--runs", type=int, default=5, help="runs per scenario (default 5)")
+    p.add_argument("--scenario", action="append", help="only this scenario (repeatable)")
+    p.add_argument("--config", type=Path, help="a variant merged over config.yaml (evals/variants/)")
+    p.add_argument("--label", default="baseline")
+    p.add_argument("--out", type=Path, default=ROOT / "docs" / "evals")
+    p.add_argument("--keep-traces", action="store_true", help="copy each run's traces next to the report")
+    p.add_argument("--yes-spend", action="store_true", help="required with --ai live")
     args = p.parse_args(argv)
-    config = load_app_config(ROOT / "config.yaml")
-    failed = 0
-    for name in args.scenario or scenarios.names():
-        for i in range(1, args.runs + 1):
-            r = run_once(scenarios.load(name), FixtureBackend(), config, i)
-            failed += r.status != "PASSED"
-            print(f"{r.status:8} {name} run {i}" + (f"  [{r.component}] {r.error or ''}" if r.component else ""))
-    return 1 if failed else 0
+
+    config, config_hash = load_config(args.config)
+    chosen = [scenarios.load(n) for n in (args.scenario or scenarios.names())]
+    today = SystemClock().now()
+    out_dir = args.out / f"{today.date().isoformat()}-{args.ai}-{args.label}"
+    should_stop: Callable[[], str | None] = never
+    if args.ai == "fixtures":
+        backend_factory: Callable[[], Backend] = FixtureBackend
+    else:
+        from evals.budget import live_backend
+
+        backend_factory, should_stop = live_backend(config, confirmed=args.yes_spend)
+    results, stopped = run_suite(
+        chosen, backend_factory, config, args.runs, should_stop=should_stop,
+        keep=out_dir / "traces" if args.keep_traces else None,
+        progress=lambda r: print(f"{r.status:8} {r.scenario} run {r.run}"
+                                 + (f"  [{r.component}] {r.error or ''}" if r.component or r.error else ""), flush=True))
+    meta = {"label": args.label, "mode": args.ai, "model": config.model.id, "prompt_version": config.prompts.version,
+            "config_sha256": config_hash, "variant": args.config.as_posix() if args.config else None,
+            "commit": report.git_commit(), "date": today.isoformat(timespec="seconds"),
+            "runs_per_scenario": args.runs, "status": "COMPLETE" if stopped is None else "ABORTED",
+            "stopped_because": stopped}
+    built = report.build(meta, chosen, results)
+    report.write(built, out_dir)
+    t = built["totals"]
+    print(f"{t['passed']}/{t['runs']} runs passed; report: {out_dir}")
+    return 0 if t["passed"] == t["runs"] else 1
 
 
 if __name__ == "__main__":

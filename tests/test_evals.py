@@ -88,3 +88,55 @@ TDD_SCENARIOS = [  # TDD Part 1, "Scenario suite (test inbox and uploads)", in i
 
 def test_the_suite_has_the_tdd_scenarios():
     assert scenario.names() == TDD_SCENARIOS
+
+
+# --- S4: metrics and the report ----------------------------------------------------------------
+
+from evals import metrics, report  # noqa: E402
+from evals.runner import Check, RunResult  # noqa: E402
+
+
+def test_the_trajectory_is_counted_from_the_runs_own_trace_and_jobs():
+    r = runner.run_once(scenario.load("07-missed-alert-causes-drift"), FixtureBackend(), CONFIG,
+                        inspect=metrics.inspect)
+    m = r.metrics
+    assert m["ai_calls"] == sum(m["ai_calls_by_job"].values()) and m["ai_calls_by_job"]["exception"] >= 3
+    assert m["tool_calls_by_tool"]["search_gmail"] >= 1 and m["tool_calls_by_tool"]["add_candidate"] >= 1
+    # the follow-up case's two failed candidates end its medium run; its high run hits the step limit
+    assert m["invalid_candidates"] == 2 and m["wasted_calls"] >= 2
+    assert set(m["escalations"]) == {"max_validation_failures", "max_steps"}
+    assert m["tokens"] == {"input": 0, "output": 0, "thoughts": 0} and m["cost_micro_usd"] == 0  # fixture replies
+
+
+def test_the_trace_fields_the_metrics_read_are_the_ones_the_code_writes():
+    steps = []
+    r = runner.run_once(scenario.load("08-drift-with-no-explanation"), FixtureBackend(), CONFIG,
+                        inspect=lambda env: steps.extend(metrics.trace_steps(env.settings.trace_dir)) or {})
+    assert r.status == "PASSED"
+    ai = next(s for s in steps if str(s.get("tool")).startswith("ai.call"))
+    assert {"validation", "tokens", "cost_micro_usd"} <= set(ai)
+    assert any(s.get("tool") == "escalation" and s.get("escalation_rule") == "max_steps" for s in steps)
+    assert any(str(s.get("tool")).startswith("agent:") and "result" in s for s in steps)
+
+
+def _result(name, run, status, met_ok, cost=0, component=None):
+    checks = [Check(f"c{i}", "reconcile", ok, None, None) for i, ok in enumerate(met_ok)]
+    return RunResult(name, run, status, checks, component, None,
+                     {"ai_calls": 2, "cost_micro_usd": cost, "tokens": {"input": 10, "output": 5, "thoughts": 1},
+                      "escalations": []})
+
+
+def test_the_report_gives_rate_spread_worst_run_and_keeps_errored_runs_apart():
+    s = scenario.load(DEBIT)
+    runs = [_result(DEBIT, 1, "PASSED", [True, True], 100), _result(DEBIT, 2, "FAILED", [True, False], 300, "reconcile"),
+            _result(DEBIT, 3, "PASSED", [True, True], 200), _result(DEBIT, 4, "ERRORED", [], 0)]
+    row = report.aggregate(s, runs)
+    assert (row["passed"], row["failed"], row["errored"], row["success_rate"]) == (2, 1, 1, 0.667)
+    assert row["spread"] == [0.5, 1.0] and row["worst"]["run"] == 2 and row["worst"]["component"] == "reconcile"
+    assert row["cost_micro_usd"] == {"mean": 200.0, "max": 300}
+    meta = {"label": "t", "mode": "live", "model": "m", "prompt_version": "p", "config_sha256": "0" * 64,
+            "commit": "abc", "date": "d", "runs_per_scenario": 4, "status": "ABORTED",
+            "stopped_because": "budget: 600 calls used"}
+    md = report.markdown(report.build(meta, [s], runs))
+    assert md.startswith("# Eval report: t") and "**ABORTED**: budget: 600 calls used" in md
+    assert "| Bank debit alert for a planned payment | 2/3 (67%), 1 errored | 50% – 100% | run 2: reconcile, 1 failed |" in md
