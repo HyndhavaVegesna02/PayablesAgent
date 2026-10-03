@@ -9,11 +9,10 @@ environment" and "Tracing, configuration and security"):
   run in CI before merge (enforced by review, not by this module).
 
 Secrets with no production default (GEMINI_API_KEY, GOOGLE_CLIENT_SECRET,
-FERNET_KEY, SESSION_SECRET, ...) are intentionally *not* hard-required yet:
-no code in this phase calls Gemini, Gmail or the encryption layer. They
-default to "" and become load-bearing as the phases that use them land. The
-three path settings below are already load-bearing (the DB, trace writer and
-future document store all read them today), so they fail fast when blank.
+FERNET_KEY, SESSION_SECRET, ...) default to "" here; the process that needs
+one refuses to start or to act without it, naming how to make one (the web
+app for SESSION_SECRET, the document store for FERNET_KEY). The three path
+settings below are read everywhere, so they fail fast when blank.
 """
 
 from __future__ import annotations

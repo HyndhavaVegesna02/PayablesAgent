@@ -21,6 +21,6 @@ async def demo_time(request: Request, user: User = Depends(owner_only), conn: sq
     values = await form_values(request)
     try:
         demo.advance(conn, request.app.state.clock, demo.parse_time(str(values.get("to", ""))))
-    except ValueError as e:
+    except (ValueError, OSError) as e:
         raise actions.Refused(f"The demo clock did not move: {e}") from None
     return done(request, "/")

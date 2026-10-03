@@ -63,7 +63,7 @@ class DemoClock:
 
     def now(self) -> datetime:
         try:
-            text = self.path.read_text(encoding="utf-8").strip()
+            text = _shared(lambda: self.path.read_text(encoding="utf-8")).strip()
         except FileNotFoundError:
             return self.start.astimezone(TIMEZONE)
         return datetime.fromisoformat(text).astimezone(TIMEZONE)
@@ -81,12 +81,28 @@ class DemoClock:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self.path.with_suffix(".tmp")
         tmp.write_text(at.astimezone(TIMEZONE).isoformat(), encoding="utf-8")
-        tmp.replace(self.path)
+        _shared(lambda: tmp.replace(self.path))
         return before
 
     def reset(self) -> None:
         """Back to DEMO_NOW (make reseed)."""
-        self.path.unlink(missing_ok=True)
+        _shared(lambda: self.path.unlink(missing_ok=True))
+
+
+def _shared(op, attempts: int = 200, pause_s: float = 0.005):
+    """Runs a file operation on the demo clock file. Windows refuses to read a
+    file another process is replacing, or to replace one another process is
+    reading, with PermissionError; the web app and the worker both use this
+    file, so a refusal is retried briefly (about a second at most), the same
+    tolerance the worker's heartbeat has."""
+    import time as _time
+
+    for _ in range(attempts - 1):
+        try:
+            return op()
+        except PermissionError:
+            _time.sleep(pause_s)
+    return op()
 
 
 def clock_for(demo_now: str, data_dir: str | Path) -> Clock:

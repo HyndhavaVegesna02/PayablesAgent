@@ -40,6 +40,7 @@ from app.web.auth import User
 STALE = "The plan changed since you opened it. Here is the current plan."
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 PRIORITIES = ("statutory", "critical", "normal", "flexible")
+WEEKDAYS = ("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN")
 CONFIDENCES = ("COMMITTED", "EXPECTED", "UNKNOWN")
 
 
@@ -67,6 +68,28 @@ def _replan(conn: sqlite3.Connection, user: User, clock: Clock) -> int:
 # --- This week: approve and mark paid --------------------------------------------------
 
 
+def refresh_if_stale(conn: sqlite3.Connection, user: User, *, clock: Clock) -> int | None:
+    """After a stale refusal: replans when the current run no longer matches
+    today's inputs (the date rolled over, or the ledger changed with no replan
+    yet), so the refusal page shows a plan the owner can approve. Returns the
+    new run id, or None when the current run is still the right one."""
+    with writer.atomic(conn):
+        current = repo.current_run(conn, user.business_id)
+        fresh = inputs_sha256(build_snapshot(conn, user.business_id, clock.today()))
+        if current is not None and current["inputs_sha256"] == fresh:
+            return None
+        return replan(conn, user.business_id, triggered_by="stale-refresh", clock=clock)
+
+
+def _check_current(conn: sqlite3.Connection, user: User, run_id: int, clock: Clock) -> dict:
+    current = repo.current_run(conn, user.business_id)
+    if current is None or current["id"] != run_id:
+        raise Stale(STALE)
+    if inputs_sha256(build_snapshot(conn, user.business_id, clock.today())) != current["inputs_sha256"]:
+        raise Stale(STALE)
+    return current
+
+
 def approve(conn: sqlite3.Connection, user: User, run_id: int, versions: dict[int, int], *,
             clock: Clock) -> int:
     """Approves the PAY lines for the next payment day (Q4): each moves
@@ -74,11 +97,7 @@ def approve(conn: sqlite3.Connection, user: User, run_id: int, versions: dict[in
     when the run is not current, the inputs it was planned from have changed
     (including the date), or a bill's version moved."""
     with writer.atomic(conn):
-        current = repo.current_run(conn, user.business_id)
-        if current is None or current["id"] != run_id:
-            raise Stale(STALE)
-        if inputs_sha256(build_snapshot(conn, user.business_id, clock.today())) != current["inputs_sha256"]:
-            raise Stale(STALE)
+        _check_current(conn, user, run_id, clock)
         view = repo.plan_view(conn, user.business_id)
         if not view.to_approve:
             raise Refused("There is no payment waiting for approval in this plan.")
@@ -125,8 +144,10 @@ def _reviewed_debit(conn: sqlite3.Connection, payable_id: int) -> int | None:
     if row is None or not (row[0] or "").startswith("bank_txn:"):
         return None
     txn_id = int(row[0].removeprefix("bank_txn:"))
+    status = conn.execute("SELECT status FROM bank_txn WHERE id = ?", (txn_id,)).fetchone()
     taken = conn.execute("SELECT 1 FROM payable WHERE matched_txn_id = ?", (txn_id,)).fetchone()
-    return None if taken else txn_id
+    # A reversed debit paid nothing, and a debit another bill holds is not this one's.
+    return txn_id if status is not None and status[0] == "UNMATCHED" and taken is None else None
 
 
 # --- shortfall options ---------------------------------------------------------------
@@ -141,8 +162,7 @@ def choose_option(conn: sqlite3.Connection, user: User, option_id: int, *, clock
     - authorise_breach, delay_flexible: recorded only, until CHG-021."""
     with writer.atomic(conn):
         opt = repo.option(conn, user.business_id, option_id)
-        if not opt["is_current"]:
-            raise Stale(STALE)
+        _check_current(conn, user, opt["plan_run_id"], clock)  # the option's figures must still hold
         try:
             params = json.loads(opt["params_json"])
         except ValueError:
@@ -284,17 +304,13 @@ def entry_checks(conn: sqlite3.Connection, business_id: int, entry: Entry, *,
     return checks
 
 
-def _check_errors(checks: dict[str, str]) -> dict[str, str]:
-    return {name: why for name, why in failures(checks).items()}
-
-
 def add_entry(conn: sqlite3.Connection, user: User, values: dict[str, str], *, clock: Clock) -> int:
     """POST /entries (Q8): a typed source document plus a candidate waiting
     for the owner. A failed rule check is shown at once, and nothing is stored."""
     entry = parse_entry(values)
     with writer.atomic(conn):
         checks = entry_checks(conn, user.business_id, entry)
-        bad = _check_errors(checks)
+        bad = failures(checks)
         if bad:
             raise FieldErrors({"entry": "; ".join(bad.values())}, values)
         record = {**entry.record, "kind": entry.kind}
@@ -381,7 +397,7 @@ def confirm_candidate(conn: sqlite3.Connection, user: User, candidate_id: int, v
         elif cand["record_type"] in ("payable", "receivable"):
             values = {**values, "kind": "bill" if cand["record_type"] == "payable" else "invoice"}
             entry = parse_entry(values)
-            bad = _check_errors(entry_checks(conn, user.business_id, entry, skip_candidate=candidate_id))
+            bad = failures(entry_checks(conn, user.business_id, entry, skip_candidate=candidate_id))
             if bad:
                 raise FieldErrors({"entry": "; ".join(bad.values())}, values)
             _create_record(conn, user, cand, entry, source, clock)
@@ -432,6 +448,8 @@ def _confirm_txn(conn, user: User, cand, values: dict[str, str], source: str, cl
     amount = None
     try:
         amount = parse_inr(values.get("amount") or "")
+        if amount <= 0:
+            errors["amount"] = "Enter an amount above zero."
     except ValueError:
         errors["amount"] = "Enter the amount in rupees, like 1,20,000."
     txn_date = _date_field(values, "txn_date", errors, required=True)
@@ -483,14 +501,12 @@ def confirm_balance(conn: sqlite3.Connection, user: User, account_id: int, amoun
                                f"bank_account:{account_id}", conn=conn, clock=clock)
         conn.execute(
             "UPDATE owner_question SET status = 'ANSWERED', answer_json = ?, answered_by = ?, answered_at = ? "
-            "WHERE business_id = ? AND status = 'OPEN' AND kind = 'confirm_balance'",
+            "WHERE business_id = ? AND status = 'OPEN' AND kind = 'confirm_balance' "
+            "AND COALESCE(json_extract(choices_json, '$.account_id'), ?) = ?",
             (json.dumps({"account_id": account_id, "balance_paise": real}), user.id, clock.now().isoformat(),
-             user.business_id),
+             user.business_id, account_id, account_id),
         )
         return _replan(conn, user, clock)
-
-
-SETTINGS_FORM = ("safety_amount", "escalation_amount", "horizon_days", "payment_days", "language")
 
 
 def parse_settings(values: dict[str, Any]) -> dict[str, Any]:
@@ -510,7 +526,7 @@ def parse_settings(values: dict[str, Any]) -> dict[str, Any]:
         errors["horizon_days"] = "Enter a whole number of days."
     days = values.get("payment_days") or []
     days = [days] if isinstance(days, str) else list(days)
-    order = ("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN")
+    order = WEEKDAYS
     if not days or any(d not in order for d in days):
         errors["payment_days"] = "Choose at least one payment day."
     else:
@@ -550,8 +566,7 @@ def set_priority(conn: sqlite3.Connection, user: User, payable_id: int, priority
 
 def what_if(conn: sqlite3.Connection, user: User, body: dict[str, Any], *, clock: Clock) -> dict[str, Any]:
     """POST /api/what-if (Q9): the planner and its options on the current
-    snapshot with the changes in `body`. It reads in one transaction and
-    writes nothing."""
+    snapshot with the changes in `body`. It writes nothing."""
     if not isinstance(body, dict):
         raise Refused("Send a JSON object.")
     unknown = set(body) - {"receivable_dates", "drop_payables", "safety_paise"}

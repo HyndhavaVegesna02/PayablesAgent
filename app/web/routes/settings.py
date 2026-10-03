@@ -16,7 +16,7 @@ from app.web.auth import User, db, owner_only
 from app.web.routes._common import done, form_values, int_or_none
 
 router = APIRouter()
-DAYS = ("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN")
+DAYS = actions.WEEKDAYS
 
 
 def settings_page(request: Request, conn: sqlite3.Connection, user: User, *, values: dict | None = None,

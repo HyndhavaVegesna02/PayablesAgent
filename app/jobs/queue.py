@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from datetime import date
 from typing import Any
 
 from app.clock import Clock, SystemClock
@@ -88,13 +89,19 @@ def claim_one(
     return row
 
 
-def enqueue_monday_plans(conn: sqlite3.Connection, *, clock: Clock) -> None:
-    """One monday_plan job per business for today; the key makes a repeat
-    (a coalesced cron, a demo advance) harmless."""
-    day = clock.today().isoformat()
+def enqueue_monday_plans(conn: sqlite3.Connection, *, clock: Clock, day: date | None = None) -> None:
+    """One monday_plan job per business for that Monday (default today); the
+    key makes a repeat (a coalesced cron, a demo advance) harmless."""
+    key_day = (day or clock.today()).isoformat()
     for (business_id,) in conn.execute("SELECT id FROM business ORDER BY id").fetchall():
         enqueue(conn, kind="monday_plan", payload={"business_id": business_id},
-                idempotency_key=f"monday_plan:{business_id}:{day}", clock=clock)
+                idempotency_key=f"monday_plan:{business_id}:{key_day}", clock=clock)
+
+
+def enqueue_poll_mail(conn: sqlite3.Connection, *, clock: Clock) -> None:
+    """A mail poll, unless one is already waiting."""
+    if queued_job_id(conn, "poll_mail") is None:
+        enqueue(conn, kind="poll_mail", payload={}, clock=clock)
 
 
 def mark_done(conn: sqlite3.Connection, job_id: int) -> None:

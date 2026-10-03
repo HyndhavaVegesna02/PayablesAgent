@@ -213,12 +213,17 @@ def plan_view(conn: sqlite3.Connection, business_id: int) -> PlanView | None:
             by_day[line.pay_on].pays.append(line)
     # Approved bills have no plan line (the planner counts them as fixed
     # outflows on their planned date, or on the first day if that has passed).
-    for b in awaiting_payment(conn, business_id):
-        if b["status"] == "PAYMENT_EXPECTED" and days:
-            on = max(b["planned_date"] or days[0].day, days[0].day)
+    # Bills the owner marked PAID whose debit has not linked yet count the same way (D12).
+    paid_unlinked = _rows(conn, "SELECT id, amount_paise, planned_date, status, version FROM payable "
+                                "WHERE business_id = ? AND status = 'PAID' AND matched_txn_id IS NULL",
+                          (business_id,))
+    for b in [*awaiting_payment(conn, business_id), *paid_unlinked]:
+        if b["status"] in ("PAYMENT_EXPECTED", "PAID") and days:
+            planned = b["planned_date"] if isinstance(b["planned_date"], date) else _day(b["planned_date"])
+            on = max(planned or days[0].day, days[0].day)
             if on in by_day:
-                by_day[on].pays.append(Line(b["id"], b["name"], "PAY", on, b["amount_paise"], "",
-                                            b["status"], b["version"], on))
+                by_day[on].pays.append(Line(b["id"], names.get(b["id"], f"Bill {b['id']}"), "PAY", on,
+                                            b["amount_paise"], "", b["status"], b["version"], on))
     open_pay = [ln for ln in lines if ln.decision == "PAY" and ln.status == "PLANNED"]
     next_day = min((ln.pay_on for ln in open_pay), default=None)
     lowest = run["lowest_balance_paise"]
@@ -364,10 +369,6 @@ def _submission_status(r: dict[str, Any]) -> str:
         "REJECTED": "Rejected by the owner",
         "NEW": "Waiting to be read",
     }[r["candidate_status"]]
-
-
-def parties(conn: sqlite3.Connection, business_id: int) -> list[dict[str, Any]]:
-    return _rows(conn, "SELECT id, kind, name FROM party WHERE business_id = ? ORDER BY name", (business_id,))
 
 
 # --- Settings -----------------------------------------------------------------------

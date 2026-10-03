@@ -261,8 +261,11 @@ def match_credit(conn: sqlite3.Connection, txn_id: int, *, window_days: int, clo
 
     if len(exact) == 1:
         rx = exact[0]
+        when = (f"expected {rx['expected_date']}" if rx["expected_date"] is None
+                or _within(rx["expected_date"], txn_day, window_days)
+                else f"asked for by {', '.join(asked[rx['id']])}")
         why = (f"Credit of {format_inr(t['amount_paise'])} on {t['txn_date']} from {t['counterparty']} "
-               f"matches receivable {rx['id']} expected {rx['expected_date']}.")
+               f"matches receivable {rx['id']} {when}.")
         writer.transition(EntityRef("bank_txn", txn_id), "MATCHED", RECONCILER, why, f"receivable:{rx['id']}",
                           fields={"party_id": rx["party_id"]}, **kw)
         writer.transition(EntityRef("receivable", rx["id"]), "CONFIRMED", RECONCILER, why, ref,
@@ -314,7 +317,9 @@ def handle_failure(conn: sqlite3.Connection, candidate_id: int, *, window_days: 
     paid = [] if reference is None else [dict(r) for r in conn.execute(
         "SELECT p.*, t.id AS txn_id FROM payable p JOIN bank_txn t ON t.id = p.matched_txn_id "
         "WHERE p.business_id = ? AND p.status = 'PAID' AND t.amount_paise = ? AND t.reference = ? "
-        "AND t.status = 'MATCHED' ORDER BY p.id", (business_id, amount, reference),
+        # UNMATCHED too: the owner marked a REVIEW bill paid, which links its debit
+        # without the reconciler matching it (D12).
+        "AND t.status IN ('MATCHED', 'UNMATCHED') ORDER BY p.id", (business_id, amount, reference),
     )]
     expected = [dict(r) for r in conn.execute(
         "SELECT * FROM payable WHERE business_id = ? AND status = 'PAYMENT_EXPECTED' AND amount_paise = ? "

@@ -10,11 +10,12 @@ from pathlib import Path
 from typing import Any
 
 import jinja2
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.exceptions import HTTPException
 
 from app.domain.money import format_inr
 from app.domain.states import StaleVersion, TransitionRefused, VersionRequired
@@ -22,6 +23,7 @@ from app.planner.plan import format_day
 from app.web.actions import FieldErrors, Refused, Stale
 from app.web.auth import NotLoggedIn
 from app.web.repo import NotFound
+from app.web.routes._common import is_htmx
 
 HERE = Path(__file__).resolve().parent
 
@@ -43,7 +45,7 @@ def render(request: Request, name: str, context: dict[str, Any] | None = None, s
         "demo_ai": settings.demo_ai == "fixtures",
         "user": getattr(request.state, "user", None),
         "csrf_token": getattr(request.state, "csrf", ""),
-        "partial": request.headers.get("hx-request") == "true",
+        "partial": is_htmx(request),
         **(context or {}),
     }
     return templates.TemplateResponse(request, name, ctx, status_code=status)

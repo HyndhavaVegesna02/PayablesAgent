@@ -8,6 +8,7 @@ import sqlite3
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import Response
 
+from app.domain.states import StaleVersion, VersionRequired
 from app.web import actions, repo
 from app.web.app import render
 from app.web.auth import User, db, owner_only
@@ -24,6 +25,13 @@ def week_page(request: Request, conn: sqlite3.Connection, user: User, *, message
         "awaiting": repo.awaiting_payment(conn, user.business_id),
         "message": message,
     }, status=status)
+
+
+def stale_page(request: Request, conn: sqlite3.Connection, user: User, message: str) -> Response:
+    """The refusal page for a stale plan: replanned first if today's inputs no
+    longer match the current run, so its figures are current and approvable."""
+    actions.refresh_if_stale(conn, user, clock=request.app.state.clock)
+    return week_page(request, conn, user, message=message, status=409)
 
 
 @router.get("/")
@@ -43,7 +51,7 @@ async def approve(run_id: int, request: Request, user: User = Depends(owner_only
     try:
         actions.approve(conn, user, run_id, versions, clock=request.app.state.clock)
     except actions.Stale as e:
-        return week_page(request, conn, user, message=str(e), status=409)
+        return stale_page(request, conn, user, str(e))
     return done(request, "/")
 
 
@@ -51,5 +59,10 @@ async def approve(run_id: int, request: Request, user: User = Depends(owner_only
 async def mark_paid(payable_id: int, request: Request, user: User = Depends(owner_only),
                     conn: sqlite3.Connection = Depends(db)):
     values = await form_values(request)
-    actions.mark_paid(conn, user, payable_id, int_or_none(values.get("version")), clock=request.app.state.clock)
+    try:
+        actions.mark_paid(conn, user, payable_id, int_or_none(values.get("version")),
+                          clock=request.app.state.clock)
+    except (StaleVersion, VersionRequired):
+        return week_page(request, conn, user, message="This bill changed since you opened the page. "
+                         "Here is the current plan.", status=409)
     return done(request, "/")

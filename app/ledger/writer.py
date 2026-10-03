@@ -422,6 +422,11 @@ def transition(
             sets["approved_at"] = clock.now().isoformat()
         if kind == "payable" and before[col] == "PLANNED" and to_state == "CONFIRMED":
             sets["planned_date"] = None
+        if kind == "payable" and to_state == "REOPENED":
+            # The payment failed: the debit it was linked to no longer pays it. A
+            # retried bill that the owner marks PAID must count as an outflow again
+            # until its new debit links (D12); the old link stays in the event.
+            sets["matched_txn_id"] = None
         _update_state(conn, kind, before, sets)
         after = _get(conn, kind, entity.id)
         _insert_event(
@@ -565,6 +570,11 @@ def link_payment(
             raise IllegalTransition(f"payable {payable_id} is already linked to bank_txn {before['matched_txn_id']}")
         if txn["direction"] != "debit" or _business_of(conn, "bank_txn", txn) != before["business_id"]:
             raise IllegalTransition(f"bank_txn {txn_id} is not a debit of this business")
+        if txn["status"] == "REVERSED":
+            raise IllegalTransition(f"bank_txn {txn_id} was reversed; it paid nothing")
+        holder = _fetch(conn, "SELECT id FROM payable WHERE matched_txn_id = ? AND id <> ?", (txn_id, payable_id))
+        if holder is not None:
+            raise IllegalTransition(f"bank_txn {txn_id} already pays bill {holder['id']}")
         _update_state(conn, "payable", before, {"matched_txn_id": txn_id})
         after = _get(conn, "payable", payable_id)
         _insert_event(

@@ -82,7 +82,11 @@ def test_a_tampered_cookie_is_no_session(web):
     _, client = web
     login(client)
     value = client.cookies.get(SESSION_COOKIE)
-    client.cookies.set(SESSION_COOKIE, value[:-2] + ("A" if value[-1] != "A" else "B") + value[-1])
+    # Change one character of the signed payload (the part before the first dot);
+    # the signature then cannot match. (Editing the signature's own last characters
+    # can leave its decoded bytes unchanged, which made this test flaky.)
+    i = len(value.split(".")[0]) // 2
+    client.cookies.set(SESSION_COOKIE, value[:i] + ("A" if value[i] != "A" else "B") + value[i + 1:])
     assert client.get("/", follow_redirects=False).status_code == 303
 
 

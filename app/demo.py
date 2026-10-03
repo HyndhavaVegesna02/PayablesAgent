@@ -43,13 +43,21 @@ def advance(conn: sqlite3.Connection, clock, to: datetime) -> datetime:
     when a Monday 07:00 was crossed. Returns the new instant."""
     if not isinstance(clock, DemoClock):
         raise NotADemo("the clock only moves by hand in demo mode (set DEMO_NOW)")
-    before = clock.set(to)
-    if _mondays_crossed(before, clock.now()):
-        queue.enqueue_monday_plans(conn, clock=clock)
+    before = clock.now()
+    if to < before:
+        raise ValueError(f"the demo clock only moves forward; it is already {before.isoformat()}")
+    # The jobs go in first and commit only once the clock has moved, so a failure
+    # either way leaves time and the queue as they were.
+    for monday in _mondays_crossed(before, to):
+        queue.enqueue_monday_plans(conn, clock=clock, day=monday.date())
     # Time passed, so the mail polls that would have run did: one poll now picks
     # up whatever the new time releases, without waiting for the real-time interval.
-    if queue.queued_job_id(conn, "poll_mail") is None:
-        queue.enqueue(conn, kind="poll_mail", payload={}, clock=clock)
+    queue.enqueue_poll_mail(conn, clock=clock)
+    try:
+        clock.set(to)
+    except BaseException:
+        conn.rollback()
+        raise
     conn.commit()
     return clock.now()
 
@@ -68,7 +76,7 @@ def main(argv: list[str] | None = None) -> int:
     conn = write_connection(settings.database_path)
     try:
         now = advance(conn, clock, parse_time(args[0]))
-    except (NotADemo, ValueError) as e:
+    except (NotADemo, ValueError, OSError) as e:
         print(f"demo-time: {e}", file=sys.stderr)
         return 1
     finally:

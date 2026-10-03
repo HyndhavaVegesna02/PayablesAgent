@@ -62,6 +62,8 @@ def seed(
     owner_password: str = DEV_OWNER_PASSWORD,
     helper_password: str = DEV_HELPER_PASSWORD,
 ) -> None:
+    if not owner_password.strip() or not helper_password.strip():
+        raise ValueError("SEED_OWNER_PASSWORD and SEED_HELPER_PASSWORD must not be blank")
     if conn.execute("SELECT COUNT(*) FROM business").fetchone()[0]:
         raise AlreadySeeded("database already has a business; run `make reseed` to start fresh")
     kw = dict(actor=OWNER, conn=conn, clock=clock, **WHY)

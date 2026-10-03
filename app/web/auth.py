@@ -146,8 +146,14 @@ async def check_csrf(request: Request) -> None:
     if sent is None:
         form = await request.form()
         sent = form.get("csrf_token")
-    if not expected or not isinstance(sent, str) or not hmac.compare_digest(sent, expected):
+    if not expected or not isinstance(sent, str) or not same_token(sent, expected):
         raise HTTPException(403, "The form expired or came from somewhere else. Reload the page and try again.")
+
+
+def same_token(sent: str, expected: str) -> bool:
+    """Constant-time comparison. Bytes, because compare_digest refuses a str
+    with non-ASCII characters (a forged token must be a 403, not a 500)."""
+    return hmac.compare_digest(sent.encode("utf-8"), expected.encode("utf-8"))
 
 
 def require(*roles: str):

@@ -44,7 +44,7 @@ class FixtureBackend:
                  json_schema: dict[str, Any] | None) -> RawAIResponse:
         title = (json_schema or {}).get("title", "")
         for name, text in self.texts.items():
-            if text in contents and title in self.replies[name]:
+            if text and text in contents and title in self.replies[name]:
                 return RawAIResponse(json.dumps(self.replies[name][title]), 0, 0, 0)
         raise AIUnavailable(f"the demo fixture AI has no canned {title or 'reply'} for this email",
                             retryable=False)

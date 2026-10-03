@@ -163,8 +163,7 @@ def enqueue_monday_plan(*, db_path: str | Path, clock: Clock) -> None:
 def enqueue_poll_mail(*, db_path: str | Path, clock: Clock) -> None:
     conn = write_connection(db_path)
     try:
-        if queue.queued_job_id(conn, "poll_mail") is None:
-            queue.enqueue(conn, kind="poll_mail", payload={}, clock=clock)
+        queue.enqueue_poll_mail(conn, clock=clock)
         conn.commit()
     finally:
         conn.close()

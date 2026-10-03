@@ -81,6 +81,7 @@ type = "forbidden"
 source_modules = ["app.web"]
 forbidden_modules = ["app.ai"]
 # The web app runs the inline replan (app.jobs.replan.replan). That module
-# names app.worker.JobContext only under TYPE_CHECKING, so the web process
-# never loads the worker, whose main() is what builds the Gemini backend.
+# names app.worker.JobContext only under TYPE_CHECKING. app.main does import
+# app.worker (for the heartbeat), which loads app.ai only inside functions the
+# web never calls; tests/test_web_roles.py checks no app.ai module is loaded.
 ignore_imports = ["app.jobs.replan -> app.worker"]

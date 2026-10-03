@@ -15,7 +15,7 @@ from app.web import actions, repo
 from app.web.app import render
 from app.web.auth import User, db, owner_only
 from app.web.routes._common import done, form_values
-from app.web.routes.week import week_page
+from app.web.routes.week import stale_page
 
 router = APIRouter()
 
@@ -84,7 +84,7 @@ async def choose(option_id: int, request: Request, user: User = Depends(owner_on
     try:
         actions.choose_option(conn, user, option_id, clock=request.app.state.clock)
     except actions.Stale as e:
-        return week_page(request, conn, user, message=str(e), status=409)
+        return stale_page(request, conn, user, str(e))
     return done(request, "/")
 
 
@@ -99,7 +99,12 @@ async def answer(question_id: int, request: Request, user: User = Depends(owner_
         raise actions.Refused("This question is already answered.")
     values = await form_values(request)
     clock = request.app.state.clock
-    choices = json.loads(q["choices_json"]) if q["choices_json"] else {}
+    try:
+        choices = json.loads(q["choices_json"]) if q["choices_json"] else {}
+    except ValueError:
+        choices = None
+    if not isinstance(choices, dict):
+        raise actions.Refused("This question's choices can't be read.")
     if q["kind"] == "confirm_record":
         cid = choices.get("candidate_id")
         if type(cid) is not int:

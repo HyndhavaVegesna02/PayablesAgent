@@ -56,9 +56,12 @@ def _planner_status(status: str) -> str:
     still money leaving the account: the planner sees it exactly as an
     approved payment (PAYMENT_EXPECTED), dated on its planned date or today
     (batch 3 plan, PO decision D12). Once the debit links to it, the debit
-    carries the outflow and the bill leaves the snapshot. Known limit: if
-    that debit never arrives, the outflow stays committed until the next
-    statement's drift check shows it."""
+    carries the outflow and the bill leaves the snapshot. Known limits: if
+    that debit never arrives, the outflow stays committed; while the account
+    is CHECKING (opening cash then uses the lower reported balance, which may
+    already show the payment) it can be subtracted twice; and a debit that does
+    not name-match the bill stays UNMATCHED, so both count (KL-1, D16) until the
+    owner's link action (CHG-022). Each errs towards less cash, never more."""
     return "PAYMENT_EXPECTED" if status == "PAID" else status
 
 
