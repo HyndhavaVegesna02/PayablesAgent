@@ -109,3 +109,15 @@ Every minus and dash variant, "minus" and bracketed amounts are rejected against
 ## Result
 
 Both halves are approved: CHG-008 after fix round 1 (follow-ups in round 2), and CHG-018 after round 2. Non-blocking notes are in CHG-026. The batch is ready for the PO's verdict.
+
+## PO verdict
+
+ACCEPT for CHG-008 and CHG-018, the same verdict for both (2026-10-03, payablesagent-ac). The PO verified 117a347 independently: 1148 tests pass and all 7 import contracts are kept.
+
+The changes made after the pre-acceptance are all accepted:
+- A: a bill the agent finds goes through the pipeline, so there is one confirm path and one bank-change check;
+- B: agent candidates are case evidence only;
+- C: ask_owner needs 1 to 4 choices;
+- D: fixture 11 is out of the demo's inbox, so the demo's drift stays.
+
+CHG-026's crash-on-last-attempt edge case is accepted as a known limit for now. It is to be listed in the threat model and in the README's known limits (batch 7).

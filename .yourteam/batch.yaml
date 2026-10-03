@@ -1,6 +1,6 @@
 # Active batch. status: none means no batch is running.
 batch: 6
-status: review      # none | active | review | closed | aborted
+status: closed      # none | active | review | closed | aborted
 goal: "TDD Phase 7: the exception agent works the cases code cannot settle within code-counted limits, with five tools and evidence checked by code, never changing payment state (CHG-008, D21); each replan gets a number-checked plain-text summary (CHG-018)."
 branch: batch-6
 start_tag: null

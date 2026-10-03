@@ -187,7 +187,7 @@ changes:
   - id: CHG-008
     title: Exception agent — loop, tools, case file, escalation
     file: docs/changes/CHG-008-exception-agent.md
-    status: ready
+    status: done
     priority: 8
     type: feature
     lane: sliced
@@ -304,7 +304,7 @@ changes:
   - id: CHG-018
     title: explain_plan job — plan diff to a plain-language summary (Gemini), number check, template fallback
     file: docs/changes/CHG-018-explain-plan.md
-    status: ready
+    status: done
     priority: 18
     type: feature
     lane: planned
