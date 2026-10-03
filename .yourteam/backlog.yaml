@@ -440,7 +440,7 @@ changes:
   - id: CHG-028
     title: Statutory debits never match on their own (no party name to match a challan debit)
     file: docs/changes/CHG-028-statutory-debit-matching.md
-    status: ready
+    status: done
     priority: 28
     type: defect
     lane: planned
@@ -450,7 +450,7 @@ changes:
   - id: CHG-029
     title: A vendor's first bank details are recorded without a flag (only a change from details on record is)
     file: docs/changes/CHG-029-first-bank-details-unflagged.md
-    status: ready
+    status: done
     priority: 29
     type: defect
     lane: planned
@@ -460,7 +460,7 @@ changes:
   - id: CHG-030
     title: A missing due date reaches the owner flagged, never as a value the form refuses (live pilot, scenario 04)
     file: docs/changes/CHG-030-missing-due-date.md
-    status: ready
+    status: done
     priority: 30
     type: defect
     lane: planned
@@ -470,7 +470,7 @@ changes:
   - id: CHG-031
     title: The agent can finish a drift case when the evidence is in the mailbox (live pilot, scenario 07)
     file: docs/changes/CHG-031-drift-recovery.md
-    status: ready
+    status: done
     priority: 31
     type: defect
     lane: planned
@@ -480,10 +480,10 @@ changes:
   - id: CHG-032
     title: A check that the committed fixture-mode reports reproduce (md and json, below their commit and date)
     file: docs/changes/CHG-032-report-reproducibility-check.md
-    status: draft
+    status: ready
     priority: 32
     type: chore
-    lane: null
+    lane: direct
     expected_paths: []
     depends_on: null
     batch: null

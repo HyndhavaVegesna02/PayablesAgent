@@ -2,7 +2,7 @@
 id: CHG-032
 title: A check that the committed fixture-mode reports reproduce
 type: chore
-lane:
+lane: direct
 ---
 
 ## Context
@@ -22,3 +22,4 @@ separate make target, or the batch-close gate only.
 
 ## History
 - 2026-10-04: drafted from batch 8's review
+- 2026-10-04: PO: its own make target, `make check-evidence`, kept out of make test, and a required step in the batch-close gate; direct lane, first in the next work

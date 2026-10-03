@@ -151,3 +151,21 @@ Minors:
   regenerate-and-diff over every file.
 
 Batch 8 is ready for the PO's verdict.
+
+## PO verdict
+
+ACCEPT for CHG-029, CHG-028, CHG-030 and CHG-031, all together (2026-10-04, payablesagent-ac). The PO
+checked 883ab9a independently: 1304 tests pass and all 9 import contracts hold.
+
+- **The live evidence.** The pilot passed 9 of 11. On the AFTER run, scenarios 04 and 07 pass live, with
+  the drift case resolved by the agent at medium. This is the regression-and-improvement evidence the
+  brief asks for.
+- **To do next.** The eval README is to tell the story in order: the pilot's failure, the trace, the root
+  cause, the fix, then the AFTER.
+- **Deviations.** All reviewed deviations are accepted, including CHG-031's two-way test standing in for
+  "generated".
+- **D26.** With record_bank_details removed, every first bank detail goes through the owner. That is the
+  stricter outcome, and it is accepted.
+- **CHG-032.** It becomes its own make target, `make check-evidence`, kept out of make test, and a required
+  step in the batch-close gate (definition of done). It is a direct-lane chore, to land at the start of the
+  next work, before the phase 2 live runs.

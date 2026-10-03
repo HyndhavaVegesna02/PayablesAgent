@@ -1,6 +1,6 @@
 # Active batch. status: none means no batch is running.
 batch: 8
-status: review      # none | active | review | closed | aborted
+status: closed      # none | active | review | closed | aborted
 goal: "Close the gaps batch 7 found and fix what the first live run found: a vendor's first bank details need the owner's approval (CHG-029, D26); statutory debits match by payee keywords (CHG-028, D27); a missing due date reaches the owner flagged (CHG-030); the agent can finish a drift case when the evidence is in the mailbox (CHG-031)."
 branch: batch-8
 start_tag: null
