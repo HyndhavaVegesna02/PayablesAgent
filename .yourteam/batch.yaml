@@ -20,13 +20,14 @@ changes:
     board: in-progress
     start_commit: 45018f5
     blocked_question: null
-    gate_evidence: []
+    gate_evidence:
+      - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 60 files, 165 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 5 kept, 0 broken.", commit: 57d0be0, at: 2026-10-03T04:22:30+00:00}
     prepatch: null
     notes_resolved: false
   - id: CHG-023
     lane: direct
-    board: todo
-    start_commit: null
+    board: in-progress
+    start_commit: 57d0be0
     blocked_question: null
     gate_evidence: []
     prepatch: null
