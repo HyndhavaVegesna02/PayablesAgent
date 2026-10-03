@@ -13,7 +13,7 @@ from datetime import date
 from typing import Any
 
 from app.domain.money import format_inr
-from app.db.read import bill_names, missing_tax_warnings
+from app.db.read import bill_names, missing_tax_warnings  # bill_names: moved here (CHG-018)
 from app.ledger.reconcile import early_receipt_requests
 from app.ledger.writer import calculated_balance
 from app.validate.bank import describe, normalise_ifsc

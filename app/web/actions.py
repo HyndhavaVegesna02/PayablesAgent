@@ -23,7 +23,7 @@ from typing import Any
 
 from app.clock import Clock
 from app.agent import cases as agent_cases
-from app.db.read import bank_txn_with_key, build_snapshot, invoice_on_record, what_if_snapshot
+from app.db.read import bank_txn_with_key, bill_names, build_snapshot, invoice_on_record, what_if_snapshot
 from app.domain.models import BankTxnNew, PayableNew, ReceivableNew
 from app.domain.money import format_inr, parse_inr
 from app.jobs import queue
@@ -389,7 +389,7 @@ def choose_option(conn: sqlite3.Connection, user: User, option_id: int, *, clock
             params = json.loads(opt["params_json"])
         except ValueError:
             raise Refused("This option can't be applied.") from None
-        label = repo.option_label(opt["kind"], params, repo.bill_names(conn, user.business_id),
+        label = repo.option_label(opt["kind"], params, bill_names(conn, user.business_id),
                                   repo.receivable_names(conn, user.business_id)) \
             if isinstance(params, dict) and _has_params(opt["kind"], params) else None
         if label is None:
@@ -796,7 +796,7 @@ def explain_debit(conn: sqlite3.Connection, user: User, question: dict, values: 
         version = int_or_none(values.get(f"version_{bill_id}"))
         if version != bill["version"]:
             raise Stale("This bill changed since you opened the page. Reload it and try again.")
-        name = repo.bill_names(conn, user.business_id).get(bill_id, f"bill {bill_id}")
+        name = bill_names(conn, user.business_id).get(bill_id, f"bill {bill_id}")
         why = f"Owner: this {format_inr(txn['amount_paise'])} debit paid {name}"
         difference = bill["amount_paise"] - txn["amount_paise"]
         if difference:

@@ -2,7 +2,7 @@
 id: CHG-008
 title: Exception agent — loop, tools, case file, escalation
 type: feature
-lane:
+lane: sliced
 ---
 
 ## Context
@@ -26,10 +26,18 @@ changes a rule, or sends anything outside the app.
 - [ ] AC4: The hidden-instruction attack from Part 1 ("Attack to run and document") produces no change to priority, dates or payment status
 
 ## Expected paths
-<!-- fill in when pulled into a batch -->
+Batch 6 plan, docs/batches/2026-10-03-6/plan.md (slices S1-S8):
+- `app/agent/` (cases, case_file, tools, loop, escalation, permissions)
+- `app/ai/agent_step.py`, `app/ai/prompts/exception_agent.v1.md`, `app/ai/fixture_backend.py`
+- `app/jobs/run_case.py`, `app/worker.py`
+- `app/db/migrations/0003_agent_case_state.sql`, `app/db/read.py`
+- `app/web/actions.py`, `app/web/repo.py`, `app/web/routes/attention.py`, `app/web/templates/attention.html`
+- `fixtures/ai_replies.json`, `fixtures/test_inbox/11-debit-shree-transport-missed.eml`
+- `docs/notes/agent-permissions.md`, `pyproject.toml`, `tests/`
 
 ## Open Questions
 <!-- none yet -->
 
 ## History
 - 2026-10-02: drafted from TDD v2.0 Part 2, Phase 7
+- 2026-10-03: built in batch 6, slices S1-S8; D21 and deviations 1-7 PO-accepted

@@ -1,7 +1,7 @@
 """What changed between two plan runs (TDD Part 2, "Explaining a change").
 
-explain_plan will hand this list to Gemini for a plain-text summary; the
-check that guards that summary rejects any amount or date not in
+explain_plan (app/jobs/explain.py) hands this list to Gemini for a plain-text
+summary; the check that guards it (app/validate/summary.py) rejects any amount or date not in
 `amounts_paise` / `dates`, so both sets hold exactly what the changes mention."""
 
 from __future__ import annotations

@@ -174,7 +174,7 @@ CREATE TABLE plan_line (
   payable_id INTEGER NOT NULL REFERENCES payable(id),
   decision TEXT NOT NULL CHECK (decision IN ('PAY','WAIT','ESCALATE')),
   pay_on TEXT,
-  reason TEXT NOT NULL,
+  reason TEXT NOT NULL, amount_paise INTEGER,
   PRIMARY KEY (plan_run_id, payable_id)
 );
 

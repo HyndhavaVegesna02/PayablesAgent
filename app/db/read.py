@@ -5,16 +5,17 @@ write to the ledger even if the rest of the agent code is wrong (TDD Part 2,
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, replace
 import sqlite3
+from collections.abc import Sequence
+from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from pathlib import Path
 
 from app.domain.names import normalise_name
 from app.planner.plan import AccountCash, InflowIn, OverrideIn, PayableIn, PlanLine, PlanSnapshot
+from app.validate.alert import AccountIn
 from app.validate.duplicates import normalise_invoice_number
 from app.validate.gstin import normalise_gstin
-from app.validate.alert import AccountIn
 from app.validate.invoice import InvoiceKey
 
 
@@ -290,7 +291,7 @@ def missing_tax_warnings(conn: sqlite3.Connection, business_id: int, today: date
 
 
 def what_if_snapshot(conn: sqlite3.Connection, business_id: int, today: date, *,
-                     drop_payables: list[int] = (), receivable_dates: dict[int, date] | None = None,
+                     drop_payables: Sequence[int] = (), receivable_dates: dict[int, date] | None = None,
                      safety_paise: int | None = None) -> PlanSnapshot:
     """The current snapshot with what-if changes (POST /api/what-if, and the
     agent's run_planner): bills left out, receivables moved to a date (and
@@ -347,8 +348,9 @@ class PersistedPlan:
 
 
 def persisted_result(conn: sqlite3.Connection, run_id: int) -> PersistedPlan:
-    """A run rebuilt from plan_run and plan_line. A line's amount is its bill's
-    amount now: plan_line keeps no amount, and the planner pays a bill whole."""
+    """A run rebuilt from plan_run and plan_line, with what each line pays (less
+    than the bill when it takes an early-payment discount). Lines stored before
+    migration 0004 have no amount and are read at the bill's amount now."""
     run = conn.execute("SELECT * FROM plan_run WHERE id = ?", (run_id,)).fetchone()
     if run is None:
         raise LookupError(f"plan_run {run_id} does not exist")
@@ -356,7 +358,8 @@ def persisted_result(conn: sqlite3.Connection, run_id: int) -> PersistedPlan:
         PlanLine(r["payable_id"], r["decision"], date.fromisoformat(r["pay_on"]) if r["pay_on"] else None,
                  r["amount_paise"], r["reason"])
         for r in conn.execute(
-            "SELECT pl.payable_id, pl.decision, pl.pay_on, pl.reason, p.amount_paise FROM plan_line pl "
+            "SELECT pl.payable_id, pl.decision, pl.pay_on, pl.reason, "
+            "COALESCE(pl.amount_paise, p.amount_paise) AS amount_paise FROM plan_line pl "
             "JOIN payable p ON p.id = pl.payable_id WHERE pl.plan_run_id = ? ORDER BY pl.payable_id", (run_id,))
     )
     return PersistedPlan(run["id"], run["opening_cash_paise"], run["lowest_balance_paise"],

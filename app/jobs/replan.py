@@ -158,9 +158,10 @@ def persist_plan(
     )
     run_id = cur.lastrowid
     conn.executemany(
-        "INSERT INTO plan_line (plan_run_id, payable_id, decision, pay_on, reason) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO plan_line (plan_run_id, payable_id, decision, pay_on, reason, amount_paise) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
         [
-            (run_id, ln.payable_id, ln.decision, ln.pay_on and ln.pay_on.isoformat(), ln.reason)
+            (run_id, ln.payable_id, ln.decision, ln.pay_on and ln.pay_on.isoformat(), ln.reason, ln.amount_paise)
             for ln in result.lines
         ],
     )

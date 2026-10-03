@@ -39,7 +39,7 @@ class FakeBackend:
     # AI the product can do without: with nothing queued, these behave as an AI
     # that is not there (AIUnavailable, permanent) and the code falls back. Any
     # other unqueued call fails the test.
-    optional: frozenset[str] = frozenset({"PlanSummary"})
+    optional: frozenset[str] = frozenset()
 
     def queue(self, schema_title: str, *replies: Any) -> FakeBackend:
         self.replies[schema_title].extend(replies)
@@ -75,8 +75,9 @@ FIXTURE_REPLIES: dict[str, list[tuple[str, dict]]] = {
 
 
 def fixture_backend(*names: str) -> FakeBackend:
-    """A FakeBackend with the replies for these fixtures queued in order."""
-    backend = FakeBackend()
+    """A FakeBackend with the replies for these fixtures queued in order. These
+    end-to-end runs replan, so the plan note (optional AI) falls back to the template."""
+    backend = FakeBackend(optional=frozenset({"PlanSummary"}))
     for name in names:
         for title, reply in FIXTURE_REPLIES[name]:
             backend.queue(title, reply)

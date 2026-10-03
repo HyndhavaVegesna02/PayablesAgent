@@ -31,6 +31,9 @@ DATES = frozenset({date(2026, 10, 12), date(2026, 10, 15)})  # Mon 12 Oct, Thu 1
     "The low point moved to Rs.1,83,000.00 on 15 Oct; it was Rs 3,83,000 on 2026-10-12.",
     "It dips to 1,83,000 on Oct 15 and to -₹20,000 at worst, from 3,83,000 on 12/10.",
     "Nothing else changed.",
+    "Paid by Thurs 15 Oct.",  # 'rs' inside a word is not rupees
+    "It was ₹3,83,000, and now ₹1,83,000.",  # a comma after an amount is prose
+    "It now dips to −₹20,000, an overdraft.",
 ])
 def test_a_summary_using_only_the_diffs_numbers_passes(text):
     assert check_summary(text, AMOUNTS, DATES) == PASSED
@@ -41,7 +44,16 @@ def test_a_summary_using_only_the_diffs_numbers_passes(text):
     ("Lowest balance now ₹1,83,000 on Fri 16 Oct.", "date 'Fri 16 Oct'"),
     ("Lowest balance now ₹1,83,000 on Wed 15 Oct.", "date 'Wed 15 Oct'"),  # the weekday disagrees
     ("Lowest balance now ₹1,83,000 on 15 Oct 2025.", "date '15 Oct 2025'"),
-    ("Lowest balance now 2 lakh.", "number '2'"),
+    ("Lowest balance now ₹1,83,000 after 2 bills.", "number '2'"),
+    ("Lowest balance now -₹1,83,000.", "amount '-₹1,83,000'"),  # the diff has +₹1,83,000
+    ("Lowest balance now ₹20,000 on Thu 15 Oct.", "amount '₹20,000'"),  # the diff has -₹20,000: an overdraft
+    ("Lowest is one lakh eighty-three thousand.", "number in words 'one'"),
+    ("Down five percent.", "number in words 'five'"),
+    ("Due on the sixteenth.", "number in words 'sixteenth'"),
+    ("Pay it tomorrow.", "number in words 'tomorrow'"),
+    ("A third is ⅓ of it.", "number in words 'third'"),
+    ("About ⅓ of it.", "numeral '⅓'"),
+    ("   ", "empty"),
     ("Lowest is 1,99,000 now.", "amount '1,99,000'"),
     ("Lowest balance <b>₹1,83,000</b>.", "markup"),
     ("See [the plan](http://x).", "markup"),
@@ -104,11 +116,26 @@ def test_the_stored_runs_diff_like_the_plans_themselves(web):
     assert 61_000_000 in d.amounts_paise and 62_000_000 in d.amounts_paise
 
 
+def test_a_stored_line_keeps_what_it_pays_after_a_discount(web):
+    from app.db.read import build_snapshot
+    from app.planner.plan import plan
+
+    env, _ = web
+    env.conn.execute("UPDATE payable SET discount_paise = 200000, discount_by = '2026-10-14' WHERE id = 1")
+    first, second = _changed_plans(env)
+    live = {ln.payable_id: ln.amount_paise for ln in plan(build_snapshot(env.conn, 1, env.clock.today())).lines}
+    stored = {ln.payable_id: ln.amount_paise for ln in persisted_result(env.conn, second).lines}
+    assert live[1] == 17_800_000 and stored == live  # ₹1,80,000 less the ₹2,000 discount
+    # and a run stored before migration 0004 (no amount) reads the bill's amount
+    env.conn.execute("UPDATE plan_line SET amount_paise = NULL WHERE plan_run_id = ?", (first,))
+    assert {ln.payable_id: ln.amount_paise for ln in persisted_result(env.conn, first).lines}[1] == 18_000_000
+
+
 def test_a_checked_gemini_note_is_kept(web):
     env, _ = web
     first, second = _changed_plans(env)
     note = _true_note(env, first, second)
-    backend = FakeBackend().queue("PlanSummary", {"summary": note})
+    backend = FakeBackend().queue("PlanSummary", {"summary": note})  # nothing optional: one call expected
     _explain(env, backend)
     assert _summary(env, second) == (note, "gemini")
     assert backend.requests[0].thinking == "low"
@@ -118,13 +145,14 @@ def test_a_checked_gemini_note_is_kept(web):
 @pytest.mark.parametrize("reply", [
     {"summary": "The start fell by ₹10,000."},  # worked out: not in the diff
     {"summary": "Cash fell <script>x</script>."},
+    {"summary": "  "},  # empty: no note at all would hide the change
     {"note": "wrong shape"},  # a schema failure
     AIUnavailable("down", retryable=True),
 ])
 def test_anything_else_falls_back_to_the_template(web, reply):
     env, _ = web
     _, second = _changed_plans(env)
-    _explain(env, FakeBackend().queue("PlanSummary", reply))
+    _explain(env, FakeBackend().queue("PlanSummary", reply))  # one reply, as queued
     text, source = _summary(env, second)
     assert source == "template" and text.startswith("Cash at the start now ₹6,10,000 (was ₹6,20,000).")
 
@@ -141,7 +169,7 @@ def test_a_replan_that_changed_nothing_gets_no_note_and_no_call(web):
     plan_now(env)
     second = plan_now(env, "event:none")
     env.conn.commit()
-    backend = FakeBackend()
+    backend = FakeBackend()  # any call would fail the test
     _explain(env, backend)
     assert backend.requests == [] and _summary(env, second) == (None, None)
 

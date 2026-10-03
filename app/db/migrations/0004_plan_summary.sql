@@ -5,3 +5,8 @@
 -- that changed nothing.
 ALTER TABLE plan_run ADD COLUMN summary_text TEXT;
 ALTER TABLE plan_run ADD COLUMN summary_source TEXT CHECK (summary_source IN ('gemini', 'template'));
+
+-- What each line pays: a PAY line that takes an early-payment discount pays
+-- less than the bill. NULL on runs stored before this migration (read as the
+-- bill's amount).
+ALTER TABLE plan_line ADD COLUMN amount_paise INTEGER;
