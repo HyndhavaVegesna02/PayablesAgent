@@ -207,13 +207,43 @@ changes:
   - id: CHG-010
     title: Evidence — scenario runs, harness comparison, attack, traces, demo
     file: docs/changes/CHG-010-evidence.md
-    status: draft
+    status: split
     priority: 10
     type: feature
     lane: null
     expected_paths: []
     depends_on: CHG-008
     batch: null
+  - id: CHG-010b
+    title: Owner alerts by email - notify/smtp, send_alert, throttle, fixed templates
+    file: docs/changes/CHG-010b-owner-alerts.md
+    status: ready
+    priority: 10
+    type: feature
+    lane: planned
+    expected_paths: ['app/notify/', 'app/jobs/', 'app/db/', 'app/web/', 'app/agent/', 'app/config.py', 'tests/', '.env.example', 'pyproject.toml']
+    depends_on: CHG-008
+    batch: 7
+  - id: CHG-010a
+    title: Eval system and harness ablation - runner, 11 scenarios, metrics, budget guard, ablation, regression
+    file: docs/changes/CHG-010a-evals.md
+    status: ready
+    priority: 10
+    type: feature
+    lane: sliced
+    expected_paths: ['evals/', 'app/ai/', 'fixtures/', 'scripts/', 'tests/', 'docs/evals/', 'Makefile', 'pyproject.toml']
+    depends_on: CHG-010b
+    batch: 7
+  - id: CHG-010c
+    title: Evidence docs - README, architecture, threat model, permission model, traces, demo script
+    file: docs/changes/CHG-010c-evidence-docs.md
+    status: ready
+    priority: 10
+    type: feature
+    lane: planned
+    expected_paths: ['README.md', 'docs/', 'scripts/', 'tests/', 'app/agent/permissions.py']
+    depends_on: CHG-010a
+    batch: 7
   - id: CHG-011
     title: main.py's /api/health should reuse read.py's read_only_connection()
     file: docs/changes/CHG-011-health-reuse-read-only-connection.md

@@ -198,3 +198,11 @@
 - The "handwritten" photo is an italic rendering. A live photo test is weaker evidence than real handwriting; also in known limits.
 - The bare harness on real Gemini may take write actions against its scratch database by design. It never touches the real database (it uses a temp copy).
 - Live costs are bounded by the guard. The estimate is $1–3 per full-suite invocation at N=5.
+
+## PO decisions (2026-10-03; plan 138f737 approved by payablesagent-ac)
+- **Scope:** three changes, in the order CHG-010b, CHG-010a, CHG-010c. Q1–Q10 defaults are accepted.
+- **D22 (the voice fixture):** make it real with no new dependency. A committed generator script uses Windows' built-in speech synthesiser (System.Speech) to speak "Sharma Packaging ka bill, dedh lakh rupaye, paanch November tak dena hai." Commit the WAV with its source noted. If the installed voice can't produce something intelligible, keep the silent fixture, list it as a known limit, and add a handover line asking the user for a 5-second recording. Fixture mode is unaffected either way.
+- **D23 (the regression story):** max_steps: 2 is the offline-provable regression. The degraded-prompt variant stays ready for live. The PO runs both live, and the report shows whichever the live suite actually catches.
+- **D24 (fair bare scoring):** the bare model gets the same inputs (the emails and the seeded state, as text), the same model and the same thinking level. Only the harness differs, and the ablation report header says so.
+- **D25 (no hand-typed figures):** every docs page that quotes a number (a cost, a success rate, a test count) says which run or commit it came from.
+- **After accept:** the PO authorises the live evals and the ablation, each under the $5 cap.
