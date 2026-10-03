@@ -97,7 +97,23 @@ def replan(
             triggered_by=triggered_by, clock=clock,
         )
         apply_moves(conn, snapshot, result, run_id, clock=clock, trace_run_id=trace_run_id)
+        lapse_overrides(conn, result, run_id, clock=clock, trace_run_id=trace_run_id)
     return run_id
+
+
+def lapse_overrides(conn: sqlite3.Connection, result: PlanResult, run_id: int, *, clock: Clock,
+                    trace_run_id: str | None) -> None:
+    """D18: an authorisation the plan found exceeded stays on record, inactive."""
+    for payable_id in result.lapsed:
+        for (override_id,) in conn.execute(
+            "SELECT id FROM plan_override WHERE payable_id = ? AND kind = 'authorise_breach' AND status = 'ACTIVE'",
+            (payable_id,),
+        ).fetchall():
+            writer.end_override(
+                override_id, "LAPSED", "planner",
+                f"The plan's lowest balance went to {format_inr(result.lowest_balance_paise)}, below the floor the "
+                "owner authorised", f"plan_run:{run_id}", conn=conn, clock=clock, trace_run_id=trace_run_id,
+            )
 
 
 def persist_plan(

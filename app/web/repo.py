@@ -182,6 +182,7 @@ class PlanView:
     next_pay_day: date | None
     to_approve: list[Line]  # PLANNED PAY lines on the next payment day
     options: list[Option]
+    authorised: set[int] = field(default_factory=set)  # bills paid under an owner's authorisation (CHG-021)
 
 
 def plan_view(conn: sqlite3.Connection, business_id: int) -> PlanView | None:
@@ -236,6 +237,9 @@ def plan_view(conn: sqlite3.Connection, business_id: int) -> PlanView | None:
         next_pay_day=next_day,
         to_approve=[ln for ln in open_pay if ln.pay_on == next_day],
         options=options(conn, business_id, run["id"]),
+        authorised={r[0] for r in conn.execute(
+            "SELECT payable_id FROM plan_override WHERE business_id = ? AND kind = 'authorise_breach' "
+            "AND status = 'ACTIVE'", (business_id,))},
     )
 
 
@@ -290,6 +294,18 @@ def options(conn: sqlite3.Connection, business_id: int, run_id: int) -> list[Opt
 
 
 # --- Needs attention ----------------------------------------------------------------
+
+
+def active_overrides(conn: sqlite3.Connection, business_id: int) -> list[dict[str, Any]]:
+    """The owner's authorisations and delays the planner is honouring now."""
+    names = bill_names(conn, business_id)
+    rows = _rows(conn, "SELECT * FROM plan_override WHERE business_id = ? AND status = 'ACTIVE' ORDER BY id",
+                 (business_id,))
+    for r in rows:
+        r["name"] = names.get(r["payable_id"], f"Bill {r['payable_id']}")
+        r["breach_on"] = _day(r["breach_on"])
+        r["created_on"] = date.fromisoformat(r["created_at"][:10])
+    return rows
 
 
 def debit(conn: sqlite3.Connection, business_id: int, txn_id: int) -> dict[str, Any]:

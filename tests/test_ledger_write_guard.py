@@ -18,7 +18,7 @@ _TABLE_PREFIX = r"\s+[\"`\[]?"
 LEDGER_WRITE = re.compile(
     r"\b(?:INSERT(?:\s+OR\s+\w+)?\s+INTO|REPLACE\s+INTO|UPDATE(?:\s+OR\s+\w+)?|DELETE\s+FROM)"
     + _TABLE_PREFIX
-    + r"(payable|receivable|bank_txn|tax_obligation|event)\b",
+    + r"(payable|receivable|bank_txn|tax_obligation|event|plan_override)\b",
     re.IGNORECASE,
 )
 # D10: bank_account's drift_status / reported balance are ledger state; creating

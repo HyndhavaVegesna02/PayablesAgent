@@ -40,6 +40,7 @@ def attention_page(request: Request, conn: sqlite3.Connection, user: User, *, me
         "candidates": candidates, "shown": shown,
         "accounts": [a for a in all_accounts if a["drift_status"] != "OK"],
         "all_accounts": all_accounts,
+        "overrides": repo.active_overrides(conn, user.business_id),
         "options": repo.options(conn, user.business_id, run["id"]) if run else [],
         "message": message, "errors": errors or {}, "values": values or {},
     }, status=status)
@@ -89,6 +90,10 @@ async def reject(candidate_id: int, request: Request, user: User = Depends(owner
 @router.post("/options/{option_id}/choose")
 async def choose(option_id: int, request: Request, user: User = Depends(owner_only),
                  conn: sqlite3.Connection = Depends(db)):
+    values = await form_values(request)
+    if values.get("undo"):  # take back an authorisation or a delay in force (CHG-021)
+        actions.undo_option(conn, user, option_id, clock=request.app.state.clock)
+        return done(request, "/attention")
     try:
         actions.choose_option(conn, user, option_id, clock=request.app.state.clock)
     except actions.Stale as e:

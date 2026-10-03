@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from typing import Any, Literal
 
@@ -83,6 +83,18 @@ class CommitmentIn:
 
 
 @dataclass(frozen=True)
+class OverrideIn:
+    """An owner's choice the planner honours (CHG-021, D17). authorise_breach
+    pays the bill below the safety amount while the plan's lowest balance
+    stays at or above floor_paise, the lowest the owner saw (D18);
+    delay_flexible targets its grace days."""
+
+    payable_id: int
+    kind: Literal["authorise_breach", "delay_flexible"]
+    floor_paise: int | None = None
+
+
+@dataclass(frozen=True)
 class PlanSnapshot:
     today: date
     horizon_days: int
@@ -95,6 +107,7 @@ class PlanSnapshot:
     # PO-approved addition (D8): EXPECTED receivables and COMMITTED ones dated after
     # the horizon. Never counted; read only by the early_receipt option.
     uncounted_inflows: tuple[InflowIn, ...] = ()
+    overrides: tuple[OverrideIn, ...] = ()  # CHG-021: ACTIVE owner overrides, read by build_snapshot
 
 
 # --- result (output) ------------------------------------------------------------
@@ -134,6 +147,8 @@ class PlanResult:
     breach_on: date | None  # first full-schedule day below the safety amount
     gap_paise: int  # safety amount minus the lowest balance, when below
     valid: bool
+    authorised: tuple[int, ...] = ()  # bills paid below the safety amount under an owner's authorisation
+    lapsed: tuple[int, ...] = ()  # authorised bills whose breach went below the floor the owner saw (D18)
 
 
 # --- helpers --------------------------------------------------------------------
@@ -227,7 +242,41 @@ def _breach_text(e: Escalation) -> str:
 # --- the planner ----------------------------------------------------------------
 
 
+def with_grace(p: PayableIn) -> PayableIn:
+    """A flexible bill delayed into its grace days: due later, no grace left,
+    and no early-payment discount (paying late gives it up). The planner uses
+    it for a delay_flexible override; options() for the same option's what-if."""
+    return replace(p, due_date=p.due_date + timedelta(days=p.grace_days), grace_days=0,
+                   discount_paise=None, discount_by=None)
+
+
 def plan(s: PlanSnapshot) -> PlanResult:
+    """The plan for a snapshot. An authorisation whose bill would take the
+    lowest balance below the floor the owner saw lapses (D18): the plan is
+    made again without it, and that bill escalates with a reason saying so."""
+    lapsed: dict[int, int] = {}  # payable_id -> its floor
+    while True:
+        result = _plan(replace(s, overrides=tuple(o for o in s.overrides if o.payable_id not in lapsed)))
+        newly = {
+            o.payable_id: o.floor_paise for o in s.overrides
+            if o.kind == "authorise_breach" and o.payable_id in result.authorised
+            and result.lowest_balance_paise < o.floor_paise
+        }
+        if not newly:
+            break
+        lapsed.update(newly)
+    if not lapsed:
+        return result
+    lines = tuple(
+        replace(ln, reason=ln.reason + f" Your authorisation covered a low of {format_inr(lapsed[ln.payable_id])};"
+                f" the plan now goes to {format_inr(result.lowest_balance_paise)}.")
+        if ln.payable_id in lapsed else ln
+        for ln in result.lines
+    )
+    return replace(result, lines=lines, lapsed=tuple(sorted(lapsed)))
+
+
+def _plan(s: PlanSnapshot) -> PlanResult:
     days = horizon(s)
     first, last = days[0], days[-1]
     opening = opening_cash(s.accounts)
@@ -252,8 +301,12 @@ def plan(s: PlanSnapshot) -> PlanResult:
     escalations: list[Escalation] = []
     bill_moves: list[Movement] = []
 
+    authorised = {o.payable_id for o in s.overrides if o.kind == "authorise_breach"}
+    delayed = {o.payable_id for o in s.overrides if o.kind == "delay_flexible"}
+    paid_authorised: list[int] = []
     plannable = sorted(
-        (p for p in s.payables if p.status != "PAYMENT_EXPECTED"),
+        (with_grace(p) if p.payable_id in delayed and p.priority == "flexible" else p
+         for p in s.payables if p.status != "PAYMENT_EXPECTED"),
         key=lambda p: (PRIORITY_ORDER[p.priority], p.due_date, p.payable_id),
     )
     for p in plannable:
@@ -289,6 +342,16 @@ def plan(s: PlanSnapshot) -> PlanResult:
 
         if chosen is not None:
             reason = f"Pay {format_inr(chosen.amount_paise)} on {format_day(chosen.day)}: {chosen.why}.{note}"
+        elif p.payable_id in authorised:
+            # The owner authorised paying it below the safety amount (CHG-021); plan()
+            # checks the result against the floor he saw (D18).
+            chosen = normal
+            e = _breach(curve, days, normal, s.safety_paise, p.payable_id)
+            reason = (
+                f"Pay {format_inr(normal.amount_paise)} on {format_day(normal.day)}: authorised by the owner "
+                f"although it takes the balance {_breach_text(e)}.{note}"
+            )
+            paid_authorised.append(p.payable_id)
         elif p.priority == "statutory":
             # Statutory bills are always paid on time; the breach makes the plan invalid.
             chosen = normal
@@ -334,6 +397,7 @@ def plan(s: PlanSnapshot) -> PlanResult:
         breach_on=breach_on,
         gap_paise=max(0, s.safety_paise - lowest.balance_paise),
         valid=not escalations and lowest.balance_paise >= s.safety_paise,
+        authorised=tuple(sorted(paid_authorised)),
     )
 
 

@@ -8,7 +8,7 @@ import sqlite3
 from datetime import date, timedelta
 from pathlib import Path
 
-from app.planner.plan import AccountCash, InflowIn, PayableIn, PlanSnapshot
+from app.planner.plan import AccountCash, InflowIn, OverrideIn, PayableIn, PlanSnapshot
 
 
 def read_only_connection(db_path: str | Path) -> sqlite3.Connection:
@@ -146,6 +146,18 @@ def _read_snapshot(conn: sqlite3.Connection, business_id: int, today: date) -> P
             inflows.append(inflow)
         # A COMMITTED date already past with no matched credit is neither counted nor offered.
 
+    planned_ids = {p.payable_id for p in payables}
+    overrides = tuple(
+        OverrideIn(r["payable_id"], r["kind"], r["floor_paise"])
+        for r in _rows(
+            conn,
+            "SELECT payable_id, kind, floor_paise FROM plan_override WHERE business_id = ? AND status = 'ACTIVE' "
+            "ORDER BY payable_id, kind",
+            (business_id,),
+        )
+        if r["payable_id"] in planned_ids
+    )
+
     return PlanSnapshot(
         today=today,
         horizon_days=b["horizon_days"],
@@ -156,4 +168,5 @@ def _read_snapshot(conn: sqlite3.Connection, business_id: int, today: date) -> P
         inflows=tuple(inflows),
         commitments=(),  # D1: no commitments table in the MVP
         uncounted_inflows=tuple(uncounted),
+        overrides=overrides,
     )

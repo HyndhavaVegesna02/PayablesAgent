@@ -17,6 +17,7 @@ from app.planner.plan import (
     PlanSnapshot,
     latest_payment_day,
     plan,
+    with_grace,
 )
 
 OptionKind = Literal["early_receipt", "split", "delay_flexible", "authorise_breach", "ask_ca"]
@@ -106,9 +107,9 @@ def _delays(s: PlanSnapshot, r: PlanResult) -> list[OptionResult]:
         line = lines.get(p.payable_id)
         if p.priority != "flexible" or p.grace_days <= 0 or line is None or line.decision == "WAIT":
             continue
-        # Paying late gives up any early-payment discount, so the what-if drops it.
-        delayed = replace(p, due_date=p.due_date + timedelta(days=p.grace_days), grace_days=0,
-                          discount_paise=None, discount_by=None)
+        # Paying late gives up any early-payment discount, so the what-if drops it:
+        # the same transformation the planner applies for a delay_flexible override.
+        delayed = with_grace(p)
         from_day = line.pay_on or targets[p.payable_id]
         # The latest payment day within the grace days, even if it falls after the
         # horizon (then the rerun shows the bill as WAIT). If the grace days reach
@@ -129,6 +130,8 @@ def _delays(s: PlanSnapshot, r: PlanResult) -> list[OptionResult]:
 def options(s: PlanSnapshot, r: PlanResult) -> list[OptionResult]:
     if r.valid:
         return []
+    if r.authorised and not r.escalations:
+        return []  # the owner authorised this breach (CHG-021); it is not offered again
     out = _early_receipts(s, r) + _splits(s, r) + _delays(s, r)
     out.append(OptionResult(
         "authorise_breach",

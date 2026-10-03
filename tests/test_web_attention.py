@@ -244,13 +244,13 @@ def test_choosing_the_split_splits_prime_chem_and_pays_53000_on_thursday(web):
     assert (run["lowest_balance_paise"], run["valid"]) == (25_000_000, 1)
 
 
-def test_choosing_authorise_breach_is_recorded_only(web):
+def test_choosing_authorise_breach_is_recorded_and_honoured(web):
+    # Recorded only in batch 3; since batch 4 (CHG-021) the planner pays the bill.
     env, client, csrf = web
     option_id = _options(client)["Authorise going below the safety amount (₹67,000 below on Thu 22 Oct)"]
-    before = statuses(env)
     assert post(client, f"/options/{option_id}/choose", csrf).status_code == 303
-    assert statuses(env) == before
     assert env.conn.execute("SELECT chosen_by FROM shortfall_option WHERE id = ?", (option_id,)).fetchone()[0] == 1
+    assert statuses(env)[PRIME] == "PLANNED"
 
 
 def test_choosing_ask_ca_adds_a_ca_reminder(web):

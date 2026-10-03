@@ -4,7 +4,26 @@
 {% block main %}
 <h1>Needs attention</h1>
 {% if message %}<p class="below" role="alert">{{ message }}</p>{% endif %}
-{% if not (questions or candidates or accounts or options) %}<p>Nothing needs you right now.</p>{% endif %}
+{% if not (questions or candidates or accounts or options or overrides) %}<p>Nothing needs you right now.</p>{% endif %}
+
+{% if overrides %}
+<h2>Your choices in force</h2>
+{% for o in overrides %}
+<article>
+  <p>
+    {% if o.kind == "authorise_breach" %}<strong>{{ o.name }}</strong> is paid below the safety amount, as you authorised on {{ o.created_on | day }}, while the lowest balance stays at or above {{ o.floor_paise | inr }}.
+    {% else %}<strong>{{ o.name }}</strong> is paid within its grace days, as you chose on {{ o.created_on | day }}.{% endif %}
+  </p>
+  {% if o.shortfall_option_id %}
+  <form method="post" action="/options/{{ o.shortfall_option_id }}/choose" hx-post="/options/{{ o.shortfall_option_id }}/choose" hx-target="#main">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="undo" value="1">
+    <button type="submit" class="secondary outline">Undo</button>
+  </form>
+  {% endif %}
+</article>
+{% endfor %}
+{% endif %}
 
 {% if options %}
 <h2>Shortfall options</h2>

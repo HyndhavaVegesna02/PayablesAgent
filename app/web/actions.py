@@ -162,7 +162,9 @@ def choose_option(conn: sqlite3.Connection, user: User, option_id: int, *, clock
       money counts when it arrives (Part 1, "What happens next").
     - split: split_payable as the owner, with the option's figures.
     - ask_ca: a ca_reminder question.
-    - authorise_breach, delay_flexible: recorded only, until CHG-021."""
+    - authorise_breach: an override per escalated bill of that plan, bounded
+      by the lowest balance the owner saw (CHG-021, D18).
+    - delay_flexible: an override for that bill's grace days (CHG-021)."""
     with writer.atomic(conn):
         opt = repo.option(conn, user.business_id, option_id)
         _check_current(conn, user, opt["plan_run_id"], clock)  # the option's figures must still hold
@@ -184,6 +186,21 @@ def choose_option(conn: sqlite3.Connection, user: User, option_id: int, *, clock
                 user.actor, f"Owner chose: {label}", source, conn=conn, expected_version=bill["version"],
                 clock=clock,
             )
+        elif opt["kind"] == "authorise_breach":
+            run = conn.execute("SELECT * FROM plan_run WHERE id = ?", (opt["plan_run_id"],)).fetchone()
+            for (payable_id,) in conn.execute(
+                "SELECT payable_id FROM plan_line WHERE plan_run_id = ? AND decision = 'ESCALATE' ORDER BY payable_id",
+                (opt["plan_run_id"],),
+            ).fetchall():
+                writer.record_override(
+                    user.business_id, payable_id, "authorise_breach", user.actor, f"Owner chose: {label}", source,
+                    conn=conn, shortfall_option_id=option_id, floor_paise=run["lowest_balance_paise"],
+                    breach_on=date.fromisoformat(run["lowest_on"]), clock=clock,
+                )
+        elif opt["kind"] == "delay_flexible":
+            writer.record_override(user.business_id, params["payable_id"], "delay_flexible", user.actor,
+                                   f"Owner chose: {label}", source, conn=conn, shortfall_option_id=option_id,
+                                   clock=clock)
         elif opt["kind"] == "ask_ca":
             conn.execute(
                 "INSERT INTO owner_question (business_id, kind, body_text, choices_json, status) "
@@ -191,6 +208,23 @@ def choose_option(conn: sqlite3.Connection, user: User, option_id: int, *, clock
                 (user.business_id, "Ask your CA whether the statutory payments can wait, and note the answer here.",
                  json.dumps({"option_id": option_id})),
             )
+        return _replan(conn, user, clock)
+
+
+def undo_option(conn: sqlite3.Connection, user: User, option_id: int, *, clock: Clock) -> int:
+    """The owner takes back an authorisation or a delay (CHG-021, Q7): its
+    overrides end, as the owner, and the plan is made again without them."""
+    with writer.atomic(conn):
+        repo.option(conn, user.business_id, option_id)  # 404 outside the business
+        ids = [r[0] for r in conn.execute(
+            "SELECT id FROM plan_override WHERE business_id = ? AND shortfall_option_id = ? AND status = 'ACTIVE'",
+            (user.business_id, option_id),
+        ).fetchall()]
+        if not ids:
+            raise Refused("Nothing from this choice is in force any more.")
+        for override_id in ids:
+            writer.end_override(override_id, "ENDED", user.actor, "Owner undid the choice",
+                                f"shortfall_option:{option_id}", conn=conn, clock=clock)
         return _replan(conn, user, clock)
 
 

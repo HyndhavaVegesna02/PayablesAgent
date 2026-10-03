@@ -434,6 +434,8 @@ def transition(
             entity=kind, entity_id=entity.id, actor=actor, before=before, after=after,
             reason=reason, source_ref=source_ref, trace_run_id=trace_run_id, clock=clock,
         )
+        if kind == "payable" and to_state in ("PAID", "REOPENED"):
+            _end_overrides_of(conn, entity.id, to_state, actor, source_ref, trace_run_id, clock)
     return _MODELS[kind].model_validate(after)
 
 
@@ -519,6 +521,7 @@ def split_payable(
             raise ValueError("the second part cannot fall due before the original bill")
 
         _update_state(conn, "payable", before, {"status": "SPLIT"})
+        _end_overrides_of(conn, entity.id, "SPLIT", actor, source_ref, trace_run_id, clock)
         after = _get(conn, "payable", entity.id)
         _insert_event(
             conn, business_id=before["business_id"], event_type="PAYABLE_SPLIT", entity="payable",
@@ -1019,3 +1022,112 @@ def close_case(
             source_ref=source_ref, trace_run_id=trace_run_id, clock=clock,
         )
     return after
+
+
+# --- planner overrides (batch 4 plan, CHG-021; PO decisions D17, D18) ---------------
+
+OVERRIDE_KINDS = frozenset({"authorise_breach", "delay_flexible"})
+
+
+def record_override(
+    business_id: int,
+    payable_id: int,
+    kind: str,
+    actor: str,
+    reason: str,
+    source_ref: str | None,
+    *,
+    conn: sqlite3.Connection,
+    shortfall_option_id: int | None = None,
+    floor_paise: int | None = None,
+    breach_on: date | None = None,
+    clock: Clock | None = None,
+    trace_run_id: str | None = None,
+) -> dict[str, Any]:
+    """The owner tells the planner to pay an escalated bill below the safety
+    amount, down to the floor he saw (authorise_breach, D18), or to use a
+    flexible bill's grace days (delay_flexible). Owner only; one ACTIVE
+    override per bill and kind (a repeat returns the one in force)."""
+    who = parse_actor(actor)
+    _check_role(who, frozenset({"owner"}), "record a planner override")
+    if kind not in OVERRIDE_KINDS:
+        raise ValueError(f"not an override kind: {kind!r}")
+    if kind == "authorise_breach" and type(floor_paise) is not int:
+        raise ValueError("an authorisation records the floor the owner saw, in int paise")
+    _require_fk(conn)
+    clock = clock or SystemClock()
+    with atomic(conn):
+        _check_owner(conn, who, business_id)
+        bill = _get(conn, "payable", payable_id)
+        if bill["business_id"] != business_id:
+            raise RecordNotFound(f"payable {payable_id} is not in business {business_id}")
+        if bill["status"] not in ("CONFIRMED", "PLANNED", "REOPENED"):
+            raise IllegalTransition(f"payable {payable_id} is {bill['status']}; it is not waiting to be planned")
+        existing = _fetch(conn, "SELECT * FROM plan_override WHERE payable_id = ? AND kind = ? AND status = 'ACTIVE'",
+                          (payable_id, kind))
+        if existing is not None:
+            return existing
+        row = _create_row(conn, "plan_override", {
+            "business_id": business_id, "payable_id": payable_id, "kind": kind,
+            "shortfall_option_id": shortfall_option_id, "floor_paise": floor_paise,
+            "breach_on": breach_on, "created_by": who.owner_id, "created_at": clock.now().isoformat(),
+            "status": "ACTIVE",
+        })
+        _insert_event(
+            conn, business_id=business_id, event_type="PLAN_OVERRIDE_RECORDED", entity="plan_override",
+            entity_id=row["id"], actor=actor, before=None, after=row, reason=reason, source_ref=source_ref,
+            trace_run_id=trace_run_id, clock=clock,
+        )
+    return row
+
+
+def _create_row(conn: sqlite3.Connection, table: str, values: Mapping[str, Any]) -> dict[str, Any]:
+    return _get(conn, table, _insert(conn, table, values))
+
+
+def end_override(
+    override_id: int,
+    to_status: str,
+    actor: str,
+    reason: str,
+    source_ref: str | None,
+    *,
+    conn: sqlite3.Connection,
+    clock: Clock | None = None,
+    trace_run_id: str | None = None,
+) -> dict[str, Any]:
+    """ENDED: the owner undid it, or its bill left the plan (paid, split,
+    reopened). LAPSED: the planner found the breach deeper than the floor the
+    owner authorised (D18); the row stays, inactive. Each with an event."""
+    who = parse_actor(actor)
+    allowed = {"ENDED": frozenset({"owner", "reconciler", "planner"}), "LAPSED": frozenset({"planner"})}
+    if to_status not in allowed:
+        raise IllegalTransition(f"an override cannot move to {to_status}")
+    _check_role(who, allowed[to_status], f"move an override to {to_status}")
+    _require_fk(conn)
+    clock = clock or SystemClock()
+    with atomic(conn):
+        before = _get(conn, "plan_override", override_id)
+        _check_owner(conn, who, before["business_id"])
+        if before["status"] != "ACTIVE":
+            raise IllegalTransition(f"override {override_id} is {before['status']}")
+        conn.execute("UPDATE plan_override SET status = ?, ended_at = ? WHERE id = ? AND status = 'ACTIVE'",
+                     (to_status, clock.now().isoformat(), override_id))
+        after = _get(conn, "plan_override", override_id)
+        _insert_event(
+            conn, business_id=before["business_id"], event_type=f"PLAN_OVERRIDE_{to_status}",
+            entity="plan_override", entity_id=override_id, actor=actor, before=before, after=after,
+            reason=reason, source_ref=source_ref, trace_run_id=trace_run_id, clock=clock,
+        )
+    return after
+
+
+def _end_overrides_of(conn: sqlite3.Connection, payable_id: int, to_state: str, actor: str,
+                      source_ref: str | None, trace_run_id: str | None, clock: Clock) -> None:
+    """A bill that is paid, split or reopened leaves the plan, and so do its
+    overrides, in the same transaction as its move (CHG-021, Q7)."""
+    for (override_id,) in conn.execute(
+        "SELECT id FROM plan_override WHERE payable_id = ? AND status = 'ACTIVE'", (payable_id,)
+    ).fetchall():
+        end_override(override_id, "ENDED", actor,
+                     f"the bill moved to {to_state}", source_ref, conn=conn, clock=clock, trace_run_id=trace_run_id)
