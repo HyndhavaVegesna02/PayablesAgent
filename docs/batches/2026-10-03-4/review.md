@@ -84,3 +84,19 @@ Every round 1 fix was confirmed, but the C2 fix introduced a regression.
 f9a14fc. The gate is recorded under CHG-021: green, 905 passed.
 
 `yt_prepatch --since 1aa376b`: PASS. The new test fails at 1aa376b.
+
+## Round 3: lean re-review of f9a14fc: FIX_REQUIRED
+
+Round 2's critical was confirmed fixed, and hash consistency and purity hold. This round's finding has the same root cause as round 2's: the baseline differed from the plan the owner saw. So it is the reviewer's earlier sweep being incomplete, not a new failure to converge.
+
+**Critical:**
+1. **One authorise choice covering several escalated bills lapsed all but the first.**
+   - **Cause:** Q6 records one override per ESCALATE bill, all with the same run's low. Round 2 measured them one after another, so the first override's discount knock-on lapsed the second. The reviewer verified this with a probe.
+   - **Fix (5e3720d):** `OverrideIn.choice_id` comes from `plan_override.shortfall_option_id`. A choice's overrides share one baseline: the plan with only the earlier kept choices.
+   - **Test:** `test_one_choice_covering_two_bills_is_measured_as_one`.
+
+### Fix commit
+
+5e3720d. The gate is recorded under CHG-021: green, 906 passed.
+
+`yt_prepatch --since b908f06`: PASS. The new test fails at b908f06.
