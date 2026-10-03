@@ -1,7 +1,9 @@
 """The agent's write boundary (batch 6, CHG-008; the PO's brief): it never
 imports app.ledger.writer (import-linter), and its only SQL writes are the
-narrow inserts into candidate and owner_question plus the update of its own
-agent_case row (Q2). This scan holds the second half."""
+narrow inserts into candidate and owner_question, the update of its own
+agent_case row (Q2), and, for a message the mail poll never stored, the
+insert of that message as a source document (add_candidate; not ledger
+state). This scan holds the second half."""
 
 import ast
 import re
@@ -15,7 +17,7 @@ WRITE = re.compile(
     r"|DELETE\s+FROM\s+(\w+))",
     re.IGNORECASE,
 )
-ALLOWED = {"candidate", "owner_question", "agent_case"}
+ALLOWED = {"candidate", "owner_question", "agent_case", "source_document"}
 
 
 def sql_writes(source: str) -> list[tuple[int, str]]:

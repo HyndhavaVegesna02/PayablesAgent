@@ -14,6 +14,7 @@ from app.domain.names import normalise_name
 from app.planner.plan import AccountCash, InflowIn, OverrideIn, PayableIn, PlanSnapshot
 from app.validate.duplicates import normalise_invoice_number
 from app.validate.gstin import normalise_gstin
+from app.validate.alert import AccountIn
 from app.validate.invoice import InvoiceKey
 
 
@@ -313,3 +314,18 @@ def what_if_snapshot(conn: sqlite3.Connection, business_id: int, today: date, *,
         s = replace(s, inflows=tuple(filter(keep, s.inflows)) + (InflowIn(rid, row[0], when, "COMMITTED"),),
                     uncounted_inflows=tuple(filter(keep, s.uncounted_inflows)))
     return s
+
+
+def accounts_of(conn: sqlite3.Connection, business_id: int) -> list[AccountIn]:
+    out = []
+    for row in conn.execute(
+        "SELECT id, account_mask, alert_senders_json FROM bank_account "
+        "WHERE business_id = ? ORDER BY id", (business_id,)
+    ):
+        try:
+            senders = json.loads(row["alert_senders_json"])
+        except json.JSONDecodeError:
+            senders = []
+        out.append(AccountIn(row["id"], row["account_mask"][-4:],
+                             frozenset(s.lower() for s in senders if isinstance(s, str))))
+    return out

@@ -4,26 +4,35 @@ permissions written down as annotations, which docs/notes/agent-permissions.md
 is generated from. A name not in TOOLS is refused by the loop.
 
 None of them changes the ledger: search_gmail, get_ledger and run_planner
-read; add_candidate writes a candidate row and nothing else; ask_owner writes
-one owner question and ends the run."""
+read; add_candidate writes a candidate row (and, for a message the mail poll
+never stored, that message as a source document, encrypted like every stored
+email); ask_owner writes one owner question and ends the run."""
 
 from __future__ import annotations
 
+import hashlib
+import json
 import sqlite3
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import date
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from app.agent.cases import Case
+from app.ai.extract import BankAlertExtract, InvoiceExtract
 from app.clock import Clock
-from app.db.read import what_if_snapshot
+from app.db.read import accounts_of, bank_txn_with_key, business_name, invoice_on_record, what_if_snapshot
 from app.domain.money import format_inr, parse_inr
-from app.ingest.mail_source import MailSource
+from app.ingest.eml_folder import parse_message, sender_address, sent_at
+from app.ingest.mail_source import MailSource, MessageRef
+from app.ingest.store import DocumentStore
 from app.planner.plan import plan
+from app.validate import failures
+from app.validate.alert import MailFacts, check_bank_alert
+from app.validate.invoice import check_invoice
 
 MAX_SEARCH = 20
 MAX_ROWS = 50
@@ -37,6 +46,7 @@ class ToolContext:
     mail: MailSource
     clock: Clock
     step: int
+    store: DocumentStore | None = None  # where add_candidate keeps a message the poll never stored
 
 
 class _Args(BaseModel):
@@ -173,6 +183,115 @@ def run_planner(ctx: ToolContext, args: PlannerArgs) -> str:
     return "\n".join(lines)
 
 
+# --- add_candidate ----------------------------------------------------------------------
+
+MAX_QUESTION = 300
+MAX_CHOICES = 4
+
+
+class CandidateArgs(_Args):
+    record_type: Literal["bank_alert", "invoice"]
+    message_id: str = Field(min_length=1, max_length=200)
+    fields: dict[str, Any]
+
+
+def _document_for(ctx: ToolContext, message_id: str, raw: bytes) -> int:
+    """The source document of a message found by search: the one the poll
+    stored, or the message stored now (encrypted), like the poll does."""
+    msg = parse_message(raw)
+    external_ref = str(msg.get("Message-ID") or "").strip() or f"sha256:{hashlib.sha256(raw).hexdigest()}"
+    sha = hashlib.sha256(raw).hexdigest()
+    row = ctx.conn.execute(
+        "SELECT id FROM source_document WHERE business_id = ? AND (content_sha256 = ? OR "
+        "(kind = 'email' AND external_ref = ?))", (ctx.case.business_id, sha, external_ref)).fetchone()
+    if row is not None:
+        return row[0]
+    if ctx.store is None:
+        raise ValueError("no document store is set up (FERNET_KEY) to keep the message")
+    at = sent_at(msg)
+    return ctx.conn.execute(
+        "INSERT INTO source_document (business_id, kind, external_ref, content_sha256, received_at, storage_path, "
+        "status) VALUES (?, 'email', ?, ?, ?, ?, 'PROCESSED')",
+        (ctx.case.business_id, external_ref, sha, (at or ctx.clock.now()).isoformat(), ctx.store.put(raw, sha)),
+    ).lastrowid
+
+
+def add_candidate(ctx: ToolContext, args: CandidateArgs) -> str:
+    """A record read from a message this case's searches found, put through
+    the pipeline's own rule checks (pure, app/validate). It never writes the
+    ledger: what a VALID candidate leads to is decided by code when the case
+    ends (app/jobs/run_case.py). A candidate that fails counts toward the
+    case's limit of 2."""
+    if args.message_id not in ctx.case.seen_message_ids:
+        return f"refused: message {args.message_id} did not come from this case's searches"
+    model = BankAlertExtract if args.record_type == "bank_alert" else InvoiceExtract
+    try:
+        extract = model.model_validate(args.fields)
+        schema_error = None
+    except ValidationError as e:
+        extract, schema_error = None, f"{len(e.errors())} field error(s): {e.errors()[0].get('msg')}"
+    raw = ctx.mail.fetch(MessageRef(args.message_id)).raw
+    msg = parse_message(raw)
+    bid = ctx.case.business_id
+    if args.record_type == "bank_alert":
+        checks, record = check_bank_alert(extract, schema_error, MailFacts(sender_address(msg), sent_at(msg)),
+                                          accounts_of(ctx.conn, bid), lambda k: bank_txn_with_key(ctx.conn, k))
+        record_type, payload_record = "txn", None if record is None else json.loads(json.dumps(
+            asdict(record), default=str))
+        payload = {"doc_type": "bank_alert", "record": payload_record,
+                   "dedup_key": record.dedup_key if record else None}
+    else:
+        checks, record, reading = check_invoice(extract, schema_error, business_name(ctx.conn, bid),
+                                                lambda key: invoice_on_record(ctx.conn, bid, key))
+        record_type = "payable" if reading.get("kind", "bill") == "bill" else "receivable"
+        payload = {"doc_type": "invoice", "record": reading or None,
+                   "party_gstin": record.key.party_gstin if record else None,
+                   "payee": None if extract is None else {"account": extract.payee_account_number,
+                                                          "ifsc": extract.payee_ifsc}}
+    payload["extract"] = None if extract is None else extract.model_dump(mode="json")
+    payload["found_by"] = f"agent:case:{ctx.case.id} via gmail:{args.message_id}"
+    status = "VALID" if record is not None else "INVALID"
+    cid = ctx.conn.execute(
+        "INSERT INTO candidate (source_document_id, record_type, payload_json, checks_json, status, attempts, "
+        "created_by, created_at) VALUES (?, ?, ?, ?, ?, 1, ?, ?)",
+        (_document_for(ctx, args.message_id, raw), record_type, json.dumps(payload, sort_keys=True),
+         json.dumps(checks), status, f"agent:case:{ctx.case.id}", ctx.clock.now().isoformat()),
+    ).lastrowid
+    ctx.case.state.setdefault("candidates", {})[str(cid)] = {
+        "status": status, "record_type": args.record_type, "message_id": args.message_id}
+    if status == "INVALID":
+        ctx.case.validation_failures += 1
+        bad = "; ".join(f"{k}: {v}" for k, v in sorted(failures(checks).items())) or "a check was skipped"
+        return f"candidate {cid}: INVALID ({bad})"
+    return f"candidate {cid}: VALID, every rule check passed"
+
+
+# --- ask_owner --------------------------------------------------------------------------
+
+
+class AskArgs(_Args):
+    question: str = Field(min_length=1, max_length=MAX_QUESTION)
+    choices: list[str] = Field(default_factory=list, max_length=MAX_CHOICES)
+
+
+def ask_owner(ctx: ToolContext, args: AskArgs) -> str:
+    """One open question per case; shown as plain text; it ends the run."""
+    if any(len(c) > 60 or not c.strip() for c in args.choices):
+        return "refused: each choice is 1 to 60 characters"
+    open_q = ctx.conn.execute("SELECT id FROM owner_question WHERE case_id = ? AND status = 'OPEN' "
+                              "AND kind = 'agent_question'", (ctx.case.id,)).fetchone()
+    if open_q is not None:
+        return f"refused: question {open_q[0]} for this case is still open"
+    qid = ctx.conn.execute(
+        "INSERT INTO owner_question (business_id, case_id, kind, body_text, choices_json, status) "
+        "VALUES (?, ?, 'agent_question', ?, ?, 'OPEN')",
+        (ctx.case.business_id, ctx.case.id, args.question.strip(),
+         json.dumps({"case_id": ctx.case.id, "choices": [c.strip() for c in args.choices]})),
+    ).lastrowid
+    ctx.case.status = "ASK_OWNER"
+    return f"question {qid} asked; this run ends until the owner answers"
+
+
 TOOLS: dict[str, ToolSpec] = {
     "search_gmail": ToolSpec("search_gmail", SearchArgs, search_gmail, frozenset({"read_only", "reads_mail"}),
                              "Searches this business's mailbox; remembers the message IDs it returns."),
@@ -180,4 +299,8 @@ TOOLS: dict[str, ToolSpec] = {
                            "Reads ledger rows on a read-only connection; at most 50."),
     "run_planner": ToolSpec("run_planner", PlannerArgs, run_planner, frozenset({"read_only"}),
                             "A what-if plan; writes nothing."),
+    "add_candidate": ToolSpec("add_candidate", CandidateArgs, add_candidate, frozenset({"writes_candidate"}),
+                              "Proposes a record from a message this case found; rule-checked; never the ledger."),
+    "ask_owner": ToolSpec("ask_owner", AskArgs, ask_owner, frozenset({"asks_owner", "ends_run"}),
+                          "One plain-text question (at most 300 characters, 4 choices); ends the run."),
 }

@@ -14,8 +14,8 @@ changes:
     slices:
       - {id: S1, title: "case state, case file, contracts", start_commit: 4c70389, end_commit: f79a32a, board: done, prepatch: "PASS: the new test modules fail at 4c70389 (no app.agent, no migration 0003)"}
       - {id: S2, title: "AgentStep and the prompt", start_commit: f79a32a, end_commit: b2245a0, board: done, prepatch: "PASS: test_agent_step fails to import app.ai.agent_step at f79a32a"}
-      - {id: S3, title: "read-only tools", start_commit: b2245a0, board: in_progress}
-      - {id: S4, title: "add_candidate and ask_owner", start_commit: null, board: todo}
+      - {id: S3, title: "read-only tools", end_commit: 053c451, prepatch: "PASS: test_agent_tools fails to import app.agent.tools at the start tree", start_commit: 3859cf3, board: done}
+      - {id: S4, title: "add_candidate and ask_owner", start_commit: 053c451, board: in_progress}
       - {id: S5, title: "loop, escalation, resume, loop detection", start_commit: null, board: todo}
       - {id: S6, title: "apply_final and the run_case job", start_commit: null, board: todo}
       - {id: S7, title: "scripted scenarios", start_commit: null, board: todo}
@@ -23,6 +23,7 @@ changes:
     gate_evidence:
       - {command: "make test", exit_code: 0, output_tail: "dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | agent never imports the ledger writer, web or the pipeline KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 7 kept, 0 broken. | Building cashflow-agent @ file:///C:/Hyn/PayablesAgent | Built cashflow-agent @ file:///C:/Hyn/PayablesAgent | Uninstalled 1 package in 1ms | Installed 1 package in 9ms", commit: f79a32a, at: 2026-10-03T10:04:35+00:00}
       - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 74 files, 214 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | agent never imports the ledger writer, web or the pipeline KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 7 kept, 0 broken. | Uninstalled 1 package in 2ms | Installed 1 package in 12ms", commit: b2245a0, at: 2026-10-03T10:07:45+00:00}
+      - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 75 files, 220 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | agent never imports the ledger writer, web or the pipeline KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 7 kept, 0 broken. | Uninstalled 1 package in 1ms | Installed 1 package in 11ms", commit: 053c451, at: 2026-10-03T10:12:06+00:00}
     prepatch: null
     notes_resolved: false
   - id: CHG-018

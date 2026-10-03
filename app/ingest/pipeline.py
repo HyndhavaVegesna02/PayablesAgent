@@ -44,6 +44,7 @@ from app.ai.sort import sort_document
 from app.clock import TIMEZONE
 from app.config import Settings
 from app.db.read import (
+    accounts_of,
     bank_txn_with_key,
     business_name,
     failure_candidate_with_key,
@@ -63,7 +64,6 @@ from app.jobs.queue import DEFAULT_BUSINESS_ID, PermanentJobError
 from app.ledger import writer
 from app.validate import failures
 from app.validate.alert import (
-    AccountIn,
     AlertRecord,
     FailureRecord,
     MailFacts,
@@ -102,21 +102,6 @@ def document_store(settings: Settings) -> DocumentStore:
         return DocumentStore(settings.data_dir, settings.fernet_key)
     except StoreKeyError as e:
         raise PermanentJobError(str(e)) from None
-
-
-def accounts_of(conn: sqlite3.Connection, business_id: int) -> list[AccountIn]:
-    out = []
-    for row in conn.execute(
-        "SELECT id, account_mask, alert_senders_json FROM bank_account "
-        "WHERE business_id = ? ORDER BY id", (business_id,)
-    ):
-        try:
-            senders = json.loads(row["alert_senders_json"])
-        except json.JSONDecodeError:
-            senders = []
-        out.append(AccountIn(row["id"], row["account_mask"][-4:],
-                             frozenset(s.lower() for s in senders if isinstance(s, str))))
-    return out
 
 
 def _since(conn: sqlite3.Connection, source: str, business_id: int) -> date:
