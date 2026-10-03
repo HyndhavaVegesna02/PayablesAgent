@@ -8,10 +8,10 @@ hand.
 
 | Folder | What it is |
 |---|---|
-| `2026-10-03-fixtures-baseline/` | The 11 TDD scenarios, 5 runs each, fixture mode, on `config.yaml` as committed. |
-| `2026-10-03-fixtures-regress-max-steps/` | The same suite with `evals/variants/regress-max-steps.yaml` (the agent's step cap cut from 6 to 2): the regression it catches. |
-| `2026-10-03-fixtures-ablation/` | The harness ablation in fixture mode: full system, bare harness, and four knock-outs. |
-| `superseded/before-review-round-1/` | The reports as they were before batch 7's first review round, kept and marked; its README says what changed. |
+| `2026-10-04-fixtures-baseline/` | The 11 TDD scenarios, 5 runs each, fixture mode, on `config.yaml` as committed. |
+| `2026-10-04-fixtures-regress-max-steps/` | The same suite with `evals/variants/regress-max-steps.yaml` (the agent's step cap cut from 6 to 2): the regression it catches. |
+| `2026-10-04-fixtures-ablation/` | The harness ablation in fixture mode: full system, bare harness, and four knock-outs. |
+| `superseded/before-review-round-1/`, `superseded/before-review-round-2/` | The reports as they were before each of batch 7's review rounds, kept and marked; each README says what changed. |
 
 ## Full-workflow runs
 

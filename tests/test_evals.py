@@ -418,8 +418,12 @@ def test_the_baseline_and_the_regression_reports_are_kept_and_say_where_they_cam
     import json
 
     folder = runner.ROOT / "docs" / "evals"
-    base = json.loads((folder / "2026-10-03-fixtures-baseline" / "report.json").read_text(encoding="utf-8"))
-    bad = json.loads((folder / "2026-10-03-fixtures-regress-max-steps" / "report.json").read_text(encoding="utf-8"))
+
+    def latest(label):  # the folders are named by the date they were made
+        return sorted(folder.glob(f"*-fixtures-{label}"))[-1]
+
+    base = json.loads((latest("baseline") / "report.json").read_text(encoding="utf-8"))
+    bad = json.loads((latest("regress-max-steps") / "report.json").read_text(encoding="utf-8"))
     for rep in (base, bad):
         assert rep["meta"]["commit"] != "unknown" and "+uncommitted" not in rep["meta"]["commit"]
         assert rep["meta"]["runs_per_scenario"] == 5 and rep["totals"]["scenarios"] == 11
@@ -430,7 +434,7 @@ def test_the_baseline_and_the_regression_reports_are_kept_and_say_where_they_cam
     assert path_failed == {"07-missed-alert-causes-drift": [0, 5]}  # the path check caught it, every run
     assert all(r["path"][0] == r["path"][1] for r in base["scenarios"])
     assert bad["meta"]["variant"] == "evals/variants/regress-max-steps.yaml"
-    ablation_md = (folder / "2026-10-03-fixtures-ablation" / "report.md").read_text(encoding="utf-8")
+    ablation_md = (latest("ablation") / "report.md").read_text(encoding="utf-8")
     assert "(D24)" in ablation_md and "+uncommitted" not in ablation_md
 
 
