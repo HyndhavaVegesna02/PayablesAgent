@@ -1,6 +1,6 @@
 # Every change, ever. Entries are never deleted -- done and rejected are history.
 # Status is a field, never a folder.
-next_id: 22
+next_id: 23
 changes:
   - id: CHG-001
     title: Repo skeleton — layout, config, schema, Clock, tracer, job table, CI
@@ -342,6 +342,16 @@ changes:
     file: docs/changes/CHG-021-planner-owner-overrides.md
     status: draft
     priority: 21
+    type: feature
+    lane: null
+    expected_paths: []
+    depends_on: CHG-006
+    batch: null
+  - id: CHG-022
+    title: The owner says which bill a debit paid (clears KL-1)
+    file: docs/changes/CHG-022-owner-links-a-debit.md
+    status: draft
+    priority: 22
     type: feature
     lane: null
     expected_paths: []

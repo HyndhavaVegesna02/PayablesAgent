@@ -91,4 +91,47 @@ Criteria:
 
 ## Fix round 1
 
-Not started: the PO paused the session at 82% of the 5-hour usage window (2026-10-03). It resumes when the PO messages after 09:05.
+The PO resumed after the pause.
+
+**PO decision D16 on M1:** option (iii) for batch 3. No auto-link on a name mismatch, because the name rule is a security control. The double count is known limit KL-1, pinned by a test. The owner's link action is CHG-022 (drafted, batch 4).
+
+Fixed, with each test in `tests/test_review_fixes_batch3.py` unless noted:
+
+**Reviewer A**
+- **Critical 1:** a stale refusal (approve or choose) runs `refresh_if_stale`: it replans when today's inputs no longer match the current run, so the 409 page carries a plan the owner can approve. choose_option now checks the inputs hash too.
+- **Criticals 2 and 3:** `repo.parties` and `actions.SETTINGS_FORM` are deleted.
+- **CSRF:** tokens are compared as bytes, at both sites.
+- **Confirming a txn:** an amount of 0 is a field error.
+
+**Reviewer B**
+- **C1:** a move to REOPENED clears matched_txn_id; the event keeps the old link.
+- **C2:** handle_failure honours an owner-made link (txn UNMATCHED). `_reviewed_debit` links only an UNMATCHED debit that no other bill holds. link_payment refuses a REVERSED txn or one another bill holds.
+- **C3:** DemoClock retries PermissionError briefly. OSError is a plain refusal on /demo/time and from `make demo-time`. demo.advance enqueues first, sets the clock, then commits, and rolls back if the set fails.
+
+**Minors also fixed**
+- 404 handler: registered for Starlette's HTTPException.
+- Question choices that aren't an object are refused (409).
+- confirm_balance answers only the questions about that account.
+- Blank seed passwords are refused.
+- A PAID bill whose debit hasn't arrived shows on its day.
+- mark-paid's stale case re-renders This week.
+- Constants are shared: max age, weekdays, the HTMX check, the poll enqueue.
+- The Monday job is keyed by the Monday crossed.
+- FixtureBackend has an empty-text guard.
+- The match_credit reason names the asked date.
+- Doc and prose fixes: config.py, the what_if docstring, the pyproject comment, the `_planner_status` known limits.
+- `_check_errors` is replaced by `validate.failures`.
+- Writer role-check tests now use system actors and another business's owner.
+- link_payment's version bump and refusals are tested.
+- `test_a_tampered_cookie_is_no_session` was flaky (it edited the signature's last characters); it now edits the payload.
+
+**Deferred (minor, recorded):**
+- Multipart spooling before the 10 MB check, and an orphaned file when an insert fails.
+- A ca_reminder question can't be closed (CHG-008).
+- Frozen-clock retry backoff and heartbeat in demo mode.
+- The fixed tmp name, and the forward check not being atomic across processes.
+- parse_time and the DEMO_NOW validator disagree about a time with no offset.
+- The seed imports `app.web.auth`.
+- Sync sqlite in async routes.
+- A REVIEW → PAID txn stays UNMATCHED and its ambiguous case stays open: the money is now correct (C2), and the case goes to the owner's link action (CHG-022).
+- confirm_balance FieldErrors through /questions go to the generic 422 page.

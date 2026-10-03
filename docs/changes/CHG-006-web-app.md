@@ -39,6 +39,7 @@ Batch 3 plan, docs/batches/2026-10-03-3/plan.md (these replace the drafted ones)
 - **Inputs hash (dev choice reported to the PO):** plan_run.inputs_sha256 covers what the planner reads, leaving out a bill's planner-owned status and planned date (except PAYMENT_EXPECTED), so the run's own moves don't make every approval stale (Q3).
 - **D14 (2026-10-03, PO):** demo mode has ONE clock. With DEMO_NOW set, the web app, the worker and `make seed` read a DemoClock whose instant lives in DATA_DIR/demo_clock.txt (starting at DEMO_NOW). It stands still and moves only forward, by `make demo-time T=...` or the owner-only POST /demo/time (registered only in demo mode; a form on Settings). Crossing a Monday 07:00 enqueues that Monday's plan (the demo worker has no real-time Monday cron); every move queues one mail poll. `make reseed` restarts the clock. DEMO_NOW blank: SystemClock, no demo route. `make seed` also makes the first plan.
 - **D15 (2026-10-03, PO):** DEMO_AI=fixtures (only with DEMO_NOW) makes the worker answer from the canned replies in fixtures/test_inbox/ai_replies.json (one copy, shared with tests/fake_ai.py), matched by the email text. Recorded as model fixture-ai with zero tokens and cost; the app shows "AI replies are canned fixtures". An email with no canned reply is a permanent AIUnavailable, never Gemini or a guess. A live-Gemini demo needs separate PO authorisation.
+- **D16 (2026-10-03, PO, review finding M1):** no auto-link on a payee-name mismatch; the name rule is a security control. A debit that doesn't name-match an owner-PAID bill stays UNMATCHED with a case. The double subtraction is known limit **KL-1**: it understates cash and never overstates it. It is pinned by a test and cleared by CHG-022 (the owner's link action, batch 4).
 - **D12 (2026-10-03):** Option A, fixed inside CHG-006. The S6 walkthrough runs Mon 12, then Thu 15, then Fri 16, and ends at Prime Chem PAY on Thu 22 with ₹3,83,000 lowest. See AC9.
 
 ## Expected paths
@@ -83,6 +84,8 @@ Batch 3 plan, docs/batches/2026-10-03-3/plan.md (these replace the drafted ones)
 - `tests/test_reconcile_match.py`
 - `tests/test_eml_folder.py`
 - `tests/test_demo_mode.py`
+- `tests/test_review_fixes_batch3.py`
+- `tests/test_web_auth.py`
 - `fixtures/test_inbox/README.md`
 
 ## Open Questions
