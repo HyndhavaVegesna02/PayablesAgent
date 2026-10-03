@@ -80,6 +80,22 @@ source_modules = ["app.agent"]
 forbidden_modules = ["app.ledger.writer", "app.web", "app.ingest.pipeline", "app.jobs", "app.worker", "app.main"]
 
 [[tool.importlinter.contracts]]
+name = "the AI and the agent never reach owner email"
+type = "forbidden"
+source_modules = ["app.ai", "app.agent"]
+forbidden_modules = ["app.notify", "app.jobs.alerts"]
+
+[[tool.importlinter.contracts]]
+name = "notify is pure text and sending: imports only domain"
+type = "forbidden"
+source_modules = ["app.notify"]
+forbidden_modules = [
+    "app.config", "app.clock", "app.main", "app.demo", "app.worker",
+    "app.db", "app.ledger", "app.planner", "app.ingest", "app.validate",
+    "app.ai", "app.agent", "app.web", "app.jobs", "app.trace",
+]
+
+[[tool.importlinter.contracts]]
 name = "ai never imports ledger, db or web"
 type = "forbidden"
 source_modules = ["app.ai"]

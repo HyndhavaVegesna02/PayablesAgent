@@ -176,11 +176,12 @@ def default_handlers(backend=None) -> dict[str, Handler]:
     """Every job this build can run. Mail jobs and the exception agent need an
     AI backend; without one they are not registered, so their jobs wait in the
     queue (Q10). explain_plan runs either way: without AI its note is the template."""
-    from app.jobs import explain, reconcile, replan
+    from app.jobs import alerts, explain, reconcile, replan
 
     out: dict[str, Handler] = {"replan": replan.handle_replan, "monday_plan": replan.handle_monday_plan}
     out.update(reconcile.handlers())
     out.update(explain.handlers(backend))  # without AI, its notes are the template
+    out.update(alerts.handlers())  # without an SMTP host, alerts wait unsent
     if backend is not None:
         from app.ingest import pipeline
         from app.jobs import run_case

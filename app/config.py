@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     smtp_user: str = ""
     smtp_password: str = ""
     alert_from: str = ""
+    app_base_url: str = "http://localhost:8000"  # the link in owner alert emails
     database_path: str = "./data/cashflow.db"
     data_dir: str = "./data/files"
     trace_dir: str = "./traces"

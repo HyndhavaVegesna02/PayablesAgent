@@ -290,6 +290,16 @@ CREATE TABLE "owner_question" (
   status TEXT NOT NULL CHECK (status IN ('OPEN','ANSWERED','EXPIRED'))
 );
 
+CREATE TABLE owner_alert (
+  id INTEGER PRIMARY KEY,
+  business_id INTEGER NOT NULL REFERENCES business(id),
+  kind TEXT NOT NULL CHECK (kind IN ('money_received','payment_failed','unexpected_debit','balance_mismatch')),
+  ref TEXT NOT NULL,                    -- 'receivable:3', 'payable:5', 'agent_case:2', 'bank_txn:7', 'bank_account:1'
+  created_at TEXT NOT NULL,
+  sent_at TEXT,
+  UNIQUE (business_id, kind, ref)
+);
+
 CREATE VIEW account_balance AS
 SELECT a.id AS account_id,
        a.opening_balance_paise

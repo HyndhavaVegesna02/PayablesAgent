@@ -36,6 +36,7 @@ class Result:
     replan: bool = False
     case_ids: list[int] = field(default_factory=list)
     recheck_at: datetime | None = None  # queue a drift recheck at this time
+    alerts: list[tuple[str, str]] = field(default_factory=list)  # (kind, record ref) for the owner (CHG-010b)
 
 
 # --- names --------------------------------------------------------------------------
@@ -212,7 +213,7 @@ def match_debit(conn: sqlite3.Connection, txn_id: int, *, window_days: int, cloc
         )
         ask_about_debit(conn, t, case)
         return Result(f"ambiguous ({why}): bills {[b['id'] for b in review]} to REVIEW", replan=True,
-                      case_ids=[case])
+                      case_ids=[case], alerts=[("unexpected_debit", ref)])
 
     case = open_case(
         conn, t["business_id"], "unknown_txn", ref, t["amount_paise"],
@@ -221,7 +222,8 @@ def match_debit(conn: sqlite3.Connection, txn_id: int, *, window_days: int, cloc
     )
     ask_about_debit(conn, t, case)
     # The debit already lowers the balance the next plan starts from.
-    return Result("no bill matches: debit stays UNMATCHED", replan=True, case_ids=[case])
+    return Result("no bill matches: debit stays UNMATCHED", replan=True, case_ids=[case],
+                  alerts=[("unexpected_debit", ref)])
 
 
 def early_receipt_requests(conn: sqlite3.Connection, business_id: int) -> list[tuple[int, str, str]]:
@@ -283,7 +285,8 @@ def match_credit(conn: sqlite3.Connection, txn_id: int, *, window_days: int, clo
                           fields={"party_id": rx["party_id"]}, **kw)
         writer.transition(EntityRef("receivable", rx["id"]), "CONFIRMED", RECONCILER, why, ref,
                           fields={"matched_txn_id": txn_id}, **kw)
-        return Result(f"matched receivable {rx['id']}: CONFIRMED", replan=True)
+        return Result(f"matched receivable {rx['id']}: CONFIRMED", replan=True,
+                      alerts=[("money_received", f"receivable:{rx['id']}")])
 
     if named:
         why = ("several receivables match" if len(exact) > 1
@@ -347,7 +350,7 @@ def handle_failure(conn: sqlite3.Connection, candidate_id: int, *, window_days: 
         if bill.get("txn_id") is not None:
             writer.transition(EntityRef("bank_txn", bill["txn_id"]), "REVERSED", RECONCILER, why, source_ref, **kw)
         writer.transition(EntityRef("payable", bill["id"]), "REOPENED", RECONCILER, why, source_ref, **kw)
-        return Result(f"bill {bill['id']} REOPENED", replan=True)
+        return Result(f"bill {bill['id']} REOPENED", replan=True, alerts=[("payment_failed", f"payable:{bill['id']}")])
 
     # No single bill. A debit for this payment that was never matched is still
     # reversed, so the balance stops counting money that came back.
@@ -371,7 +374,8 @@ def handle_failure(conn: sqlite3.Connection, candidate_id: int, *, window_days: 
                f"Bills that could match: {[b['id'] for b in bills] or 'none'}"],
         unknowns=["Which bill's payment failed"], clock=clock,
     )
-    return Result(f"failure matches {len(bills)} bills: failed_payment case", replan=replan, case_ids=[case])
+    return Result(f"failure matches {len(bills)} bills: failed_payment case", replan=replan, case_ids=[case],
+                  alerts=[("payment_failed", f"agent_case:{case}")])
 
 
 # --- drift ----------------------------------------------------------------------------

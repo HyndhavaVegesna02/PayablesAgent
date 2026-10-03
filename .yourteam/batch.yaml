@@ -8,8 +8,8 @@ started: "2026-10-03T19:30:00+05:30"
 changes:
   - id: CHG-010b
     lane: planned
-    board: todo
-    start_commit: null
+    board: in_progress
+    start_commit: cf791a4
     blocked_question: null
     gate_evidence: []
     prepatch: null

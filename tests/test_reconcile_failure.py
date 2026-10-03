@@ -125,7 +125,7 @@ def test_the_job_queues_the_replan(env):
     assert process_one(env.conn, {"reconcile_failure": handle_reconcile_failure}, clock=env.clock,
                        settings=env.settings, app_config=env.app_config)
     kinds = [r[0] for r in env.conn.execute("SELECT kind FROM job WHERE status = 'queued'")]
-    assert kinds == ["replan"]
+    assert kinds == ["replan", "send_alert"]  # the owner is told the payment came back (CHG-010b)
     (payload,) = env.conn.execute("SELECT payload_json FROM job WHERE kind = 'replan'").fetchone()
     last_event = env.conn.execute("SELECT MAX(id) FROM event").fetchone()[0]
     assert json.loads(payload) == {"business_id": 1, "triggered_by": f"event:{last_event}"}

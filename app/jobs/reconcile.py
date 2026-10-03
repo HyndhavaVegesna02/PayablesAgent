@@ -12,6 +12,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from app.jobs import queue
+from app.jobs.alerts import raise_alert
 from app.jobs.queue import PermanentJobError
 from app.jobs.replan import enqueue_replan
 from app.ledger import reconcile, writer
@@ -29,13 +30,15 @@ def _queue_follow_ups(ctx: JobContext, business_id: int, account_id: int | None,
     for case_id in result.case_ids:
         queue.enqueue(conn, kind="run_case", payload={"case_id": case_id},
                       idempotency_key=f"run_case:{case_id}", clock=ctx.clock)
+    for kind, ref in result.alerts:
+        raise_alert(conn, business_id, kind, ref, clock=ctx.clock)
     if result.recheck_at is not None:
         queue.enqueue(conn, kind="drift_check", payload={"account_id": account_id, "source": "recheck"},
                       run_after=result.recheck_at.isoformat(),
                       idempotency_key=f"drift_recheck:{account_id}:{result.recheck_at.date().isoformat()}",
                       clock=ctx.clock)
     ctx.tracer.step(tool="reconcile", result=result.outcome,
-                    arguments={"replan": result.replan, "cases": result.case_ids,
+                    arguments={"replan": result.replan, "cases": result.case_ids, "alerts": result.alerts,
                                "recheck_at": result.recheck_at and result.recheck_at.isoformat()})
 
 

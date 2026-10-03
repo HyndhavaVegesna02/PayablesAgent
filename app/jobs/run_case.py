@@ -45,6 +45,7 @@ from app.domain.models import BankTxnNew
 from app.ingest.pipeline import _ai_failure, document_store, mail_source
 from app.ingest.store import DocumentStore
 from app.jobs import queue
+from app.jobs.alerts import raise_alert
 from app.jobs.queue import PermanentJobError
 from app.jobs.replan import enqueue_replan
 from app.ledger import reconcile, writer
@@ -140,6 +141,7 @@ def to_owner(conn: sqlite3.Connection, case: Case, question: str, d: Deps, ctx: 
                  f"could not find why. What is the real balance now? ({question})"[:500],
                  json.dumps({"account_id": account_id, "case_id": case.id})),
             )
+            raise_alert(conn, case.business_id, "balance_mismatch", f"bank_account:{account_id}", clock=ctx.clock)
         case.status = "ASK_OWNER"
 
 
