@@ -117,3 +117,20 @@ def test_search_orders_by_time_across_utc_offsets(tmp_path):
     mail("b.eml", "Mon, 12 Oct 2026 10:00:00 +0530")  # 10:00 IST
     found = EmlFolderSource(tmp_path, at(31)).search("debit")
     assert [s.ref.id for s in found] == ["a.eml", "b.eml"]
+
+
+def test_search_understands_gmails_from_subject_after_and_before():
+    """CHG-031: the live agent searched `from:alerts@hdfcbank.example 4821`, which matched nothing here
+    though Gmail would have matched it (docs/evals/2026-10-04-live-after-batch-8)."""
+    source = EmlFolderSource(INBOX, at(31))
+    names = lambda q: _names(s.ref for s in source.search(q))  # noqa: E731
+    assert names(f"from:{BANK} ashirwad paper") == [  # the bank's three, not Ashirwad's own invoices
+        "03-return-ashirwad-paper.eml", "06-debit-ashirwad-paper-resent.eml", "01-debit-ashirwad-paper.eml"]
+    assert all(s.sender == BANK for s in source.search(f"from:{BANK}"))
+    assert names("subject:returned") == ["03-return-ashirwad-paper.eml"]
+    assert names("ashirwad paper after:2026/10/14") == ["03-return-ashirwad-paper.eml",
+                                                        "09-invoice-ashirwad-new-bank.eml"]
+    assert names("ashirwad paper before:2026-10-13") == ["06-debit-ashirwad-paper-resent.eml",
+                                                         "01-debit-ashirwad-paper.eml"]
+    assert names("from:nobody@nowhere.example") == []
+    assert names("after:someday") == []  # not a date: an ordinary word, found nowhere
