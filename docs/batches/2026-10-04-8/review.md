@@ -95,7 +95,8 @@ Minors:
   details only.
 
 Every fixture report regenerated at 7c80499 into scratch matches the committed 2142c95 reports below their
-headers, so no evidence changed and none was regenerated.
+headers, so no evidence changed and none was regenerated. (Wrong for the ablation's report.json: only
+the .md files were compared. See round 2, M4.)
 
 ## Round 2, app code: APPROVE
 
