@@ -266,15 +266,20 @@ class Run:
         self.app_config = app_config
         self.clock = clock_for(self.settings.demo_now, self.settings.data_dir)
         self.conn = fresh_world(db, self.clock)  # make reseed: migrated, seeded, with its first plan
-        replan(self.conn, BUSINESS_ID, triggered_by="seed", clock=self.clock)
-        self.conn.commit()
-        self.outbox: list[EmailMessage] = []
-        self.handlers = {**default_handlers(backend), **alerts.handlers(smtp_factory=capturing_smtp(self.outbox))}
-        app = create_app(self.settings, clock=self.clock, app_config=app_config)
-        self.owner = Browser(app, "owner")
-        self.owner.login(OWNER_EMAIL, DEV_OWNER_PASSWORD)
-        self.helper = Browser(app, "helper")
-        self.helper.login(HELPER_EMAIL, DEV_HELPER_PASSWORD)
+        try:
+            replan(self.conn, BUSINESS_ID, triggered_by="seed", clock=self.clock)
+            self.conn.commit()
+            self.outbox: list[EmailMessage] = []
+            self.handlers = {**default_handlers(backend),
+                             **alerts.handlers(smtp_factory=capturing_smtp(self.outbox))}
+            app = create_app(self.settings, clock=self.clock, app_config=app_config)
+            self.owner = Browser(app, "owner")
+            self.owner.login(OWNER_EMAIL, DEV_OWNER_PASSWORD)
+            self.helper = Browser(app, "helper")
+            self.helper.login(HELPER_EMAIL, DEV_HELPER_PASSWORD)
+        except BaseException:
+            self.conn.close()  # so the temp dir can go (Windows) and the setup failure is what's reported
+            raise
         self.steps: list[Step] = []
         self.should_stop: Callable[[], str | None] = lambda: None
 

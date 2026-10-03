@@ -471,3 +471,24 @@ def test_no_component_earned_the_most_when_no_knock_out_scored_below_the_full_sy
     built = ablation.build(meta, ["full", "no_escalation"], [s], {"full": [worse], "no_escalation": [full]}, {})
     assert built["drops"] == {"no_escalation": -1.0} and built["earned_most"] == []  # better, not worse
     assert "No knock-out compared here lowered outcome success." in ablation.markdown(built, [s])
+
+
+def test_a_job_waiting_to_retry_is_waited_for_on_the_runs_own_clock(tmp_path):
+    from app.jobs import queue
+
+    env = runner.make_env(tmp_path, scenario.load(DEBIT), FixtureBackend(), CONFIG)
+    calls = []
+
+    def flaky(ctx):
+        calls.append(ctx.clock.now())
+        if len(calls) == 1:
+            raise TimeoutError("the model was slow")
+
+    queue.enqueue(env.conn, kind="flaky", payload={}, clock=env.clock)
+    env.conn.commit()
+    start = env.clock.now()
+    runner.drain_jobs(env.conn, {"flaky": flaky}, clock=env.clock, settings=env.settings, app_config=env.app_config,
+                      should_stop=runner.never, wait=env.clock.advance)
+    assert len(calls) == 2 and calls[1] > start  # retried, after fake time moved to the retry
+    assert env.conn.execute("SELECT status FROM job WHERE kind = 'flaky'").fetchone()[0] == "done"
+    env.conn.close()

@@ -518,14 +518,16 @@ def run_b(run: Run) -> None:
         run.expect("late-alert-not-read", run.one("SELECT COUNT(*) FROM bank_txn WHERE counterparty = "
                                                   "'SHREE TRANSPORT'"), 0,
                    "dated Wed 14 Oct, before the mail check's window (one day before its last run, Fri)")
-        run.expect("paid", (bill(run, "PAPER-001"), bill(run, "ELEC-OCT26")), ("PAID", "PAID"), "the owner linked the challan debit to PF and ESI")
+        run.expect("paid", (bill(run, "PAPER-001"), bill(run, "ELEC-OCT26")), ("PAID", "PAID"),
+                   "the debits' amounts, dates and payee names match the approved PAPER-001 and ELEC-OCT26")
         run.expect("gap-seen", (run.one("SELECT reported_balance_paise FROM bank_account") - calculated(run),
                                 run.one("SELECT drift_status FROM bank_account")), (-money("25,000"), "OK"),
                    "the bank shows 3,39,910; the ledger 3,64,910; the gap waits for the 23:00 recheck")
 
     with run.step("owner", "Links the ₹45,000 challan debit to PF and ESI"):
         link_debit(run, "EPFO ESIC CHALLAN", "PFESI-OCT26")
-        run.expect("paid", bill(run, "PFESI-OCT26"), "PAID", "the explanation closes the case and both of its questions")
+        run.expect("paid", bill(run, "PFESI-OCT26"), "PAID",
+                   "the owner linked the ₹45,000 challan debit to the PF and ESI bill")
 
     with run.step("worker", "Fri 23:00: the recheck finds the gap still there; the agent works the drift case"):
         run.move_to("2026-10-16T23:00")

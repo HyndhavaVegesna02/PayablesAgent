@@ -133,7 +133,7 @@ def markdown(report: dict[str, Any]) -> str:
     ]
     for r in report["scenarios"]:
         w = r["worst"]
-        worst = "n/a" if w is None else ("all checks met" if w["status"] == "PASSED" else
+        worst = "n/a" if w is None else ("all end-to-end checks met" if w["status"] == "PASSED" else
                                          f"run {w['run']}: {w['component']}, {len(w['failed_checks'])} failed")
         spread = "n/a" if r["spread"] is None else f"{_pct(r['spread'][0])} – {_pct(r['spread'][1])}"
         tok = r["tokens_mean"]
