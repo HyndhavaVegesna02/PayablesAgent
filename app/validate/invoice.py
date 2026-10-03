@@ -20,7 +20,7 @@ from app.domain.money import parse_inr
 from app.domain.names import normalise_name
 from app.validate import CHECK_NAMES, NOT_APPLICABLE, PASSED, failed, skipped
 from app.validate.arithmetic import check_invoice_arithmetic
-from app.validate.duplicates import normalise_reference
+from app.validate.duplicates import normalise_invoice_number
 from app.validate.gstin import check_gstin, normalise_gstin
 
 _MINUS = ("-", "−", "(-)", "less")
@@ -133,7 +133,7 @@ def check_invoice(
     else:
         checks["dates"] = PASSED
 
-    number = normalise_reference(x.invoice_number)
+    number = normalise_invoice_number(x.invoice_number)
     key = None
     if total is not None and party:
         key = InvoiceKey(party, normalise_gstin(party_gstin), number, total, x.invoice_date)

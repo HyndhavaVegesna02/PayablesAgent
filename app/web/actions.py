@@ -22,7 +22,7 @@ from datetime import date
 from typing import Any
 
 from app.clock import Clock
-from app.db.read import bank_txn_with_key, build_snapshot
+from app.db.read import bank_txn_with_key, build_snapshot, invoice_on_record
 from app.domain.models import BankTxnNew, PayableNew, ReceivableNew
 from app.domain.money import format_inr, parse_inr
 from app.jobs import queue
@@ -35,8 +35,9 @@ from app.planner.options import options
 from app.planner.plan import InflowIn, canonical_json, effective_snapshot, format_day, plan
 from app.validate import CHECK_NAMES, NOT_APPLICABLE, PASSED, failed, failures
 from app.ingest import pdf
-from app.validate.bank import account_mask, normalise_ifsc
-from app.validate.duplicates import txn_dedup_key
+from app.validate.bank import account_last4, account_mask, normalise_ifsc
+from app.validate.duplicates import normalise_invoice_number, txn_dedup_key
+from app.validate.invoice import InvoiceKey
 from app.web import repo
 from app.web.auth import User
 from app.web.routes._common import int_or_none
@@ -130,27 +131,48 @@ def approve(conn: sqlite3.Connection, user: User, run_id: int, versions: dict[in
 def decide_bank_change(conn: sqlite3.Connection, user: User, party_id: int, candidate_id: int, approve: bool, *,
                        clock: Clock) -> None:
     """POST /parties/{id}/bank-change (owner only): approve copies the new
-    details in, from the document that carried them; reject keeps the old
-    ones. Either way the vendor's open bank-change questions are answered."""
+    details in, from the bill that carried them; reject keeps the old ones.
+    Only that bill's question is answered. Another bill's proposal still open
+    keeps the vendor change_pending while it differs from the details now on
+    record, and is settled when it no longer does."""
     with writer.atomic(conn):
         party = repo.party(conn, user.business_id, party_id)
         if party["bank_status"] != "change_pending":
             raise Refused("There is no pending bank change for this vendor.")
-        cand = repo.candidate(conn, user.business_id, candidate_id)
-        payee = json.loads(cand["payload_json"]).get("payee") or {}
+        proposals = _open_bank_proposals(conn, user.business_id, party_id)
+        if candidate_id not in proposals:
+            raise Refused("That bank change is not waiting for you on this vendor.")
+        payee = proposals.pop(candidate_id)
         decision = "approved" if approve else "rejected"
         writer.decide_bank_change(
             party_id, approve, user.actor, f"Owner {decision} the bank change from candidate {candidate_id}",
             f"candidate:{candidate_id}", account_mask=account_mask(payee.get("account")),
             ifsc=normalise_ifsc(payee.get("ifsc")), conn=conn, clock=clock,
         )
-        conn.execute(
-            "UPDATE owner_question SET status = 'ANSWERED', answer_json = ?, answered_by = ?, answered_at = ? "
-            "WHERE business_id = ? AND status = 'OPEN' AND kind = 'approve_bank_change' "
-            "AND json_extract(choices_json, '$.party_id') = ?",
-            (json.dumps({"decision": decision, "candidate_id": candidate_id}), user.id, clock.now().isoformat(),
-             user.business_id, party_id),
-        )
+        _close_open(conn, user, "approve_bank_change", "candidate_id", candidate_id,
+                    {"decision": decision, "candidate_id": candidate_id}, clock)
+        for other, details in proposals.items():
+            still = writer.flag_bank_change(
+                party_id, other, account_last4(details.get("account")), normalise_ifsc(details.get("ifsc")),
+                user.actor, f"candidate {other}'s bank details are still waiting for the owner",
+                f"candidate:{other}", conn=conn, clock=clock)
+            if not still:
+                _close_open(conn, user, "approve_bank_change", "candidate_id", other,
+                            {"decision": "matches the details now on record", "candidate_id": other}, clock)
+
+
+def _open_bank_proposals(conn: sqlite3.Connection, business_id: int, party_id: int) -> dict[int, dict[str, Any]]:
+    """candidate id -> the bank details its bill printed, for this vendor's open questions."""
+    out = {}
+    for (cid,) in conn.execute(
+        "SELECT json_extract(choices_json, '$.candidate_id') FROM owner_question WHERE business_id = ? "
+        "AND status = 'OPEN' AND kind = 'approve_bank_change' AND json_extract(choices_json, '$.party_id') = ? "
+        "ORDER BY id", (business_id, party_id),
+    ).fetchall():
+        if type(cid) is int:
+            payload = json.loads(repo.candidate(conn, business_id, cid)["payload_json"])
+            out[cid] = payload.get("payee") or {}
+    return out
 
 
 class WrongPassword(Exception):
@@ -172,16 +194,11 @@ def unlock_document(conn: sqlite3.Connection, user: User, document_id: int, pass
         opened = pdf.unlock(raw, password) if doc["kind"] == "pdf" else pdf.unlock_email(raw, password)
         if opened is None:
             raise WrongPassword()
-        store.put(opened, doc["content_sha256"])  # same path: the locked copy is replaced
         conn.execute("UPDATE source_document SET status = 'NEW' WHERE id = ?", (document_id,))
         queue.enqueue(conn, kind="process_document", payload={"document_id": document_id},
                       idempotency_key=f"process_document:{document_id}:unlocked", clock=clock)
-        conn.execute(
-            "UPDATE owner_question SET status = 'ANSWERED', answer_json = ?, answered_by = ?, answered_at = ? "
-            "WHERE business_id = ? AND status = 'OPEN' AND kind = 'unlock_pdf' "
-            "AND json_extract(choices_json, '$.document_id') = ?",
-            (json.dumps({"decision": "unlocked"}), user.id, clock.now().isoformat(), user.business_id, document_id),
-        )
+        _close_open(conn, user, "unlock_pdf", "document_id", document_id, {"decision": "unlocked"}, clock)
+        store.put(opened, doc["content_sha256"])  # last: same path, the locked copy is replaced
 
 
 def supply_tax_amount(conn: sqlite3.Connection, user: User, obligation_id: int, values: dict[str, str], *,
@@ -212,13 +229,8 @@ def supply_tax_amount(conn: sqlite3.Connection, user: User, obligation_id: int, 
         writer.supply_tax_amount(obligation_id, amount, status, user.actor,
                                  f"Owner gave the {ob['tax_type']} {ob['period']} amount ({status.lower()})",
                                  f"tax_obligation:{obligation_id}", conn=conn, clock=clock)
-        conn.execute(
-            "UPDATE owner_question SET status = 'ANSWERED', answer_json = ?, answered_by = ?, answered_at = ? "
-            "WHERE business_id = ? AND status = 'OPEN' AND kind = 'ca_reminder' "
-            "AND json_extract(choices_json, '$.tax_obligation_id') = ?",
-            (json.dumps({"amount_paise": amount, "amount_status": status}), user.id, clock.now().isoformat(),
-             user.business_id, obligation_id),
-        )
+        _close_open(conn, user, "ca_reminder", "tax_obligation_id", obligation_id,
+                    {"amount_paise": amount, "amount_status": status}, clock)
         return _replan(conn, user, clock)
 
 
@@ -473,15 +485,11 @@ def entry_checks(conn: sqlite3.Connection, business_id: int, entry: Entry, *,
     later = r.get("due_date") or r.get("expected_date")
     if r["invoice_date"] and later and later < r["invoice_date"]:
         checks["dates"] = failed(f"the due date {later} is before the invoice date {r['invoice_date']}")
-    table = "payable" if entry.kind == "bill" else "receivable"
-    if r["invoice_number"]:
-        dup = conn.execute(
-            f"SELECT t.id, pt.name FROM {table} t JOIN party pt ON pt.id = t.party_id "
-            "WHERE t.business_id = ? AND t.invoice_number = ?",
-            (business_id, r["invoice_number"]),
-        ).fetchall()
-        if any(normalise_name(row[1]) == normalise_name(r["party"]) for row in dup):
-            checks["duplicates"] = failed(f"{r['party']} invoice {r['invoice_number']} is already recorded")
+    key = InvoiceKey(r["party"], None, normalise_invoice_number(r["invoice_number"]), r["amount_paise"],
+                     date.fromisoformat(r["invoice_date"]) if r["invoice_date"] else None)
+    dup = invoice_on_record(conn, business_id, key, skip_candidate=skip_candidate)  # the pipeline's rule (S3)
+    if dup is not None:
+        checks["duplicates"] = failed(dup)
     for row in conn.execute(
         "SELECT c.id, c.payload_json FROM candidate c JOIN source_document d ON d.id = c.source_document_id "
         "WHERE d.business_id = ? AND c.status IN ('VALID', 'AWAITING_OWNER') AND c.created_by LIKE 'user:%'",
@@ -563,13 +571,19 @@ def _party_id(conn: sqlite3.Connection, business_id: int, name: str, kind: str) 
                         (business_id, kind, name)).lastrowid
 
 
-def _close_questions(conn: sqlite3.Connection, user: User, candidate_id: int, answer: str, clock: Clock) -> None:
+def _close_open(conn: sqlite3.Connection, user: User, kind: str, key: str, value: int, answer: dict[str, Any],
+                clock: Clock) -> None:
+    """Answers the open questions of one kind whose choices name this record
+    (choices_json's `key` equals `value`)."""
     conn.execute(
         "UPDATE owner_question SET status = 'ANSWERED', answer_json = ?, answered_by = ?, answered_at = ? "
-        "WHERE business_id = ? AND status = 'OPEN' AND kind = 'confirm_record' "
-        "AND json_extract(choices_json, '$.candidate_id') = ?",
-        (json.dumps({"decision": answer}), user.id, clock.now().isoformat(), user.business_id, candidate_id),
+        "WHERE business_id = ? AND status = 'OPEN' AND kind = ? AND json_extract(choices_json, '$.' || ?) = ?",
+        (json.dumps(answer), user.id, clock.now().isoformat(), user.business_id, kind, key, value),
     )
+
+
+def _close_questions(conn: sqlite3.Connection, user: User, candidate_id: int, answer: str, clock: Clock) -> None:
+    _close_open(conn, user, "confirm_record", "candidate_id", candidate_id, {"decision": answer}, clock)
 
 
 def confirm_candidate(conn: sqlite3.Connection, user: User, candidate_id: int, values: dict[str, str], *,
@@ -607,10 +621,16 @@ def _create_record(conn, user: User, cand, entry: Entry, source: str, clock: Clo
     if entry.kind == "bill":
         party_id = _party_id(conn, user.business_id, r["party"], "vendor")
         payee = json.loads(cand["payload_json"]).get("payee") or {}
-        writer.record_bank_details(  # a vendor's first details, from the bill the owner checked (S4)
-            party_id, account_mask(payee.get("account")), normalise_ifsc(payee.get("ifsc")), user.actor,
-            "Bank details from a bill the owner confirmed", source, conn=conn, clock=clock,
-        )
+        if repo.party(conn, user.business_id, party_id)["bank_status"] == "none":
+            writer.record_bank_details(  # a vendor's first details, shown on the bill the owner checked (S4)
+                party_id, account_mask(payee.get("account")), normalise_ifsc(payee.get("ifsc")), user.actor,
+                "Bank details from a bill the owner confirmed", source, conn=conn, clock=clock,
+            )
+        else:  # the vendor the owner chose may not be the one the bill was read as: compare again
+            writer.flag_bank_change(
+                party_id, cand["id"], account_last4(payee.get("account")), normalise_ifsc(payee.get("ifsc")),
+                user.actor, f"candidate {cand['id']} gives different bank details", source, conn=conn, clock=clock,
+            )
         bill = writer.create_payable(
             PayableNew(party_id=party_id,
                        due_date=date.fromisoformat(r["due_date"]), priority=r["priority"], **common),

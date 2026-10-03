@@ -16,6 +16,7 @@ from app.domain.money import format_inr
 from app.db.read import missing_tax_warnings
 from app.ledger.reconcile import early_receipt_requests
 from app.ledger.writer import calculated_balance
+from app.validate.bank import describe, normalise_ifsc
 from app.planner.plan import format_day
 
 
@@ -390,6 +391,8 @@ def _with_payload(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         r["record"] = payload.get("record") or {}
         r["extract"] = payload.get("extract") or {}
         r["checks"] = json.loads(r["checks_json"]) if r["checks_json"] else {}
+        payee = payload.get("payee") or {}
+        r["payee_text"] = describe(payee.get("account"), normalise_ifsc(payee.get("ifsc"))) or None
     return rows
 
 

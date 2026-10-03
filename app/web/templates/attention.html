@@ -57,6 +57,7 @@
   </header>
   {% set failing = [] %}{% for name, result in c.checks.items() %}{% if result.startswith("failed") %}{% set _ = failing.append(name ~ ": " ~ result[8:]) %}{% endif %}{% endfor %}
   {% if failing %}<p class="below">Checks that failed: {{ failing | join("; ") }}</p>{% endif %}
+  {% if c.payee_text %}<p><strong>Bank details on this bill:</strong> {{ c.payee_text }}</p>{% endif %}
   {% if c.transcript %}<blockquote><small class="muted">What was said:</small><br>{{ c.transcript }}</blockquote>{% endif %}
   {% if c.record_type == "statement" %}<p class="muted">A statement that could not be read reliably: nothing from it was written.</p>{% else %}
   <form method="post" action="/candidates/{{ c.id }}/confirm" hx-post="/candidates/{{ c.id }}/confirm" hx-target="#main">

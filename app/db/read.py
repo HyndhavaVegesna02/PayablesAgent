@@ -11,7 +11,7 @@ from pathlib import Path
 
 from app.domain.names import normalise_name
 from app.planner.plan import AccountCash, InflowIn, OverrideIn, PayableIn, PlanSnapshot
-from app.validate.duplicates import normalise_reference
+from app.validate.duplicates import normalise_invoice_number
 from app.validate.gstin import normalise_gstin
 from app.validate.invoice import InvoiceKey
 
@@ -213,17 +213,21 @@ def same_party(a_name: str | None, a_gstin: str | None, b_name: str | None, b_gs
 def _same_invoice(key: InvoiceKey, name, gstin, number, amount, invoice_date) -> bool:
     if not same_party(key.party, key.party_gstin, name, normalise_gstin(gstin)):
         return False
-    n = normalise_reference(number)
+    n = normalise_invoice_number(number)
     if key.invoice_number and n:
         return key.invoice_number == n
     return (amount == key.amount_paise and key.invoice_date is not None
             and invoice_date == key.invoice_date.isoformat())
 
 
-def invoice_on_record(conn: sqlite3.Connection, business_id: int, key: InvoiceKey) -> str | None:
+def invoice_on_record(conn: sqlite3.Connection, business_id: int, key: InvoiceKey, *,
+                      skip_candidate: int | None = None) -> str | None:
     """The same invoice already in the ledger (a bill or a receivable), or
     already waiting for the owner from another source, so an invoice that
-    arrives by email and by photo becomes one payable, whichever comes first."""
+    arrives by email, by photo or typed becomes one payable, whichever comes
+    first. The one duplicate rule: the pipeline asks it when it reads a
+    document, and the confirm form asks it again (skipping the entry being
+    confirmed)."""
     for name, gstin, number, amount, day in conn.execute(
         "SELECT pt.name, pt.gstin, t.invoice_number, t.amount_paise, t.invoice_date FROM payable t "
         "JOIN party pt ON pt.id = t.party_id WHERE t.business_id = ? UNION ALL "
@@ -239,6 +243,8 @@ def invoice_on_record(conn: sqlite3.Connection, business_id: int, key: InvoiceKe
         "AND c.record_type IN ('payable', 'receivable') ORDER BY c.id",
         (business_id,),
     ).fetchall():
+        if cid == skip_candidate:
+            continue
         payload = json.loads(payload_json)
         r = payload.get("record") or {}
         if _same_invoice(key, r.get("party"), payload.get("party_gstin"), r.get("invoice_number"),
@@ -266,15 +272,16 @@ def statement_with_key(conn: sqlite3.Connection, key: str) -> int | None:
 
 
 def missing_tax_warnings(conn: sqlite3.Connection, business_id: int, today: date, horizon_days: int) -> list[str]:
-    """D11: a statutory amount still MISSING and due inside the horizon makes
-    the plan optimistic. Said beside the plan; the planner never invents it."""
+    """D11: a statutory amount still MISSING and due by the end of the horizon
+    (overdue ones too) makes the plan optimistic. Said beside the plan; the
+    planner never invents it."""
     end = today + timedelta(days=horizon_days - 1)
     return [
         f"{tax_type} {period} amount missing (due {date.fromisoformat(due).strftime('%a %d %b')}): "
         "plan may be optimistic"
         for tax_type, period, due in conn.execute(
             "SELECT tax_type, period, due_date FROM tax_obligation WHERE business_id = ? "
-            "AND amount_status = 'MISSING' AND due_date BETWEEN ? AND ? ORDER BY due_date, id",
-            (business_id, today.isoformat(), end.isoformat()),
+            "AND amount_status = 'MISSING' AND due_date <= ? ORDER BY due_date, id",
+            (business_id, end.isoformat()),
         ).fetchall()
     ]

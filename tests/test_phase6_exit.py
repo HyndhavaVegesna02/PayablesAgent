@@ -124,7 +124,7 @@ def test_ac1_and_ac6_the_locked_statement_opens_once_and_the_password_goes_nowhe
     poll(env, "10-statement-hdfc-locked.eml")
     doc_id = env.conn.execute("SELECT id FROM source_document WHERE status = 'LOCKED'").fetchone()[0]
     csrf = login(client)
-    assert post(client, f"/documents/{doc_id}/unlock", csrf, {"password": "wrong"}).status_code == 422
+    assert post(client, f"/documents/{doc_id}/unlock", csrf, {"password": "SPW-wrong-try"}).status_code == 422
     assert post(client, f"/documents/{doc_id}/unlock", csrf, {"password": STATEMENT_PASSWORD}).status_code == 303
     work(env)
     cand = env.conn.execute("SELECT status, checks_json FROM candidate WHERE record_type = 'statement'").fetchone()
@@ -132,9 +132,9 @@ def test_ac1_and_ac6_the_locked_statement_opens_once_and_the_password_goes_nowhe
     acct = env.conn.execute("SELECT reported_balance_paise, drift_status FROM bank_account WHERE id = 1").fetchone()
     assert tuple(acct) == (47_241_000, "OK")  # three rows added; the ledger agrees with the bank
     env.conn.execute("PRAGMA wal_checkpoint(FULL)")
-    needle = STATEMENT_PASSWORD.encode()
     db = Path(env.settings.database_path)
-    for f in [*db.parent.glob(db.name + "*"), *Path(env.settings.trace_dir).rglob("*")]:
-        assert not f.is_file() or needle not in f.read_bytes(), f.name  # AC6
-    assert STATEMENT_PASSWORD not in caplog.text
-    assert all(STATEMENT_PASSWORD not in (e or "") for (e,) in env.conn.execute("SELECT last_error FROM job"))
+    for secret in (STATEMENT_PASSWORD, "SPW-wrong-try"):
+        for f in [*db.parent.glob(db.name + "*"), *Path(env.settings.trace_dir).rglob("*")]:
+            assert not f.is_file() or secret.encode() not in f.read_bytes(), f.name  # AC6
+        assert secret not in caplog.text
+        assert all(secret not in (e or "") for (e,) in env.conn.execute("SELECT last_error FROM job"))

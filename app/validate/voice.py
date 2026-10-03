@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 from app.domain.money import parse_spoken_inr
 from app.validate import CHECK_NAMES, NOT_APPLICABLE, PASSED, failed, skipped
-from app.validate.duplicates import normalise_reference
+from app.validate.duplicates import normalise_invoice_number
 from app.validate.invoice import ExistingInvoice, InvoiceKey, InvoiceRecord
 
 
@@ -35,14 +35,17 @@ def check_voice(
         checks["amount"] = failed("no amount was said")
     else:
         try:
+            if " ".join(x.amount_spoken.lower().split()) not in " ".join(x.transcript.lower().split()):
+                raise ValueError("not said")  # the words must be the ones said, not the model's own figure
             amount = parse_spoken_inr(x.amount_spoken)
             checks["amount"] = PASSED
         except ValueError:
-            checks["amount"] = failed(f"{x.amount_spoken!r} is not an amount this app can read: type it in")
+            checks["amount"] = failed(f"{x.amount_spoken!r} is not an amount this app can read from what was "
+                                      "said: type it in")
     if x.due_date is not None:
         checks["dates"] = PASSED
     if amount is not None and x.vendor_name:
-        dup = existing(InvoiceKey(x.vendor_name, None, normalise_reference(x.invoice_number), amount, None))
+        dup = existing(InvoiceKey(x.vendor_name, None, normalise_invoice_number(x.invoice_number), amount, None))
         checks["duplicates"] = PASSED if dup is None else failed(dup)
     else:
         checks["duplicates"] = skipped("needs the vendor and the amount")
@@ -54,5 +57,5 @@ def check_voice(
     }
     if any(v.startswith(("failed", "skipped")) for v in checks.values()):
         return checks, None, reading
-    key = InvoiceKey(x.vendor_name, None, normalise_reference(x.invoice_number), amount, None)
+    key = InvoiceKey(x.vendor_name, None, normalise_invoice_number(x.invoice_number), amount, None)
     return checks, InvoiceRecord("bill", reading, key, None, None), reading

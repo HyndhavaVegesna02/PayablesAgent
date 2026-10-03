@@ -45,7 +45,7 @@
     <tbody>
     {% for b in awaiting %}
       <tr>
-        <td>{{ b.name }}{% if b.status == "REVIEW" %} <small class="below">(payment not matched)</small>{% endif %}</td>
+        <td>{{ b.name }}{% if b.status == "REVIEW" %} <small class="below">(payment not matched)</small>{% endif %}{% if b.id in view.bank_pending %} <strong class="below">Vendor bank details change pending: verify before paying</strong>{% endif %}</td>
         <td class="amount">{{ b.amount_paise | inr }}</td>
         <td>{% if b.planned_date %}{{ b.planned_date | day }}{% endif %}</td>
         <td>

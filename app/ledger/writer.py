@@ -47,6 +47,7 @@ from app.domain.states import (
     VersionRequired,
     parse_actor,
 )
+from app.validate.bank import change_question, differs
 
 _MODELS = {"payable": Payable, "receivable": Receivable, "bank_txn": BankTxn}
 _VERSIONED: frozenset[str] = frozenset({"payable", "receivable"})
@@ -326,24 +327,19 @@ def create_tax_obligation(
             if linked["priority"] != "statutory" or linked["business_id"] != new.business_id:
                 raise ValueError(f"payable {payable_id} is not a statutory payable of this business")
         else:
-            payable = _create(
-                conn,
-                "payable",
-                {
-                    "business_id": new.business_id,
-                    "invoice_number": invoice_number or f"{new.tax_type}-{new.period}",
-                    "amount_paise": (
-                        new.amount_paise if payable_amount_paise is None else payable_amount_paise
-                    ),
-                    "due_date": new.due_date,
-                    "priority": "statutory",
-                    "status": "DRAFT",
-                },
-                **kw,
-            )
+            payable = _create(conn, "payable", _statutory_payable(
+                new.business_id, invoice_number or f"{new.tax_type}-{new.period}",
+                new.amount_paise if payable_amount_paise is None else payable_amount_paise, new.due_date,
+            ), **kw)
             payable_id = payable["id"]
         row = _create(conn, "tax_obligation", {**new.model_dump(), "payable_id": payable_id}, **kw)
     return TaxObligation.model_validate(row)
+
+
+def _statutory_payable(business_id: int, invoice_number: str, amount_paise: int, due_date: Any) -> dict[str, Any]:
+    """A tax obligation's statutory payable, as created (Part 2, "Taxes as payables")."""
+    return {"business_id": business_id, "invoice_number": invoice_number, "amount_paise": amount_paise,
+            "due_date": due_date, "priority": "statutory", "status": "DRAFT"}
 
 
 def supply_tax_amount(
@@ -376,11 +372,9 @@ def supply_tax_amount(
         _check_owner(conn, who, before["business_id"])
         if before["amount_status"] != "MISSING" or before["payable_id"] is not None:
             raise IllegalTransition(f"tax obligation {obligation_id} already has its amount")
-        payable = _create(conn, "payable", {
-            "business_id": before["business_id"], "invoice_number": f"{before['tax_type']}-{before['period']}",
-            "amount_paise": amount_paise, "due_date": before["due_date"], "priority": "statutory",
-            "status": "DRAFT",
-        }, **kw)
+        payable = _create(conn, "payable", _statutory_payable(
+            before["business_id"], f"{before['tax_type']}-{before['period']}", amount_paise, before["due_date"]),
+            **kw)
         conn.execute("UPDATE tax_obligation SET amount_paise = ?, amount_status = ?, payable_id = ? WHERE id = ?",
                      (amount_paise, amount_status, payable["id"], obligation_id))
         after = _get(conn, "tax_obligation", obligation_id)
@@ -1078,6 +1072,9 @@ def _set_bank(conn: sqlite3.Connection, party_id: int, sets: dict[str, Any], eve
 
 def flag_bank_change(
     party_id: int,
+    candidate_id: int,
+    last4: str | None,
+    ifsc: str | None,
     actor: str,
     reason: str,
     source_ref: str | None,
@@ -1085,19 +1082,38 @@ def flag_bank_change(
     conn: sqlite3.Connection,
     clock: Clock | None = None,
     trace_run_id: str | None = None,
-) -> dict[str, Any]:
-    """A document gives a vendor bank details that differ from the ones on
-    record (TDD pipeline step 6): the vendor is marked change_pending, and its
-    stored details are never touched here. Pipeline only; a
-    PARTY_BANK_CHANGE_PENDING event. The proposed details stay in the
-    candidate that carried them."""
+) -> bool:
+    """A bill gives a vendor bank details (`last4`, `ifsc`) that differ from
+    the ones on record (TDD pipeline step 6): the vendor is marked
+    change_pending (a PARTY_BANK_CHANGE_PENDING event) and the owner is asked
+    (approve_bank_change, one question per bill). The stored details are
+    never touched here; the proposal stays in the candidate. Called by the
+    pipeline when it reads the bill and again when the owner confirms it,
+    whichever vendor he confirms it for. False when nothing differs."""
     who = parse_actor(actor)
-    _check_role(who, frozenset({"pipeline"}), "flag a vendor bank change")
+    _check_role(who, frozenset({"pipeline", "owner"}), "flag a vendor bank change")
     _require_fk(conn)
     clock = clock or SystemClock()
     with atomic(conn):
-        return _set_bank(conn, party_id, {"bank_status": "change_pending"}, "PARTY_BANK_CHANGE_PENDING", actor,
-                         reason, source_ref, clock, trace_run_id)
+        party = _get(conn, "party", party_id)
+        _check_owner(conn, who, party["business_id"])
+        if not differs(party["bank_account_mask"], party["bank_ifsc"], last4, ifsc):
+            return False
+        if party["bank_status"] != "change_pending":
+            _set_bank(conn, party_id, {"bank_status": "change_pending"}, "PARTY_BANK_CHANGE_PENDING", actor,
+                      reason, source_ref, clock, trace_run_id)
+        asked = conn.execute(
+            "SELECT 1 FROM owner_question WHERE kind = 'approve_bank_change' AND status = 'OPEN' "
+            "AND json_extract(choices_json, '$.candidate_id') = ?", (candidate_id,)).fetchone()
+        if asked is None:
+            conn.execute(
+                "INSERT INTO owner_question (business_id, kind, body_text, choices_json, status) "
+                "VALUES (?, 'approve_bank_change', ?, ?, 'OPEN')",
+                (party["business_id"],
+                 change_question(party["name"], party["bank_account_mask"], party["bank_ifsc"], last4, ifsc),
+                 json.dumps({"party_id": party_id, "candidate_id": candidate_id})),
+            )
+        return True
 
 
 def decide_bank_change(

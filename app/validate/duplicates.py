@@ -16,6 +16,16 @@ def normalise_reference(reference: str | None) -> str | None:
     return ref or None
 
 
+def normalise_invoice_number(number: str | None) -> str | None:
+    """Letters and digits only, upper case: "AP/2610/131", "ap-2610-131" and
+    "AP 2610 131" are one invoice number. (Bank references keep their
+    punctuation: their dedup keys are stored.)"""
+    if number is None:
+        return None
+    n = "".join(ch for ch in number.upper() if ch.isalnum())
+    return n or None
+
+
 def txn_dedup_key(account_id: int, txn_date: date, direction: str, amount_paise: int,
                   reference: str | None) -> str:
     return f"{account_id}:{txn_date.isoformat()}:{direction}:{amount_paise}:{normalise_reference(reference) or '-'}"

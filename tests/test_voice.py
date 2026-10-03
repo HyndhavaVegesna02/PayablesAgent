@@ -94,7 +94,8 @@ def test_an_amount_the_code_cannot_read_goes_to_the_owner_at_once_with_the_trans
     assert len(backend.calls("VoiceBillExtract")) == 1  # asking again cannot help (Q8)
     cand = next(c for c in repo.waiting_candidates(env.conn, 1) if c["document_kind"] == "voice")
     assert cand["status"] == "AWAITING_OWNER" and cand["record"]["amount_paise"] is None
-    assert cand["checks"]["amount"] == "failed: 'kuch zyada' is not an amount this app can read: type it in"
+    assert cand["checks"]["amount"] == ("failed: 'kuch zyada' is not an amount this app can read from what was said: "
+                                     "type it in")
     assert prefill(cand, [])["amount"] == ""
     body = env.conn.execute("SELECT body_text FROM owner_question WHERE kind = 'confirm_record'").fetchone()[0]
     assert body.startswith("Please check this bill from an uploaded voice note: Ashirwad Paper.")

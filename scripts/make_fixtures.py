@@ -1,6 +1,7 @@
-"""Makes the batch 5 (CHG-007) fixtures: the invoice PDF and photo, the
-handwritten bill, the voice note and the locked statement in fixtures/uploads,
-and the three emails 08-10 in fixtures/test_inbox. Every value is fictional.
+"""Makes the batch 5 (CHG-007) fixtures: the invoice photo, the handwritten
+bill and the voice note in fixtures/uploads, and the three emails in
+fixtures/test_inbox: 08 (the same invoice, its PDF attached), 09 (new bank
+details) and 10 (the password-locked statement). Every value is fictional.
 
     uv run python scripts/make_fixtures.py
 

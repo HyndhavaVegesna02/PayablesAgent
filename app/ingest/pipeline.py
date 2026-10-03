@@ -70,7 +70,7 @@ from app.validate.alert import (
     check_bank_alert,
     check_failure_notice,
 )
-from app.validate.bank import account_last4, differs, normalise_ifsc
+from app.validate.bank import account_last4, normalise_ifsc
 from app.validate.duplicates import normalise_reference, txn_dedup_key
 from app.validate.gstin import normalise_gstin
 from app.validate.invoice import InvoiceRecord, check_invoice
@@ -401,26 +401,12 @@ def _check_bank_details(ctx: JobContext, doc: sqlite3.Row, outcome: Outcome, can
     party = vendor_party(ctx.conn, doc["business_id"], reading.get("party"), normalise_gstin(x.seller_gstin))
     if party is None or party["bank_status"] == "none":
         return  # a vendor's first details are recorded when the owner confirms the bill
-    if not differs(party["bank_account_mask"], party["bank_ifsc"], last4, ifsc):
-        return
     input_ref = f"source_document:{doc['id']}"
-    writer.flag_bank_change(party["id"], "pipeline", f"candidate {candidate_id} gives different bank details",
-                            input_ref, conn=ctx.conn, clock=ctx.clock, trace_run_id=ctx.tracer.run_id)
-    on_record = ", ".join(v for v in (
-        f"account ending {account_last4(party['bank_account_mask'])}" if party["bank_account_mask"] else "",
-        f"IFSC {party['bank_ifsc']}" if party["bank_ifsc"] else "") if v)
-    printed = ", ".join(v for v in (f"account ending {last4}" if last4 else "", f"IFSC {ifsc}" if ifsc else "") if v)
-    ctx.conn.execute(
-        "INSERT INTO owner_question (business_id, kind, body_text, choices_json, status) "
-        "VALUES (?, 'approve_bank_change', ?, ?, 'OPEN')",
-        (doc["business_id"],
-         f"A bill from {party['name']} gives different bank details: {printed} (on record: {on_record}). "
-         "Vendor bank details change pending: verify before paying. Check with the vendor by phone, on a "
-         "number you already have, before approving.",
-         json.dumps({"party_id": party["id"], "candidate_id": candidate_id})),
-    )
-    ctx.tracer.step(input_ref=input_ref, tool="route", escalation_rule="bank_change",
-                    result=f"party {party['id']} bank change pending; approve_bank_change asked")
+    if writer.flag_bank_change(party["id"], candidate_id, last4, ifsc, "pipeline",
+                               f"candidate {candidate_id} gives different bank details", input_ref,
+                               conn=ctx.conn, clock=ctx.clock, trace_run_id=ctx.tracer.run_id):
+        ctx.tracer.step(input_ref=input_ref, tool="route", escalation_rule="bank_change",
+                        result=f"party {party['id']} bank change pending; approve_bank_change asked")
 
 
 def _route_invoice(ctx: JobContext, doc: sqlite3.Row, outcome: Outcome, candidate_id: int,
@@ -483,10 +469,13 @@ def _route_statement(ctx: JobContext, doc: sqlite3.Row, outcome: Outcome, candid
             same.remove(row.reference if row.reference in same else same[0])
             confirmed += 1
             continue
-        key = txn_dedup_key(rec.account_id, row.txn_date, row.direction, row.amount_paise, row.reference)
-        if bank_txn_with_key(conn, key) is not None:
-            confirmed += 1
-            continue
+        # Missing from the ledger: every row the existing transactions did not
+        # account for is added, so two identical charges on one day are two.
+        base = key = txn_dedup_key(rec.account_id, row.txn_date, row.direction, row.amount_paise, row.reference)
+        n = 1
+        while bank_txn_with_key(conn, key) is not None:
+            n += 1
+            key = f"{base}#{n}"
         txn = writer.create_bank_txn(
             BankTxnNew(account_id=rec.account_id, direction=row.direction, amount_paise=row.amount_paise,
                        txn_date=row.txn_date, counterparty=row.counterparty, reference=row.reference,

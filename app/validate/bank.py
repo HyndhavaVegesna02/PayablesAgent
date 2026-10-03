@@ -29,3 +29,16 @@ def differs(on_record_mask: str | None, on_record_ifsc: str | None, last4: str |
     on either side can't contradict anything."""
     recorded4 = account_last4(on_record_mask)
     return bool((recorded4 and last4 and recorded4 != last4) or (on_record_ifsc and ifsc and on_record_ifsc != ifsc))
+
+
+def describe(mask_or_account: str | None, ifsc: str | None) -> str:
+    """"account ending 4410, IFSC SBIN0001234", leaving out what is unknown."""
+    last4 = account_last4(mask_or_account)
+    return ", ".join(v for v in (f"account ending {last4}" if last4 else "", f"IFSC {ifsc}" if ifsc else "") if v)
+
+
+def change_question(party_name: str, on_record_mask: str | None, on_record_ifsc: str | None,
+                    last4: str | None, ifsc: str | None) -> str:
+    return (f"A bill from {party_name} gives different bank details: {describe(last4, ifsc)} "
+            f"(on record: {describe(on_record_mask, on_record_ifsc)}). Vendor bank details change pending: "
+            "verify before paying. Check with the vendor by phone, on a number you already have, before approving.")

@@ -107,7 +107,7 @@ def test_a_duplicate_is_named_by_the_lookup():
     seen = []
     checks, rec, _ = check_invoice(x(), None, BUSINESS, lambda key: seen.append(key) or "it is already recorded")
     assert rec is None and checks["duplicates"] == "failed: it is already recorded"
-    assert (seen[0].invoice_number, seen[0].party_gstin, seen[0].amount_paise) == ("AP/2610/131", "27ZZZFZ0001Z1ZU",
+    assert (seen[0].invoice_number, seen[0].party_gstin, seen[0].amount_paise) == ("AP2610131", "27ZZZFZ0001Z1ZU",
                                                                                    9_500_000)
 
 

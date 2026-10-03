@@ -134,6 +134,8 @@ def parse_spoken_inr(text: str) -> int:
         return parse_inr(text)
     except ValueError:
         pass
+    if text.strip().startswith(("-", "\u2212", "minus")):
+        raise ValueError(f"a negative amount is not a bill: {text!r}")
     words = re.sub(r"[,/-]", " ", text.lower().replace("₹", " ")).split()
     tokens = [w.strip(".") if not _DECIMAL.match(w) else w for w in words]
     tokens = [t for t in tokens if t and t not in _SAID_NOISE]
@@ -155,6 +157,9 @@ def parse_spoken_inr(text: str) -> int:
             raise ValueError(f"{text!r} needs sau, hazaar, lakh or crore after the fraction")
         if last_scale is not None and scale >= last_scale:
             raise ValueError(f"the parts of {text!r} are not in descending order")
+        if scale == 1 and last_scale is not None and last_scale > 1000:
+            # "ek lakh pachaas" usually means 1.5 lakh, not 1,00,050: too ambiguous to read
+            raise ValueError(f"{text!r} leaves out the hazaar or sau after its last number")
         total += quantity * scale
         last_scale = scale
     paise = total * 100
