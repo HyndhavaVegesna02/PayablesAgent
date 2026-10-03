@@ -115,3 +115,11 @@ Concept check:
 - Three cases are design limits and go to the backlog in CHG-024: an earlier choice lapsed, an earlier choice undone, and a delay chosen after an authorisation.
 
 The deferred minors from every round are in CHG-024.
+
+## PO verdict
+
+ACCEPT for CHG-022, CHG-021 and CHG-023 as one verdict (2026-10-03, payablesagent-ac). The PO verified 082b124 independently: 906 tests pass and all 5 contracts are kept.
+
+- **D18 measured per choice** against the plan with the earlier kept choices: accepted. The three edge cases in CHG-024 are documented design limits. No one stores a no-authorisation low the owner never saw.
+- **The debit/bill difference** in the transition reason, rather than as a parameter: accepted.
+- **authorise_breach on an invalid plan with no escalated bill:** keep it. It matches the TDD ("authorise_breach: Always, when the plan is invalid") and covers statutory-caused breaches. Removed from CHG-024.

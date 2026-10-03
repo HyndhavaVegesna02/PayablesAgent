@@ -9,7 +9,6 @@ lane:
 Non-blocking notes from the batch 4 review (docs/batches/2026-10-03-4/review.md, rounds 1-4). PO policy: non-blocking notes become backlog chores.
 
 ## Description
-- authorise_breach is offered on an invalid plan with no escalated bill (app/planner/options.py). Restricting it to `r.escalations` breaks batch 1's `test_ask_ca_when_statutory_bills_alone_breach` contract, so the PO must decide which one wins.
 - An approved (PAYMENT_EXPECTED) authorised bill can lapse on a deeper breach. It has no plan line, so the D18 reason text shows nowhere, and the options come back with no explanation.
 - `plan_override.breach_on` holds the day of the lowest balance, not the first breach day. Rename it or document it.
 - CHG-021 changed what inputs_sha256 covers (overrides, then choice_id). Runs made before it go stale once after an upgrade, so the next approve replans first.

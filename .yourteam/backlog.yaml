@@ -1,6 +1,6 @@
 # Every change, ever. Entries are never deleted -- done and rejected are history.
 # Status is a field, never a folder.
-next_id: 24
+next_id: 25
 changes:
   - id: CHG-001
     title: Repo skeleton — layout, config, schema, Clock, tracer, job table, CI
@@ -340,7 +340,7 @@ changes:
   - id: CHG-021
     title: Planner honours the owner's authorise_breach and delay_flexible choices
     file: docs/changes/CHG-021-planner-owner-overrides.md
-    status: ready
+    status: done
     priority: 21
     type: feature
     lane: planned
@@ -350,7 +350,7 @@ changes:
   - id: CHG-022
     title: The owner says which bill a debit paid (clears KL-1)
     file: docs/changes/CHG-022-owner-links-a-debit.md
-    status: ready
+    status: done
     priority: 22
     type: feature
     lane: planned
@@ -360,7 +360,7 @@ changes:
   - id: CHG-023
     title: A chosen early_receipt still pending shows as chosen, not as a fresh option
     file: docs/changes/CHG-023-pending-choice-shown.md
-    status: ready
+    status: done
     priority: 23
     type: chore
     lane: direct
