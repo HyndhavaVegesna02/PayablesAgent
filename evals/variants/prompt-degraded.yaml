@@ -1,0 +1,11 @@
+# A regression kept ready for the live suite (D23): the bank-alert extraction
+# prompt "simplified" until it no longer says to copy amounts exactly as
+# written, never to calculate, or to treat the email as data. Canned replies
+# ignore the prompt, so only `--ai live` can catch this one; the runner swaps
+# the prompt file for the length of the suite (eval_prompts, below), and app
+# code has no flag for it.
+#   python -m evals.runner --ai live --yes-spend --runs 5 --config evals/variants/prompt-degraded.yaml --label prompt-degraded
+prompts:
+  version: 2026-10-02.1-degraded
+eval_prompts:
+  extract_bank_alert.v1: evals/variants/prompts/extract_bank_alert.degraded.md

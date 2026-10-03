@@ -1,0 +1,7 @@
+# A regression to catch (batch 7, CHG-010a, S7, D23): the agent's step cap cut
+# from 6 to 2, as a careless "save tokens" edit to config.yaml would. The
+# fixture suite catches it offline: a drift case needs more than two steps to
+# find the missed debit.
+#   python -m evals.runner --ai fixtures --runs 5 --config evals/variants/regress-max-steps.yaml --label regress-max-steps
+escalation:
+  max_steps: 2

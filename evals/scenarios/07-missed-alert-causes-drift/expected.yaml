@@ -30,6 +30,10 @@ expect:
     component: agent
     sql: SELECT status FROM agent_case WHERE kind = 'drift'
     equals: RESOLVED
+  - id: drift-resolved-in-its-first-run   # trajectory: found at medium, no rerun at high (D23's regression trips this)
+    component: agent
+    sql: SELECT thinking || ' ' || COALESCE(escalation_rule, 'none') FROM agent_case WHERE kind = 'drift'
+    equals: "medium none"
   - id: gap-closed
     component: reconcile
     sql: SELECT drift_status FROM bank_account WHERE id = 1

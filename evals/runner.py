@@ -14,9 +14,10 @@ guard of evals/budget.py)."""
 
 from __future__ import annotations
 
+import contextlib
 import shutil
 import tempfile
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -287,7 +288,8 @@ def run_once(scenario: Scenario, backend: Backend, app_config: AppConfig, run: i
 
 def load_config(variant: Path | None = None) -> tuple[AppConfig, str]:
     """config.yaml, with a variant's keys merged over it (TDD change control:
-    the model and prompt settings live in config), and the merged result's hash."""
+    the model and prompt settings live in config), and the merged result's hash,
+    which covers the text of any prompt file the variant swaps in."""
     import hashlib
     import json
 
@@ -301,8 +303,45 @@ def load_config(variant: Path | None = None) -> tuple[AppConfig, str]:
 
     if variant is not None:
         raw = merge(raw, yaml.safe_load(Path(variant).read_text(encoding="utf-8")) or {})
-    digest = hashlib.sha256(json.dumps(raw, sort_keys=True).encode()).hexdigest()
-    return AppConfig.model_validate(raw), digest
+    swapped = {name: hashlib.sha256(path.read_bytes()).hexdigest() for name, path in prompt_overrides(variant).items()}
+    digest = hashlib.sha256(json.dumps([raw, swapped], sort_keys=True).encode()).hexdigest()
+    return AppConfig.model_validate({k: v for k, v in raw.items() if k != "eval_prompts"}), digest
+
+
+def prompt_overrides(variant: Path | None) -> dict[str, Path]:
+    """A variant's `eval_prompts`: prompt name -> the file that stands in for it
+    (evals/variants/prompt-degraded.yaml). Not app config: AppConfig ignores it."""
+    import yaml
+
+    if variant is None:
+        return {}
+    raw = yaml.safe_load(Path(variant).read_text(encoding="utf-8")) or {}
+    return {name: ROOT / path for name, path in (raw.get("eval_prompts") or {}).items()}
+
+
+@contextlib.contextmanager
+def swapped_prompts(overrides: dict[str, Path]) -> Iterator[None]:
+    """For the length of a suite, the prompts are read from a copy of
+    app/ai/prompts with the variant's files in place of the ones it names."""
+    import app.ai.client as client
+
+    if not overrides:
+        yield
+        return
+    real = client.PROMPT_DIR
+    with tempfile.TemporaryDirectory(prefix="eval-prompts-") as tmp_name:
+        tmp = Path(tmp_name)
+        for f in real.glob("*.md"):
+            shutil.copy(f, tmp / f.name)
+        for name, path in overrides.items():
+            if not (real / f"{name}.md").is_file():
+                raise FileNotFoundError(f"eval_prompts names {name!r}, which is not a prompt in {real}")
+            shutil.copy(path, tmp / f"{name}.md")
+        client.PROMPT_DIR = tmp
+        try:
+            yield
+        finally:
+            client.PROMPT_DIR = real
 
 
 def run_suite(scenarios: list[Scenario], backend_factory: Callable[[], Backend], config: AppConfig, runs: int, *,
@@ -363,13 +402,17 @@ def main(argv: list[str] | None = None) -> int:
             return guard
 
         should_stop = guard.should_stop
-    results, stopped = run_suite(
-        chosen, backend_factory, config, args.runs, should_stop=should_stop,
-        keep=out_dir / "traces" if args.keep_traces else None,
-        progress=lambda r: print(f"{r.status:8} {r.scenario} run {r.run}"
-                                 + (f"  [{r.component}] {r.error or ''}" if r.component or r.error else ""), flush=True))
+    overrides = prompt_overrides(args.config)
+    with swapped_prompts(overrides):
+        results, stopped = run_suite(
+            chosen, backend_factory, config, args.runs, should_stop=should_stop,
+            keep=out_dir / "traces" if args.keep_traces else None,
+            progress=lambda r: print(f"{r.status:8} {r.scenario} run {r.run}"
+                                     + (f"  [{r.component}] {r.error or ''}" if r.component or r.error else ""),
+                                     flush=True))
     meta = {"label": args.label, "mode": args.ai, "model": config.model.id, "prompt_version": config.prompts.version,
             "config_sha256": config_hash, "variant": args.config.as_posix() if args.config else None,
+            "prompt_overrides": {k: v.relative_to(ROOT).as_posix() for k, v in overrides.items()} or None,
             "commit": report.git_commit(), "date": today.isoformat(timespec="seconds"),
             "runs_per_scenario": args.runs, "status": "COMPLETE" if stopped is None else "ABORTED",
             "stopped_because": stopped, "budget": guard.summary() if guard else None}

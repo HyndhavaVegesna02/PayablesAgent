@@ -105,6 +105,9 @@ def markdown(report: dict[str, Any]) -> str:
         f"{m['date']} | {m['runs_per_scenario']} | {m.get('variant') or 'none'} |",
         "",
     ]
+    if m.get("prompt_overrides"):
+        out += ["Prompt files swapped in by the variant: " + ", ".join(
+            f"`{k}` ← `{v}`" for k, v in m["prompt_overrides"].items()) + ".", ""]
     if m["mode"] == "fixtures":
         out += ["Fixture mode: every model reply is canned (fixtures/ai_replies.json), so runs are deterministic "
                 "and the tokens and cost are zero. It shows the harness and the code paths, not the model.", ""]

@@ -362,3 +362,34 @@ def test_the_ablation_report_states_the_fair_comparison_and_names_the_biggest_dr
 def test_make_ablation_is_no_longer_a_stub():
     text = (runner.ROOT / "Makefile").read_text(encoding="utf-8")
     assert "python -m evals.ablation" in text and "not yet implemented" not in text.split("ablation:")[-1]
+
+
+# --- S7: one regression caught -------------------------------------------------------------------
+
+VARIANTS = runner.ROOT / "evals" / "variants"
+
+
+def test_the_suite_catches_the_max_steps_regression():
+    config, digest = runner.load_config(VARIANTS / "regress-max-steps.yaml")
+    assert config.escalation.max_steps == 2 and digest != runner.load_config()[1]
+    r = runner.run_once(scenario.load("07-missed-alert-causes-drift"), FixtureBackend(), config)
+    assert r.status == "FAILED" and r.component == "agent"
+    assert [(c.id, c.got) for c in r.checks if not c.ok] == [("drift-resolved-in-its-first-run", "high max_steps")]
+    assert r.outcome_ok  # the end result still holds: the regression is in the path, a rerun at high thinking
+
+
+def test_a_prompt_variant_swaps_its_file_for_the_suite_only():
+    from app.ai.client import load_prompt
+
+    variant = VARIANTS / "prompt-degraded.yaml"
+    config, digest = runner.load_config(variant)
+    assert config.prompts.version.endswith("-degraded") and digest != runner.load_config()[1]
+    overrides = runner.prompt_overrides(variant)
+    assert list(overrides) == ["extract_bank_alert.v1"]
+    real, sort = load_prompt("extract_bank_alert.v1"), load_prompt("sort.v2")
+    with runner.swapped_prompts(overrides):
+        assert load_prompt("extract_bank_alert.v1") == overrides["extract_bank_alert.v1"].read_text(encoding="utf-8")
+        assert load_prompt("sort.v2") == sort
+    assert load_prompt("extract_bank_alert.v1") == real
+    with pytest.raises(FileNotFoundError), runner.swapped_prompts({"no_such.v1": overrides["extract_bank_alert.v1"]}):
+        pass
