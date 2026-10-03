@@ -393,3 +393,20 @@ def test_a_prompt_variant_swaps_its_file_for_the_suite_only():
     assert load_prompt("extract_bank_alert.v1") == real
     with pytest.raises(FileNotFoundError), runner.swapped_prompts({"no_such.v1": overrides["extract_bank_alert.v1"]}):
         pass
+
+
+def test_the_baseline_and_the_regression_reports_are_kept_and_say_where_they_came_from():
+    import json
+
+    folder = runner.ROOT / "docs" / "evals"
+    base = json.loads((folder / "2026-10-03-fixtures-baseline" / "report.json").read_text(encoding="utf-8"))
+    bad = json.loads((folder / "2026-10-03-fixtures-regress-max-steps" / "report.json").read_text(encoding="utf-8"))
+    for rep in (base, bad):
+        assert rep["meta"]["commit"] != "unknown" and "+uncommitted" not in rep["meta"]["commit"]
+        assert rep["meta"]["runs_per_scenario"] == 5 and rep["totals"]["scenarios"] == 11
+    assert base["totals"]["passed"] == base["totals"]["runs"]
+    failed = {r["scenario"]: r["worst"]["component"] for r in bad["scenarios"] if r["passed"] < r["runs"]}
+    assert failed == {"07-missed-alert-causes-drift": "agent"}
+    assert bad["meta"]["variant"] == "evals/variants/regress-max-steps.yaml"
+    ablation_md = (folder / "2026-10-03-fixtures-ablation" / "report.md").read_text(encoding="utf-8")
+    assert "(D24)" in ablation_md and "+uncommitted" not in ablation_md
