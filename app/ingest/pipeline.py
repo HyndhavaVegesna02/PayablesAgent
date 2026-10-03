@@ -75,11 +75,12 @@ from app.validate.duplicates import normalise_reference, txn_dedup_key
 from app.validate.gstin import normalise_gstin
 from app.validate.invoice import InvoiceRecord, check_invoice
 from app.validate.statement import StatementRecord, check_statement
+from app.validate.voice import check_voice
 
 if TYPE_CHECKING:
     from app.worker import Handler, JobContext
 
-LATER = {"challan", "payment_confirmation", "voice_note"}  # voice: S6
+LATER = {"challan", "payment_confirmation"}
 UPLOAD_WORDS = {"photo": "photo", "pdf": "PDF", "voice": "voice note"}
 
 
@@ -209,6 +210,8 @@ def checker(conn: sqlite3.Connection, doc_type: str, mail: MailFacts, business_i
     if doc_type == "statement":
         accounts = accounts_of(conn, business_id)
         return lambda x, err: check_statement(x, err, mail, accounts, lambda k: statement_with_key(conn, k))
+    if doc_type == "voice_note":
+        return lambda x, err: check_voice(x, err, lambda key: invoice_on_record(conn, business_id, key))
     if doc_type == "invoice":
         name = business_name(conn, business_id)
         return lambda x, err: check_invoice(x, err, name, lambda key: invoice_on_record(conn, business_id, key))
@@ -244,7 +247,8 @@ def extract_with_retries(ctx: JobContext, backend: Backend, doc_type: str, conte
                         result="all checks passed" if record else f"failed: {sorted(fails)}")
         if record is not None:
             return Outcome("VALID", attempts, record, reading)
-        if "confidence" in fails:
+        if "confidence" in fails or (doc_type == "voice_note" and "amount" in fails):
+            # an amount the code can't read stays unreadable however often it is asked (Q8)
             return Outcome("AWAITING_OWNER", attempts, None, reading)
         if set(fails) == {"duplicates"}:
             return Outcome("INVALID", attempts, None, reading)
@@ -339,8 +343,10 @@ def _locked(doc: sqlite3.Row, raw: bytes) -> bool:
 def _store_candidate(ctx: JobContext, doc: sqlite3.Row, doc_type: str, outcome: Outcome) -> int:
     last = outcome.attempts[-1]
     extract = None if last.result.parsed is None else last.result.parsed.model_dump(mode="json")
-    if doc_type == "invoice":
+    transcript = None
+    if doc_type in ("invoice", "voice_note"):
         reading = outcome.reading or {}
+        transcript = (extract or {}).get("transcript")
         record_type = "payable" if reading.get("kind", "bill") == "bill" else "receivable"
         payload = {
             "doc_type": doc_type, "extract": extract, "record": reading or None,
@@ -354,10 +360,11 @@ def _store_candidate(ctx: JobContext, doc: sqlite3.Row, doc_type: str, outcome: 
         payload = {"doc_type": doc_type, "extract": extract, "record": record,
                    "dedup_key": record["dedup_key"] if record else None}
     cur = ctx.conn.execute(
-        "INSERT INTO candidate (source_document_id, record_type, payload_json, model_id, thinking, "
+        "INSERT INTO candidate (source_document_id, record_type, payload_json, transcript, model_id, thinking, "
         "prompt_version, checks_json, status, attempts, created_by, created_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pipeline', ?)",
-        (doc["id"], record_type, json.dumps(payload, sort_keys=True), ctx.app_config.model.id, last.thinking,
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pipeline', ?)",
+        (doc["id"], record_type, json.dumps(payload, sort_keys=True), transcript, ctx.app_config.model.id,
+         last.thinking,
          prompt_version(ctx.app_config, doc_type), json.dumps(last.checks), outcome.status,
          len(outcome.attempts), ctx.clock.now().isoformat()),
     )
@@ -386,8 +393,8 @@ def _check_bank_details(ctx: JobContext, doc: sqlite3.Row, outcome: Outcome, can
     the classic fraud."""
     x = outcome.attempts[-1].result.parsed
     reading = outcome.reading or {}
-    if x is None or reading.get("kind") != "bill":
-        return
+    if x is None or reading.get("kind") != "bill" or not hasattr(x, "payee_account_number"):
+        return  # a voice note carries no bank details
     last4, ifsc = account_last4(x.payee_account_number), normalise_ifsc(x.payee_ifsc)
     if last4 is None and ifsc is None:
         return
@@ -505,7 +512,7 @@ def _route_statement(ctx: JobContext, doc: sqlite3.Row, outcome: Outcome, candid
 def _route(ctx: JobContext, doc: sqlite3.Row, doc_type: str, outcome: Outcome, candidate_id: int,
            msg: EmailMessage | None) -> None:
     conn, input_ref = ctx.conn, f"source_document:{doc['id']}"
-    if doc_type == "invoice":
+    if doc_type in ("invoice", "voice_note"):
         _route_invoice(ctx, doc, outcome, candidate_id, msg)
         return
     if doc_type == "statement":
