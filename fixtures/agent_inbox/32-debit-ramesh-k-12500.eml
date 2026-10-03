@@ -1,0 +1,20 @@
+X-Fixture-Note: fictional data; format modelled on HDFC InstaAlerts. Run B: a UPI debit no bill or email explains; the agent asks the owner. This alert shows no balance
+From: HDFC Bank InstaAlerts <alerts@hdfcbank.example>
+To: owner@example.test
+Subject: Debit alert: Rs.12,500.00 debited from your account ending 4821
+Date: Wed, 14 Oct 2026 15:02:09 +0530
+Message-ID: <instaalert-workflow-32-4821@hdfcbank.example>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+
+Dear Customer,
+
+Rs.12,500.00 has been debited from account **4821 towards NEFT to RAMESH K on 14-10-26.
+
+Reference Number: 628714150209
+
+If you did not authorise this transaction, please call us immediately.
+
+Warm Regards,
+HDFC Bank
+(This is a fictional fixture. No real bank, account or person is described.)

@@ -133,6 +133,7 @@ the real model. Run it only when someone is paying for it.
 | Eval report: the 11 TDD scenarios, repeated runs, three levels (end to end, path, component) | [docs/evals/](docs/evals/README.md) |
 | Harness ablation: full vs bare, same model, and four knock-outs | [docs/evals/](docs/evals/README.md) |
 | One regression caught | [docs/evals/](docs/evals/README.md#the-regression-told-straight-d23) |
+| Two full-workflow fortnights through the real web app, worker and demo clock, step by step | [docs/evals/](docs/evals/README.md#full-workflow-runs) |
 | Two traces, a success and a failure, each with a walkthrough | [docs/traces/](docs/traces/README.md) |
 | Threat model, with the attack we ran and its outcome | [docs/threat-model.md](docs/threat-model.md) |
 | Permission model: what the agent and each role can touch | [docs/permission-model.md](docs/permission-model.md) |
@@ -147,6 +148,7 @@ the commit and run it came from.
 make evals ARGS="--ai fixtures --runs 5"            # offline, deterministic
 make ablation ARGS="--ai fixtures"                  # full vs bare vs knock-outs, offline
 make evals ARGS="--ai fixtures --runs 5 --config evals/variants/regress-max-steps.yaml --label regress-max-steps"
+make workflow                                       # the two scripted fortnights (RUN=A|B, N=repeats)
 ```
 
 Live runs add `--ai live --yes-spend`. A budget guard in code stops every
@@ -218,6 +220,10 @@ More detail on each module is in [app/validate/README.md](app/validate/README.md
   paths, not the model. In the ablation, the bare harness and the no-planner
   knock-out need a live model to mean anything, so their fixture rows are
   marked *mechanics only*.
+- **A statutory payment always needs the owner to link it (CHG-028).** A PF,
+  ESI or GST bill has no vendor name for its challan debit to match, so each
+  one goes to *Needs attention* as "which bill did this debit pay?". The
+  full-workflow runs take that path.
 - **A final answer's evidence rule checks where the evidence came from, not
   whether the answer is true.** A hijacked model can still write a false
   summary. It's shown as the assistant's own words and changes nothing; see

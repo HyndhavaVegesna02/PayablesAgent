@@ -1,0 +1,21 @@
+X-Fixture-Note: fictional data; format modelled on HDFC InstaAlerts. Run A: Shree Ganesh's bill 418 (the handwritten one) paid on Thu 22 Oct; 3,83,000 - 12,390
+From: HDFC Bank InstaAlerts <alerts@hdfcbank.example>
+To: owner@example.test
+Subject: Debit alert: Rs.12,390.00 debited from your account ending 4821
+Date: Thu, 22 Oct 2026 10:31:02 +0530
+Message-ID: <instaalert-workflow-24-4821@hdfcbank.example>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+
+Dear Customer,
+
+Rs.12,390.00 has been debited from account **4821 towards NEFT to SHREE GANESH HARDWARE on 22-10-26.
+
+Reference Number: 628796103124
+Available balance: Rs.3,70,610.00
+
+If you did not authorise this transaction, please call us immediately.
+
+Warm Regards,
+HDFC Bank
+(This is a fictional fixture. No real bank, account or person is described.)

@@ -349,3 +349,41 @@ def test_no_bill_is_preselected_for_a_link(web):
     _debit(env, 18_000_000, "SOMEONE ELSE")
     form = client.get("/attention").text.split("This debit paid")[1].split("</form>")[0]
     assert "checked" not in form
+
+
+# --- CHG-027: a case has two questions, the explain_txn and the agent's ------------------------
+
+
+def _agent_asked(env, case_id):
+    """The agent ran out of ideas on the case and asked the owner (as run_case does)."""
+    env.conn.execute("UPDATE agent_case SET status = 'ASK_OWNER' WHERE id = ?", (case_id,))
+    cur = env.conn.execute(
+        "INSERT INTO owner_question (business_id, case_id, kind, body_text, choices_json, status) "
+        "VALUES (1, ?, 'agent_question', 'What was this debit?', ?, 'OPEN')",
+        (case_id, json.dumps({"case_id": case_id, "choices": []})))
+    env.conn.commit()
+    return cur.lastrowid
+
+
+def test_explaining_the_debit_also_answers_the_agents_question_on_its_case(web):
+    env, client, csrf = web
+    t, result = _debit(env, 3_200_000, "LANDLORD")
+    agent_q = _agent_asked(env, result.case_ids[0])
+    r = post(client, f"/questions/{_question(env, t)['id']}/answer", csrf, {"decision": "not_a_bill"})
+    assert r.status_code == 303
+    assert _status(env, "agent_case", result.case_ids[0]) == "CLOSED_BY_OWNER"
+    assert _status(env, "owner_question", agent_q) == "ANSWERED"  # it no longer waits on Needs attention
+    assert "What was this debit?" not in client.get("/attention").text
+
+
+def test_the_debit_can_still_be_explained_after_the_agents_question_closed_its_case(web):
+    env, client, csrf = web
+    _approve(env, PAPER)
+    _owner_paid(env, PAPER)
+    t, result = _debit(env, 18_000_000, "NEFT DR 0012 ASHIRWAD PAP")
+    agent_q = _agent_asked(env, result.case_ids[0])
+    assert post(client, f"/questions/{agent_q}/answer", csrf, {"choice": ""}).status_code == 303
+    assert _status(env, "agent_case", result.case_ids[0]) == "CLOSED_BY_OWNER"
+    assert _answer(client, csrf, env, _question(env, t), PAPER).status_code == 303  # was refused (409): the case was closed
+    assert _status(env, "bank_txn", t) == "MATCHED"
+    assert _status(env, "owner_question", _question(env, t)["id"]) == "ANSWERED"

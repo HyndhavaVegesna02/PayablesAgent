@@ -210,6 +210,214 @@
         "available_balance_text": "Rs.6,05,000.00",
         "uncertain_fields": []
       }
+    },
+    "20-debit-pf-esi-45000.eml": {
+      "SortResult": {
+        "doc_type": "bank_alert",
+        "reason": "A bank alert for a debit or credit."
+      },
+      "BankAlertExtract": {
+        "account_last4": "4821",
+        "direction": "debit",
+        "amount_text": "Rs.45,000.00",
+        "txn_date": "2026-10-15",
+        "counterparty": "EPFO ESIC CHALLAN",
+        "reference": "N289261000451",
+        "available_balance_text": "Rs.4,28,000.00",
+        "uncertain_fields": []
+      }
+    },
+    "21-debit-city-electricity-35000.eml": {
+      "SortResult": {
+        "doc_type": "bank_alert",
+        "reason": "A bank alert for a debit or credit."
+      },
+      "BankAlertExtract": {
+        "account_last4": "4821",
+        "direction": "debit",
+        "amount_text": "Rs.35,000.00",
+        "txn_date": "2026-10-15",
+        "counterparty": "CITY ELECTRICITY BOARD",
+        "reference": "BP2610150098812",
+        "available_balance_text": "Rs.3,93,000.00",
+        "uncertain_fields": []
+      }
+    },
+    "22-debit-gst-90000.eml": {
+      "SortResult": {
+        "doc_type": "bank_alert",
+        "reason": "A bank alert for a debit or credit."
+      },
+      "BankAlertExtract": {
+        "account_last4": "4821",
+        "direction": "debit",
+        "amount_text": "Rs.90,000.00",
+        "txn_date": "2026-10-19",
+        "counterparty": "GST CHALLAN CBIC",
+        "reference": "N293261000902",
+        "available_balance_text": "Rs.5,03,000.00",
+        "uncertain_fields": []
+      }
+    },
+    "23-debit-prime-chem-120000.eml": {
+      "SortResult": {
+        "doc_type": "bank_alert",
+        "reason": "A bank alert for a debit or credit."
+      },
+      "BankAlertExtract": {
+        "account_last4": "4821",
+        "direction": "debit",
+        "amount_text": "Rs.1,20,000.00",
+        "txn_date": "2026-10-22",
+        "counterparty": "PRIME CHEM INDUSTRIES",
+        "reference": "N296261001203",
+        "available_balance_text": "Rs.3,83,000.00",
+        "uncertain_fields": []
+      }
+    },
+    "24-debit-shree-ganesh-12390.eml": {
+      "SortResult": {
+        "doc_type": "bank_alert",
+        "reason": "A bank alert for a debit or credit."
+      },
+      "BankAlertExtract": {
+        "account_last4": "4821",
+        "direction": "debit",
+        "amount_text": "Rs.12,390.00",
+        "txn_date": "2026-10-22",
+        "counterparty": "SHREE GANESH HARDWARE",
+        "reference": "628796103124",
+        "available_balance_text": "Rs.3,70,610.00",
+        "uncertain_fields": []
+      }
+    },
+    "30-debit-shree-transport-25000-delayed.eml": {
+      "SortResult": {
+        "doc_type": "bank_alert",
+        "reason": "A bank alert for a debit or credit."
+      },
+      "BankAlertExtract": {
+        "account_last4": "4821",
+        "direction": "debit",
+        "amount_text": "Rs.25,000.00",
+        "txn_date": "2026-10-14",
+        "counterparty": "SHREE TRANSPORT",
+        "reference": "628714093018",
+        "available_balance_text": "Rs.4,47,410.00",
+        "uncertain_fields": []
+      }
+    },
+    "31-debit-ashirwad-paper-15000.eml": {
+      "SortResult": {
+        "doc_type": "bank_alert",
+        "reason": "A bank alert for a debit or credit."
+      },
+      "BankAlertExtract": {
+        "account_last4": "4821",
+        "direction": "debit",
+        "amount_text": "Rs.15,000.00",
+        "txn_date": "2026-10-14",
+        "counterparty": "ASHIRWAD PAPER",
+        "reference": "628714121540",
+        "available_balance_text": null,
+        "uncertain_fields": []
+      }
+    },
+    "32-debit-ramesh-k-12500.eml": {
+      "SortResult": {
+        "doc_type": "bank_alert",
+        "reason": "A bank alert for a debit or credit."
+      },
+      "BankAlertExtract": {
+        "account_last4": "4821",
+        "direction": "debit",
+        "amount_text": "Rs.12,500.00",
+        "txn_date": "2026-10-14",
+        "counterparty": "RAMESH K",
+        "reference": "628714150209",
+        "available_balance_text": null,
+        "uncertain_fields": []
+      }
+    },
+    "33-debit-ashirwad-paper-180000.eml": {
+      "SortResult": {
+        "doc_type": "bank_alert",
+        "reason": "A bank alert for a debit or credit."
+      },
+      "BankAlertExtract": {
+        "account_last4": "4821",
+        "direction": "debit",
+        "amount_text": "Rs.1,80,000.00",
+        "txn_date": "2026-10-16",
+        "counterparty": "ASHIRWAD PAPER SUPPLIERS",
+        "reference": "N290261180001",
+        "available_balance_text": "Rs.4,19,910.00",
+        "uncertain_fields": []
+      }
+    },
+    "34-debit-pf-esi-45000-runb.eml": {
+      "SortResult": {
+        "doc_type": "bank_alert",
+        "reason": "A bank alert for a debit or credit."
+      },
+      "BankAlertExtract": {
+        "account_last4": "4821",
+        "direction": "debit",
+        "amount_text": "Rs.45,000.00",
+        "txn_date": "2026-10-16",
+        "counterparty": "EPFO ESIC CHALLAN",
+        "reference": "N290261045002",
+        "available_balance_text": "Rs.3,74,910.00",
+        "uncertain_fields": []
+      }
+    },
+    "35-debit-city-electricity-35000-runb.eml": {
+      "SortResult": {
+        "doc_type": "bank_alert",
+        "reason": "A bank alert for a debit or credit."
+      },
+      "BankAlertExtract": {
+        "account_last4": "4821",
+        "direction": "debit",
+        "amount_text": "Rs.35,000.00",
+        "txn_date": "2026-10-16",
+        "counterparty": "CITY ELECTRICITY BOARD",
+        "reference": "BP2610160099120",
+        "available_balance_text": "Rs.3,39,910.00",
+        "uncertain_fields": []
+      }
+    },
+    "36-debit-gst-90000-runb.eml": {
+      "SortResult": {
+        "doc_type": "bank_alert",
+        "reason": "A bank alert for a debit or credit."
+      },
+      "BankAlertExtract": {
+        "account_last4": "4821",
+        "direction": "debit",
+        "amount_text": "Rs.90,000.00",
+        "txn_date": "2026-10-19",
+        "counterparty": "GST CHALLAN CBIC",
+        "reference": "N293261090003",
+        "available_balance_text": "Rs.2,49,910.00",
+        "uncertain_fields": []
+      }
+    },
+    "37-debit-prime-chem-53000.eml": {
+      "SortResult": {
+        "doc_type": "bank_alert",
+        "reason": "A bank alert for a debit or credit."
+      },
+      "BankAlertExtract": {
+        "account_last4": "4821",
+        "direction": "debit",
+        "amount_text": "Rs.53,000.00",
+        "txn_date": "2026-10-22",
+        "counterparty": "PRIME CHEM INDUSTRIES",
+        "reference": "N296261053004",
+        "available_balance_text": "Rs.1,96,910.00",
+        "uncertain_fields": []
+      }
     }
   },
   "uploads": {
@@ -606,6 +814,67 @@
               "name": "search_gmail",
               "args": {
                 "query": "SHREE TRANSPORT"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "workflow run B: delayed alert recovered from mail",
+      "case": "Explain the ₹25,000 gap in account",
+      "rules": [
+        {
+          "if": [
+            ": VALID, every rule check passed"
+          ],
+          "step": {
+            "notes": "the delayed alert explains the gap",
+            "final": {
+              "outcome": "RESOLVED",
+              "summary": "The gap is a ₹25,000 UPI debit to SHREE TRANSPORT on Wed 14 Oct. Its alert email arrived late and the mail check never read it; it is in the ledger now.",
+              "cited_message_ids": [
+                "30-debit-shree-transport-25000-delayed.eml"
+              ],
+              "relied_on_candidate_ids": "$valid_candidates"
+            }
+          }
+        },
+        {
+          "if": [
+            "message 30-debit-shree-transport-25000-delayed.eml"
+          ],
+          "unless": [
+            "add_candidate("
+          ],
+          "step": {
+            "notes": "an alert the mail check did not read",
+            "tool": {
+              "name": "add_candidate",
+              "args": {
+                "record_type": "bank_alert",
+                "message_id": "30-debit-shree-transport-25000-delayed.eml",
+                "fields": {
+                  "account_last4": "4821",
+                  "direction": "debit",
+                  "amount_text": "Rs.25,000.00",
+                  "txn_date": "2026-10-14",
+                  "counterparty": "SHREE TRANSPORT",
+                  "reference": "628714093018",
+                  "available_balance_text": "Rs.4,47,410.00",
+                  "uncertain_fields": []
+                }
+              }
+            }
+          }
+        },
+        {
+          "step": {
+            "notes": "look for a debit alert for the gap",
+            "tool": {
+              "name": "search_gmail",
+              "args": {
+                "query": "debited 4821 25,000"
               }
             }
           }

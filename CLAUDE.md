@@ -37,6 +37,7 @@ no float ever holds an amount.
 - `make worker` — runs the job worker and the scheduler (`python -m app.worker`); it writes a heartbeat that `/api/health` reports
 - `make smoke-gemini` — live and billed: at most 3 Gemini calls (sort and extract on two test-inbox fixtures) to check the prompts on Gemini itself; never part of `make test`, and run only when the PO authorises it
 - `make evals ARGS="--ai fixtures --runs 5"`, `make ablation ARGS="--ai fixtures"` — the eval suite and the harness ablation; reports go to `docs/evals/`. `--ai live --yes-spend` calls Gemini behind a hard budget guard (600 calls / 5,000,000 micro-USD per invocation) and runs only when the PO authorises it
+- `make workflow` — the two scripted fortnights (run A, the worked example; run B, the bad fortnight) through the real web routes, worker and demo clock; `RUN=A|B`, `N=` repeats; reports `docs/evals/workflow-<run>-<date>.md`. Offline by default; `AI=live ARGS=--yes-spend` only when the PO authorises it
 
 ## Invariants that hold across every change
 

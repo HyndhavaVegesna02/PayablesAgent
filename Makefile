@@ -1,4 +1,4 @@
-.PHONY: setup db seed reseed run worker demo-time test smoke-gemini evals ablation
+.PHONY: setup db seed reseed run worker demo-time test smoke-gemini evals ablation workflow
 
 setup:
 	uv sync --all-groups
@@ -39,3 +39,10 @@ evals:
 # make ablation ARGS="--ai fixtures"   (live: --ai live --yes-spend; see README)
 ablation:
 	uv run python -m evals.ablation $(ARGS)
+
+# The scripted fortnights through the real web app, worker and demo clock (CHG-027).
+# make workflow               both runs, offline (fixture AI)
+# make workflow RUN=B N=3     one run, three repeats
+# make workflow AI=live ARGS=--yes-spend   live Gemini, behind the budget guard; only when authorised
+workflow:
+	uv run python -m evals.workflow --ai $(or $(AI),fixtures) $(if $(RUN),--run $(RUN)) $(if $(N),--runs $(N)) $(ARGS)

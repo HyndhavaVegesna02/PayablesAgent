@@ -785,8 +785,7 @@ def explain_debit(conn: sqlite3.Connection, user: User, question: dict, values: 
             return None
         if values.get("decision") == "not_a_bill":
             _release_held(conn, user, txn_id, except_id=None, why="not a bill payment", clock=clock)
-            writer.close_case(case_id, user.actor, "Owner: this debit was not a bill payment", source,
-                              conn=conn, clock=clock)
+            _settle_case(conn, user, case_id, "Owner: this debit was not a bill payment", source, clock)
             _answer(conn, user, question["id"], {"decision": "not_a_bill"}, clock)
             return _replan(conn, user, clock)
         bill_id = int_or_none(values.get("payable_id"))
@@ -820,9 +819,19 @@ def explain_debit(conn: sqlite3.Connection, user: User, question: dict, values: 
             writer.add_party_alias(bill["party_id"], txn["counterparty"], user.actor,
                                    f"Owner: '{txn['counterparty']}' in a bank alert is {name}", source,
                                    conn=conn, clock=clock)
-        writer.close_case(case_id, user.actor, why, source, conn=conn, clock=clock)
+        _settle_case(conn, user, case_id, why, source, clock)
         _answer(conn, user, question["id"], {"decision": "paid", "payable_id": bill_id}, clock)
         return _replan(conn, user, clock)
+
+
+def _settle_case(conn: sqlite3.Connection, user: User, case_id: int, why: str, source: str, clock: Clock) -> None:
+    """The owner's explanation settles the debit's case. A case has two questions
+    (this explain_txn, and the agent's own when it asked), so the agent's goes
+    too; and a case the owner already closed through the agent's question stays
+    closed while the debit is still explained (CHG-027)."""
+    if agent_cases.load(conn, case_id).status in ("OPEN", "ASK_OWNER"):
+        writer.close_case(case_id, user.actor, why, source, conn=conn, clock=clock)
+    _close_open(conn, user, "agent_question", "case_id", case_id, {"choice": f"settled: {why}"}, clock)
 
 
 def _answer(conn: sqlite3.Connection, user: User, question_id: int, answer: dict, clock: Clock) -> None:

@@ -12,6 +12,19 @@ hand.
 | `2026-10-03-fixtures-regress-max-steps/` | The same suite with `evals/variants/regress-max-steps.yaml` (the agent's step cap cut from 6 to 2): the regression it catches. |
 | `2026-10-03-fixtures-ablation/` | The harness ablation in fixture mode: full system, bare harness, and four knock-outs. |
 
+## Full-workflow runs
+
+`make workflow` plays two scripted fortnights, Mon 12 to Sun 25 Oct 2026, through the real web
+app (owner and helper logged in, every action a form the page showed, with its CSRF token), the
+real worker and the demo clock, each on a freshly seeded database (CHG-027, `evals/workflow.py`,
+`evals/workflow_runs.py`). Each report is a step table: what was done, every check, the expected
+value, the actual one, PASS or FAIL. The reports also say why each expected value is what it is.
+
+| Report | What it is |
+|---|---|
+| `workflow-A-<date>.md` | Run A, the worked example: bills by email (with a PDF), photo, voice note and typed entry; the owner confirms, approves, and asks Nandi Foods to pay early; every debit and credit matches; the TDD's figures at each step |
+| `workflow-B-<date>.md` | Run B, the bad fortnight: a duplicate invoice, a locked statement, a returned payment, a late alert behind a drift the agent recovers from the mailbox, unexplained debits, a fake bank change, a hidden instruction, a split and an authorised breach |
+
 ## The regression, told straight (D23)
 
 The step-cap regression first passed every end-to-end check: with 2 steps the
