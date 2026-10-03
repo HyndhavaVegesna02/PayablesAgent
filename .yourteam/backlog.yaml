@@ -1,6 +1,6 @@
 # Every change, ever. Entries are never deleted -- done and rejected are history.
 # Status is a field, never a folder.
-next_id: 23
+next_id: 24
 changes:
   - id: CHG-001
     title: Repo skeleton — layout, config, schema, Clock, tracer, job table, CI
@@ -144,7 +144,7 @@ changes:
   - id: CHG-006
     title: Owner web app — five screens, roles, stale-plan refusal
     file: docs/changes/CHG-006-web-app.md
-    status: ready
+    status: done
     priority: 6
     type: feature
     lane: sliced
@@ -326,7 +326,7 @@ changes:
   - id: CHG-020
     title: AIUnavailable and its trace step carry the SDK's error message, redacted
     file: docs/changes/CHG-020-ai-error-message.md
-    status: ready
+    status: done
     priority: 20
     type: defect
     lane: direct
@@ -353,6 +353,16 @@ changes:
     status: draft
     priority: 22
     type: feature
+    lane: null
+    expected_paths: []
+    depends_on: CHG-006
+    batch: null
+  - id: CHG-023
+    title: A chosen early_receipt still pending shows as chosen, not as a fresh option
+    file: docs/changes/CHG-023-pending-choice-shown.md
+    status: draft
+    priority: 23
+    type: chore
     lane: null
     expected_paths: []
     depends_on: CHG-006

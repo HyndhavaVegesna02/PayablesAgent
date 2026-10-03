@@ -161,3 +161,20 @@ Every round-1 blocking finding is closed, each confirmed by a revert check, exce
 - **`_shared`** is typed, with `time` imported at module level.
 
 Suite: 863 passed; lint clean; 5 contracts kept. The 6-line round-2 change was checked by reverting it, not by a third reviewer: the PO asked to keep review lean.
+
+## PO verdict
+
+ACCEPT for CHG-020 and for CHG-006 (2026-10-03, payablesagent-ac).
+
+The PO verified independently in its worktree at cad2821:
+- 863 tests pass and all 5 contracts are kept.
+- It ran the demo walkthrough live, with the real uvicorn and the real worker over HTTP:
+  - **Mon 12:** ₹1,83,000, and Prime ESCALATE with its reason.
+  - **Stale approve and CSRF:** an approve with a stale version got 409 with the current plan; a POST without CSRF got 403.
+  - **Mark paid** kept ₹1,83,000 (D12).
+  - **Thu 15:** mails 01 and 02 went through the fixture AI; the balance was ₹4,73,000 with "Matches".
+  - **Fri 16:** mail 07; Prime Chem PAY on Thu 22, lowest ₹3,83,000, and Fri 16 at ₹5,93,000, all matching Part 1.
+- A helper got 403 on every owner page and 200 on /add.
+- The audit trail had every owner action under owner:1, plus PAYABLE_PAYMENT_LINKED from the reconciler.
+
+UX minor logged as a chore (CHG-023): after the clock moves, Needs attention offers an already chosen, still pending early_receipt again as a fresh option.
