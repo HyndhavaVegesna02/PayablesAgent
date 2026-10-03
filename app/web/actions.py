@@ -22,6 +22,7 @@ from datetime import date
 from typing import Any
 
 from app.clock import Clock
+from app.agent import cases as agent_cases
 from app.db.read import bank_txn_with_key, build_snapshot, invoice_on_record, what_if_snapshot
 from app.domain.models import BankTxnNew, PayableNew, ReceivableNew
 from app.domain.money import format_inr, parse_inr
@@ -256,6 +257,35 @@ def supply_tax_amount(conn: sqlite3.Connection, user: User, obligation_id: int, 
         _close_open(conn, user, "ca_reminder", "tax_obligation_id", obligation_id,
                     {"amount_paise": amount, "amount_status": status}, clock)
         return _replan(conn, user, clock)
+
+
+def answer_agent_question(conn: sqlite3.Connection, user: User, question: dict[str, Any], choice: str, *,
+                          clock: Clock) -> None:
+    """The owner answers the exception agent (Q3). The answer joins the case's
+    facts and the case runs once more; a case already resumed once, or a
+    question with no choices (the agent ran out of limits), is closed by the
+    owner instead. The agent never sees anything but the plain answer."""
+    choices = question["choices"] if isinstance(question["choices"], dict) else {}
+    allowed = choices.get("choices") or []
+    if allowed and choice not in allowed:
+        raise Refused("Choose one of the answers shown.")
+    case_id = choices.get("case_id") or question["case_id"]
+    with writer.atomic(conn):
+        _close_open(conn, user, "agent_question", "case_id", case_id, {"choice": choice or "closed"}, clock)
+        case = agent_cases.load(conn, case_id)
+        if case.status != "ASK_OWNER":
+            return
+        if allowed and not case.state.get("resumed"):
+            case.state.setdefault("facts", []).append(f"The owner was asked: {question['body_text']} "
+                                                      f"The answer: {choice}")
+            case.state["resumed"] = True
+            case.status, case.steps, case.validation_failures = "OPEN", 0, 0
+            agent_cases.save(conn, case, clock)
+            queue.enqueue(conn, kind="run_case", payload={"case_id": case_id},
+                          idempotency_key=f"run_case:{case_id}:answered", clock=clock)
+        else:
+            writer.close_case(case_id, user.actor, f"Owner closed the case: {choice or 'no answer'}",
+                              f"owner_question:{question['id']}", conn=conn, clock=clock)
 
 
 def mark_paid(conn: sqlite3.Connection, user: User, payable_id: int, version: int | None, *,

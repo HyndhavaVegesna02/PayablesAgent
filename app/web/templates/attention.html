@@ -4,7 +4,12 @@
 {% block main %}
 <h1>Needs attention</h1>
 {% if message %}<p class="below" role="alert">{{ message }}</p>{% endif %}
-{% if not (questions or candidates or accounts or options or overrides) %}<p>Nothing needs you right now.</p>{% endif %}
+{% if not (questions or candidates or accounts or options or overrides or findings) %}<p>Nothing needs you right now.</p>{% endif %}
+
+{% if findings %}
+<h2>What the assistant found</h2>
+{% for f in findings %}<article><p>{{ f.summary }}</p><small class="muted">case {{ f.id }}, {{ f.kind | replace("_", " ") }}</small></article>{% endfor %}
+{% endif %}
 
 {% if overrides %}
 <h2>Your choices in force</h2>
@@ -88,6 +93,12 @@
     <label><input type="radio" name="amount_status" value="CONFIRMED" checked> Confirmed by the CA</label>
     <label><input type="radio" name="amount_status" value="ESTIMATED"> An estimate</label>
     <button type="submit">Add to the plan</button>
+  </form>
+  {% elif q.kind == "agent_question" %}
+  <form method="post" action="/questions/{{ q.id }}/answer" hx-post="/questions/{{ q.id }}/answer" hx-target="#main">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {% for c in q.choices.get("choices", []) %}<button type="submit" name="choice" value="{{ c }}" class="outline">{{ c }}</button> {% endfor %}
+    {% if not q.choices.get("choices") %}<button type="submit" name="choice" value="" class="secondary outline">Close this case</button>{% endif %}
   </form>
   {% elif q.kind == "unlock_pdf" and q.choices.get("document_id") %}
   <form method="post" action="/documents/{{ q.choices.document_id }}/unlock" hx-post="/documents/{{ q.choices.document_id }}/unlock" hx-target="#main">

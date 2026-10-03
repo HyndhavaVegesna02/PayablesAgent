@@ -181,8 +181,10 @@ def default_handlers(backend=None) -> dict[str, Handler]:
     out.update(reconcile.handlers())
     if backend is not None:
         from app.ingest import pipeline
+        from app.jobs import run_case
 
         out.update(pipeline.handlers(backend))
+        out.update(run_case.handlers(backend))
     return out
 
 

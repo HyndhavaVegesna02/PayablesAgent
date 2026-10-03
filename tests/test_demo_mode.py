@@ -204,7 +204,8 @@ def test_the_fixture_ai_reads_a_credit_end_to_end_and_says_what_it_is(demo_env):
     assert {r[0] for r in env.conn.execute("SELECT model_id FROM candidate")} == {"fixture-ai"}
     steps = [json.loads(line) for f in Path(env.settings.trace_dir).rglob("*.jsonl")
              for line in f.read_text(encoding="utf-8").splitlines()]
-    ai_steps = [s for s in steps if str(s.get("tool", "")).startswith("ai.call")]
+    ai_steps = [s for s in steps if str(s.get("tool", "")).startswith("ai.call")
+                and s["input_ref"].startswith("source_document:")]  # the credit's case runs the agent too (S7)
     assert len(ai_steps) == 2
     for s in ai_steps:
         assert s["model"] == "fixture-ai" and s["cost_micro_usd"] == 0

@@ -411,6 +411,18 @@ def waiting_candidates(conn: sqlite3.Connection, business_id: int) -> list[dict[
     ))
 
 
+def agent_findings(conn: sqlite3.Connection, business_id: int, limit: int = 10) -> list[dict[str, Any]]:
+    """What the exception agent settled: RESOLVED cases with the summary it
+    gave, newest first. Plain text; nothing here acts on it."""
+    out = []
+    for r in _rows(conn, "SELECT id, kind, updated_at, state_json FROM agent_case WHERE business_id = ? "
+                   "AND status = 'RESOLVED' ORDER BY updated_at DESC, id DESC LIMIT ?", (business_id, limit)):
+        summary = json.loads(r["state_json"] or "{}").get("summary")
+        if summary:
+            out.append({"id": r["id"], "kind": r["kind"], "summary": summary})
+    return out
+
+
 def accounts(conn: sqlite3.Connection, business_id: int) -> list[dict[str, Any]]:
     rows = _rows(conn, "SELECT * FROM bank_account WHERE business_id = ? ORDER BY id", (business_id,))
     for r in rows:

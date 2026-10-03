@@ -42,6 +42,7 @@ def attention_page(request: Request, conn: sqlite3.Connection, user: User, *, me
         "accounts": [a for a in all_accounts if a["drift_status"] != "OK"],
         "all_accounts": all_accounts,
         "overrides": repo.active_overrides(conn, user.business_id),
+        "findings": repo.agent_findings(conn, user.business_id),
         "options": repo.options(conn, user.business_id, run["id"], today=request.app.state.clock.today())
         if run else [],
         "message": message, "errors": errors or {}, "values": values or {},
@@ -107,8 +108,8 @@ async def choose(option_id: int, request: Request, user: User = Depends(owner_on
 async def answer(question_id: int, request: Request, user: User = Depends(owner_only),
                  conn: sqlite3.Connection = Depends(db)):
     """confirm_record hands off to the candidate's confirm or reject through
-    choices_json; confirm_balance to the account's confirm-balance. Agent
-    questions wait for the agent loop (CHG-008)."""
+    choices_json; confirm_balance to the account's confirm-balance; an agent
+    question resumes or closes its case (CHG-008)."""
     q = repo.question(conn, user.business_id, question_id)
     if q["status"] != "OPEN":
         raise actions.Refused("This question is already answered.")
@@ -147,6 +148,10 @@ async def answer(question_id: int, request: Request, user: User = Depends(owner_
             actions.explain_debit(conn, user, q, values, clock=clock)
         except actions.FieldErrors as e:
             return attention_page(request, conn, user, message=" ".join(e.errors.values()), status=422)
+        return done(request, "/attention")
+    if q["kind"] == "agent_question":
+        q["choices"] = choices
+        actions.answer_agent_question(conn, user, q, str(values.get("choice") or ""), clock=clock)
         return done(request, "/attention")
     if q["kind"] == "ca_reminder" and type(choices.get("tax_obligation_id")) is int:
         try:
