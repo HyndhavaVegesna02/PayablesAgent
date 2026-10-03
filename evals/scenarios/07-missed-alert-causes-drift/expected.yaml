@@ -1,0 +1,36 @@
+name: 07-missed-alert-causes-drift
+title: Missed alert causes drift
+passes_when: Gap found, transaction recovered from Gmail, gap closed
+steps:
+  - at: "2026-10-15T09:00"
+  - poll: true                       # an empty poll on Thu morning: later polls look back only to Wed
+  - at: "2026-10-15T13:00"
+  - deliver: [04-debit-city-electricity-balance-short.eml, 11-debit-shree-transport-missed.eml]
+  - poll: true                       # 04 is read; 11 (dated Tue 13 Oct) is before the poll's window
+  - at: "2026-10-15T23:00"
+  - drain: true                      # the 23:00 recheck: the gap is real, the account is CHECKING, the agent works the case
+expect:
+  - id: missed-alert-not-polled
+    component: sort
+    sql: SELECT COUNT(*) FROM job WHERE kind = 'process_document' AND json_extract(payload_json, '$.document_id') IN (SELECT id FROM source_document WHERE external_ref = '<instaalert-20261013-160512-4821-11@hdfcbank.example>')
+    equals: 0
+  - id: gap-found
+    component: reconcile
+    sql: SELECT COUNT(*) FROM event WHERE event_type = 'BANK_ACCOUNT_CHECKING'
+    equals: 1
+  - id: alert-recovered-from-mail
+    component: agent
+    sql: SELECT amount_paise || ' ' || txn_date FROM bank_txn WHERE counterparty = 'SHREE TRANSPORT'
+    equals: "2000000 2026-10-13"
+  - id: written-as-the-pipeline-with-the-case-as-source
+    component: agent
+    sql: SELECT e.actor || ' ' || substr(e.source_ref, 1, 11) FROM event e JOIN bank_txn t ON t.id = e.entity_id WHERE e.entity = 'bank_txn' AND e.event_type = 'BANK_TXN_CREATED' AND t.counterparty = 'SHREE TRANSPORT'
+    equals: "pipeline agent:case:"
+  - id: drift-case-resolved
+    component: agent
+    sql: SELECT status FROM agent_case WHERE kind = 'drift'
+    equals: RESOLVED
+  - id: gap-closed
+    component: reconcile
+    sql: SELECT drift_status FROM bank_account WHERE id = 1
+    equals: OK

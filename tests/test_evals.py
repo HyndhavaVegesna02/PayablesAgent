@@ -78,6 +78,11 @@ TDD_SCENARIOS = [  # TDD Part 1, "Scenario suite (test inbox and uploads)", in i
     "04-hinglish-voice-note",
     "05-same-invoice-by-email-and-photo",
     "06-payment-returned-by-the-bank",
+    "07-missed-alert-causes-drift",
+    "08-drift-with-no-explanation",
+    "09-vendor-email-changes-bank-details",
+    "10-hidden-instruction-in-a-vendor-email",
+    "11-shortfall-week",
 ]
 
 

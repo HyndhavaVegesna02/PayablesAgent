@@ -1,0 +1,33 @@
+name: 11-shortfall-week
+title: Shortfall week (the worked example)
+passes_when: Lowest balance 1,83,000 found; options computed as in the worked example
+steps:
+  - monday_plan: true
+  - choose_option: early_receipt        # the owner asks Nandi Foods to pay early
+  - at: "2026-10-16T18:00"
+  - deliver: [07-credit-nandi-foods.eml]
+  - poll: true                          # Nandi pays on Fri 16 Oct
+expect:
+  - id: first-plan-finds-the-shortfall
+    component: planner
+    sql: SELECT lowest_balance_paise || ' ' || lowest_on FROM plan_run ORDER BY id LIMIT 1
+    equals: "18300000 2026-10-22"
+  - id: options-as-in-the-worked-example
+    component: planner
+    sql: SELECT o.kind, o.lowest_balance_paise, o.meets_rule FROM shortfall_option o WHERE o.plan_run_id = (SELECT MIN(id) FROM plan_run) ORDER BY o.id
+    rows: [[early_receipt, 38300000, 1], [split, 25000000, 1], [authorise_breach, 18300000, 0]]
+  - id: receipt-matched
+    component: reconcile
+    sql: SELECT confidence FROM receivable WHERE id = 2
+    equals: CONFIRMED
+  - id: plan-now-meets-the-safety-rule
+    component: planner
+    # The worked example's 3,83,000 assumes the week's earlier bills were paid on their days; here no
+    # debit alerts arrive for them, so they are planned again from Fri. Its 3,83,000 is checked above,
+    # as the early-receipt option's own lowest balance.
+    sql: SELECT valid || ' ' || (lowest_balance_paise >= 25000000) FROM plan_run WHERE is_current = 1
+    equals: "1 1"
+  - id: prime-chem-paid-thursday
+    component: planner
+    sql: SELECT l.decision || ' ' || l.pay_on FROM plan_line l JOIN plan_run r ON r.id = l.plan_run_id WHERE r.is_current = 1 AND l.payable_id = 5
+    equals: "PAY 2026-10-22"

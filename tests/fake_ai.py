@@ -70,7 +70,7 @@ def unavailable(retryable: bool = True) -> AIUnavailable:
 # fixtures/ai_replies.json, shared with the demo fixture AI (D15; batch 5, Q6).
 FIXTURE_REPLIES: dict[str, list[tuple[str, dict]]] = {
     name: list(replies.items())
-    for folder in ("test_inbox", "uploads") for name, replies in load_replies(folder).items()
+    for folder in ("test_inbox", "agent_inbox", "uploads") for name, replies in load_replies(folder).items()
 }
 
 

@@ -27,6 +27,7 @@ FIXTURE_MODEL = "fixture-ai"
 FIXTURES = Path(__file__).resolve().parents[2] / "fixtures"
 REPLIES_FILE = FIXTURES / "ai_replies.json"
 FIXTURE_INBOX = FIXTURES / "test_inbox"
+FIXTURE_AGENT_INBOX = FIXTURES / "agent_inbox"  # mail only the agent tests and evals deliver (not the demo's inbox)
 FIXTURE_UPLOADS = FIXTURES / "uploads"
 
 
@@ -68,12 +69,13 @@ def agent_step(scripts: list[dict[str, Any]], case_file: str) -> dict[str, Any]:
 
 class FixtureBackend:
     def __init__(self) -> None:
-        emails, uploads = load_replies("test_inbox"), load_replies("uploads")
+        emails = {**load_replies("test_inbox"), **load_replies("agent_inbox")}
+        uploads = load_replies("uploads")
         # What the model is shown of each fixture email; a request is matched to
         # the fixture whose text it contains.
         self.texts = {
             f.name: email_text_from_bytes(f.read_bytes())
-            for f in sorted(FIXTURE_INBOX.glob("*.eml")) if f.name in emails
+            for f in sorted([*FIXTURE_INBOX.glob("*.eml"), *FIXTURE_AGENT_INBOX.glob("*.eml")]) if f.name in emails
         }
         self.email_replies = emails
         self.scripts = load_agent_scripts()

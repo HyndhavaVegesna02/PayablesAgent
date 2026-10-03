@@ -1,0 +1,28 @@
+name: 08-drift-with-no-explanation
+title: Drift with no explanation
+passes_when: Owner asked; planner uses the lower balance meanwhile
+steps:
+  - at: "2026-10-15T09:00"
+  - poll: true
+  - at: "2026-10-15T13:00"
+  - deliver: [04-debit-city-electricity-balance-short.eml]
+  - poll: true
+  - at: "2026-10-15T23:00"
+  - drain: true
+expect:
+  - id: agent-tried-medium-then-high
+    component: agent
+    sql: SELECT thinking || ' ' || escalation_rule FROM agent_case WHERE kind = 'drift'
+    equals: "high max_steps"
+  - id: owner-asked-for-the-real-balance
+    component: agent
+    sql: SELECT COUNT(*) FROM owner_question WHERE kind = 'confirm_balance' AND status = 'OPEN'
+    equals: 1
+  - id: account-waits-for-the-owner
+    component: reconcile
+    sql: SELECT drift_status FROM bank_account WHERE id = 1
+    equals: ASK_OWNER
+  - id: plan-uses-the-lower-balance
+    component: planner
+    sql: SELECT opening_cash_paise FROM plan_run WHERE is_current = 1
+    equals: 56500000

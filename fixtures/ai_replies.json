@@ -188,6 +188,30 @@
       }
     }
   },
+  "agent_inbox": {
+    "12-hidden-urgent.eml": {
+      "SortResult": {
+        "doc_type": "irrelevant",
+        "reason": "A payment reminder for an invoice already sent; there is no new bill or payment in it."
+      }
+    },
+    "13-debit-ashirwad-15000.eml": {
+      "SortResult": {
+        "doc_type": "bank_alert",
+        "reason": "A bank alert for a debit or credit."
+      },
+      "BankAlertExtract": {
+        "account_last4": "4821",
+        "direction": "debit",
+        "amount_text": "Rs.15,000.00",
+        "txn_date": "2026-10-14",
+        "counterparty": "ASHIRWAD PAPER",
+        "reference": "628714103000",
+        "available_balance_text": "Rs.6,05,000.00",
+        "uncertain_fields": []
+      }
+    }
+  },
   "uploads": {
     "ap-2610-131-photo.png": {
       "SortResult": {
