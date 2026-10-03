@@ -33,9 +33,10 @@ changes:
     notes_resolved: false
   - id: CHG-018
     lane: planned
-    board: in_progress
+    board: done
     start_commit: c78e017
     blocked_question: null
-    gate_evidence: []
-    prepatch: null
+    gate_evidence:
+      - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 82 files, 272 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | agent never imports the ledger writer, web or the pipeline KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 7 kept, 0 broken. | Uninstalled 1 package in 1ms | Installed 1 package in 10ms", commit: 6de3107, at: 2026-10-03T11:49:55+00:00}
+    prepatch: "PASS: test_explain_plan fails to import app.jobs.explain at c78e017; test_worker and fake_ai changes only add explain_plan"
     notes_resolved: false
