@@ -36,6 +36,10 @@ class FakeBackend:
     replies: dict[str, deque] = field(default_factory=lambda: defaultdict(deque))
     requests: list[Request] = field(default_factory=list)
     usage: tuple[int, int, int] = (1000, 100, 50)
+    # AI the product can do without: with nothing queued, these behave as an AI
+    # that is not there (AIUnavailable, permanent) and the code falls back. Any
+    # other unqueued call fails the test.
+    optional: frozenset[str] = frozenset({"PlanSummary"})
 
     def queue(self, schema_title: str, *replies: Any) -> FakeBackend:
         self.replies[schema_title].extend(replies)
@@ -44,6 +48,8 @@ class FakeBackend:
     def generate(self, *, model, system, contents, thinking, json_schema) -> RawAIResponse:
         self.requests.append(Request(model, system, contents, thinking, json_schema))
         title = (json_schema or {}).get("title", "")
+        if not self.replies[title] and title in self.optional:
+            raise AIUnavailable(f"FakeBackend: no {title} queued", retryable=False)
         if not self.replies[title]:
             raise AssertionError(f"FakeBackend has no reply queued for {title!r}")
         reply = self.replies[title].popleft()

@@ -167,7 +167,7 @@ CREATE TABLE plan_run (
   lowest_on TEXT NOT NULL,              -- lowest of the full schedule (Planning engine, step 4)
   valid INTEGER NOT NULL CHECK (valid IN (0,1)),
   is_current INTEGER NOT NULL DEFAULT 0
-);
+, summary_text TEXT, summary_source TEXT CHECK (summary_source IN ('gemini', 'template')));
 
 CREATE TABLE plan_line (
   plan_run_id INTEGER NOT NULL REFERENCES plan_run(id),

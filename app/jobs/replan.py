@@ -60,7 +60,7 @@ def handle_replan(ctx: JobContext) -> None:
 
 
 def handle_monday_plan(ctx: JobContext) -> None:
-    # The owner's weekly summary is explain_plan's job (CHG-018).
+    # The owner's summary of what changed is explain_plan's, which replan() queues (CHG-018).
     replan(
         ctx.conn, ctx.payload.get("business_id", DEFAULT_BUSINESS_ID), triggered_by="monday",
         clock=ctx.clock, trace_run_id=ctx.tracer.run_id,
@@ -89,8 +89,11 @@ def replan(
     clock: Clock,
     trace_run_id: str | None = None,
 ) -> int:
-    """Builds, stores and applies one plan. Returns the new plan_run id."""
+    """Builds, stores and applies one plan, and queues explain_plan for it
+    against the plan it replaces (CHG-018). Returns the new plan_run id."""
     with writer.atomic(conn):
+        previous = conn.execute("SELECT id FROM plan_run WHERE business_id = ? AND is_current = 1",
+                                (business_id,)).fetchone()
         snapshot = build_snapshot(conn, business_id, clock.today())
         result = plan(snapshot)
         # D18: a lapsed authorisation is LAPSED from now on, so the run is stored
@@ -102,6 +105,9 @@ def replan(
         )
         apply_moves(conn, snapshot, result, run_id, clock=clock, trace_run_id=trace_run_id)
         lapse_overrides(conn, result, run_id, clock=clock, trace_run_id=trace_run_id)
+        if previous is not None:
+            queue.enqueue(conn, kind="explain_plan", payload={"plan_run_id": run_id, "previous_run_id": previous[0]},
+                          idempotency_key=f"explain_plan:{run_id}", clock=clock)
     return run_id
 
 

@@ -26,3 +26,4 @@ Two things enforce this:
 | `statement.py` | a bank statement: account, amounts, balances, arithmetic, dates in the period, duplicates, confidence |
 | `voice.py` | a bill told in a voice note: the spoken amount, read by code from words the transcript holds |
 | `bank.py` | vendor bank details: last four digits, IFSC, what counts as a change, the owner's question |
+| `summary.py` | a plan's "what changed" text: every amount and date must be one the plan diff holds; no other digit, no markup, at most 600 characters |

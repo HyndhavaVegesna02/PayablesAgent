@@ -173,12 +173,14 @@ def enqueue_poll_mail(*, db_path: str | Path, clock: Clock) -> None:
 
 
 def default_handlers(backend=None) -> dict[str, Handler]:
-    """Every job this build can run. Mail jobs need an AI backend; without one
-    they are not registered, so their jobs wait in the queue (Q10)."""
-    from app.jobs import reconcile, replan
+    """Every job this build can run. Mail jobs and the exception agent need an
+    AI backend; without one they are not registered, so their jobs wait in the
+    queue (Q10). explain_plan runs either way: without AI its note is the template."""
+    from app.jobs import explain, reconcile, replan
 
     out: dict[str, Handler] = {"replan": replan.handle_replan, "monday_plan": replan.handle_monday_plan}
     out.update(reconcile.handlers())
+    out.update(explain.handlers(backend))  # without AI, its notes are the template
     if backend is not None:
         from app.ingest import pipeline
         from app.jobs import run_case

@@ -175,6 +175,7 @@ def test_read_heartbeat_is_none_before_the_worker_has_run(env):
 def test_default_handlers_cover_the_jobs_this_change_owns():
     assert set(worker.default_handlers()) == {
         "replan", "monday_plan", "reconcile_txn", "reconcile_failure", "drift_check",
+        "explain_plan",  # no AI needed: without one, its note is the template (CHG-018)
     }
 
 
@@ -242,7 +243,8 @@ def test_main_starts_the_scheduler_and_the_loop_and_exits_cleanly(env, monkeypat
     monkeypatch.setattr(worker, "process_one", one_tick)
     assert worker.main() == 0
     out = capsys.readouterr()
-    assert "worker: running ['drift_check', 'monday_plan', 'reconcile_failure', 'reconcile_txn', 'replan']" in out.out
+    assert ("worker: running ['drift_check', 'explain_plan', 'monday_plan', 'reconcile_failure', 'reconcile_txn', "
+            "'replan']") in out.out
     assert "GEMINI_API_KEY is not set" in out.err
     assert worker.read_heartbeat(settings) is not None  # written before the first job claim
 

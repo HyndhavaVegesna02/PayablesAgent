@@ -5,13 +5,13 @@ write to the ledger even if the rest of the agent code is wrong (TDD Part 2,
 from __future__ import annotations
 
 import json
-from dataclasses import replace
+from dataclasses import dataclass, replace
 import sqlite3
 from datetime import date, timedelta
 from pathlib import Path
 
 from app.domain.names import normalise_name
-from app.planner.plan import AccountCash, InflowIn, OverrideIn, PayableIn, PlanSnapshot
+from app.planner.plan import AccountCash, InflowIn, OverrideIn, PayableIn, PlanLine, PlanSnapshot
 from app.validate.duplicates import normalise_invoice_number
 from app.validate.gstin import normalise_gstin
 from app.validate.alert import AccountIn
@@ -329,3 +329,54 @@ def accounts_of(conn: sqlite3.Connection, business_id: int) -> list[AccountIn]:
         out.append(AccountIn(row["id"], row["account_mask"][-4:],
                              frozenset(s.lower() for s in senders if isinstance(s, str))))
     return out
+
+
+# --- explain_plan (batch 6, CHG-018) ------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class PersistedPlan:
+    """A stored plan run, as much of it as diff() reads (planner.diff.PlanFigures)."""
+
+    run_id: int
+    opening_cash_paise: int
+    lowest_balance_paise: int
+    lowest_on: date
+    valid: bool
+    lines: tuple[PlanLine, ...]
+
+
+def persisted_result(conn: sqlite3.Connection, run_id: int) -> PersistedPlan:
+    """A run rebuilt from plan_run and plan_line. A line's amount is its bill's
+    amount now: plan_line keeps no amount, and the planner pays a bill whole."""
+    run = conn.execute("SELECT * FROM plan_run WHERE id = ?", (run_id,)).fetchone()
+    if run is None:
+        raise LookupError(f"plan_run {run_id} does not exist")
+    lines = tuple(
+        PlanLine(r["payable_id"], r["decision"], date.fromisoformat(r["pay_on"]) if r["pay_on"] else None,
+                 r["amount_paise"], r["reason"])
+        for r in conn.execute(
+            "SELECT pl.payable_id, pl.decision, pl.pay_on, pl.reason, p.amount_paise FROM plan_line pl "
+            "JOIN payable p ON p.id = pl.payable_id WHERE pl.plan_run_id = ? ORDER BY pl.payable_id", (run_id,))
+    )
+    return PersistedPlan(run["id"], run["opening_cash_paise"], run["lowest_balance_paise"],
+                         date.fromisoformat(run["lowest_on"]), bool(run["valid"]), lines)
+
+
+def bill_names(conn: sqlite3.Connection, business_id: int) -> dict[int, str]:
+    """A display name per payable: the vendor, or the taxes a statutory bill
+    pays ("PF and ESI"), or its invoice number."""
+    names: dict[int, str] = {
+        r[0]: r[2] or r[1] or f"Bill {r[0]}"
+        for r in conn.execute("SELECT p.id, p.invoice_number, pt.name FROM payable p LEFT JOIN party pt "
+                              "ON pt.id = p.party_id WHERE p.business_id = ?", (business_id,))
+    }
+    taxes: dict[int, list[str]] = {}
+    for pid, tax_type in conn.execute(
+            "SELECT payable_id, tax_type FROM tax_obligation WHERE business_id = ? AND payable_id IS NOT NULL "
+            "ORDER BY id", (business_id,)):
+        taxes.setdefault(pid, []).append(tax_type)
+    for pid, types in taxes.items():
+        if pid in names:
+            names[pid] = " and ".join(types)
+    return names

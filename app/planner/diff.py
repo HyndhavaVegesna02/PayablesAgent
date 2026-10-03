@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from typing import Any, Literal
+from typing import Any, Literal, Protocol
 
-from app.planner.plan import PlanLine, PlanResult
+from app.planner.plan import PlanLine
 
 ChangeKind = Literal["opening_cash", "lowest", "validity", "line_added", "line_removed", "line_changed"]
 
@@ -30,11 +30,27 @@ class PlanDiff:
     dates: frozenset[date]
 
 
+class PlanFigures(Protocol):
+    """What diff() reads of a plan: a PlanResult, or a stored run rebuilt by
+    app.db.read.persisted_result (which keeps no day-by-day schedule)."""
+
+    @property
+    def opening_cash_paise(self) -> int: ...
+    @property
+    def lowest_balance_paise(self) -> int: ...
+    @property
+    def lowest_on(self) -> date: ...
+    @property
+    def valid(self) -> bool: ...
+    @property
+    def lines(self) -> tuple[PlanLine, ...]: ...
+
+
 def _line(line: PlanLine) -> dict[str, Any]:
     return {"decision": line.decision, "pay_on": line.pay_on, "amount_paise": line.amount_paise}
 
 
-def diff(old: PlanResult, new: PlanResult) -> PlanDiff:
+def diff(old: PlanFigures, new: PlanFigures) -> PlanDiff:
     changes: list[Change] = []
     if old.opening_cash_paise != new.opening_cash_paise:
         changes.append(Change("opening_cash", None, {"amount_paise": old.opening_cash_paise},

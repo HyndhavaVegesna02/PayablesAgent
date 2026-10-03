@@ -18,6 +18,14 @@
   </p>
 </article>
 
+{% if view.run.summary_text %}
+<article>
+  <header>What changed</header>
+  <p style="margin:0">{{ view.run.summary_text }}</p>
+  <small class="muted">{{ "Written by the assistant; every amount and date checked against the plan." if view.run.summary_source == "gemini" else "From the plan's own figures." }}</small>
+</article>
+{% endif %}
+
 {% for w in view.warnings %}<p class="below" role="note">{{ w }}</p>{% endfor %}
 
 {% if view.to_approve %}

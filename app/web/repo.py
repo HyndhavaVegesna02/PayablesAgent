@@ -13,7 +13,7 @@ from datetime import date
 from typing import Any
 
 from app.domain.money import format_inr
-from app.db.read import missing_tax_warnings
+from app.db.read import bill_names, missing_tax_warnings
 from app.ledger.reconcile import early_receipt_requests
 from app.ledger.writer import calculated_balance
 from app.validate.bank import describe, normalise_ifsc
@@ -97,31 +97,6 @@ def current_run(conn: sqlite3.Connection, business_id: int) -> dict[str, Any] | 
 
 
 # --- names shown for bills and parties --------------------------------------------
-
-
-def bill_names(conn: sqlite3.Connection, business_id: int) -> dict[int, str]:
-    """A display name per payable: the vendor, or the taxes a statutory bill
-    pays ("PF and ESI"), or its invoice number."""
-    names: dict[int, str] = {}
-    for r in _rows(
-        conn,
-        "SELECT p.id, p.invoice_number, pt.name FROM payable p LEFT JOIN party pt ON pt.id = p.party_id "
-        "WHERE p.business_id = ?",
-        (business_id,),
-    ):
-        names[r["id"]] = r["name"] or r["invoice_number"] or f"Bill {r['id']}"
-    taxes: dict[int, list[str]] = {}
-    for r in _rows(
-        conn,
-        "SELECT payable_id, tax_type FROM tax_obligation WHERE business_id = ? AND payable_id IS NOT NULL "
-        "ORDER BY id",
-        (business_id,),
-    ):
-        taxes.setdefault(r["payable_id"], []).append(r["tax_type"])
-    for pid, types in taxes.items():
-        if pid in names:
-            names[pid] = " and ".join(types)
-    return names
 
 
 def receivable_names(conn: sqlite3.Connection, business_id: int) -> dict[int, str]:
