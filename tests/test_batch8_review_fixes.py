@@ -132,6 +132,34 @@ def test_a_found_invoice_with_no_due_date_is_valid_evidence_and_the_owner_fills_
 # --- minors ---------------------------------------------------------------------------------------
 
 
+def test_a_found_invoice_with_a_check_skipped_is_not_made_valid_by_the_missing_date_rule(mail):
+    from tests.agent_helpers import open_unknown_debit_case
+    from tests.test_run_case_job import BILL_09, final, run, step
+    from tests.worker_helpers import deliver
+
+    deliver(mail, "09-invoice-ashirwad-new-bank.eml")
+    cid, msg = open_unknown_debit_case(mail), "09-invoice-ashirwad-new-bank.eml"
+    case = run(mail, cid, step("look", "search_gmail", {"query": "AP/2610/140"}),
+               step("propose", "add_candidate", {"record_type": "invoice", "message_id": msg,
+                                                 "fields": {**BILL_09, "due_date": None, "seller_name": ""}}),
+               step("give up", final=final("NEEDS_OWNER", "Not sure.")))
+    assert case.state["candidates"]["1"]["status"] == "INVALID"  # duplicates was skipped: not every check ran
+
+
+def test_a_line_that_isnt_a_record_gets_the_lines_fields_too():
+    with pytest.raises(ValidationError) as e:
+        InvoiceExtract.model_validate({**bank.BILL, "lines": ["Kraft paper Rs.40,000.00"]})
+    assert schema_problems(e.value, InvoiceExtract).endswith("; each of lines has: description, amount_text")
+
+
+def test_a_first_ifsc_beside_an_account_on_record_is_asked_as_new_details():
+    from app.validate.bank import change_question
+
+    text = change_question("Ashirwad", "XXXX4410", None, "4410", "SBIN0001234")
+    assert text.startswith("A bill from Ashirwad gives new bank details: account ending 4410, IFSC SBIN0001234 "
+                           "(on record: account ending 4410).")
+
+
 def test_a_first_account_number_at_an_ifsc_already_on_record_is_flagged(web):
     env, _ = web
     env.conn.execute("UPDATE party SET bank_account_mask = NULL, bank_ifsc = 'HDFC0004567', bank_status = 'verified' "

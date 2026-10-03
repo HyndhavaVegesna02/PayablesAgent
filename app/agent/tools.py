@@ -235,7 +235,7 @@ def schema_problems(e: ValidationError, model: type[BaseModel]) -> str:
         [f"not fields of this record: {', '.join(unknown)}"] if unknown else [])
     parts += [f"{path(x)}: {x['msg']}" for x in errors if x["type"] not in ("missing", "extra_forbidden")]
     out = "; ".join(parts) + f". Its fields are: {', '.join(model.model_fields)}"
-    if model is InvoiceExtract and any(x["loc"][:1] == ("lines",) and len(x["loc"]) > 2 for x in errors):
+    if model is InvoiceExtract and any(x["loc"][:1] == ("lines",) and len(x["loc"]) > 1 for x in errors):
         out += f"; each of lines has: {', '.join(InvoiceLine.model_fields)}"
     return out
 
@@ -277,7 +277,8 @@ def add_candidate(ctx: ToolContext, args: CandidateArgs) -> str:
     status = "VALID" if record is not None else "INVALID"
     # A bill with no due date: the agent can't supply one without making it up, and the pipeline that reads the
     # handed-on message flags the field for the owner. So it is evidence like any other (CHG-030 x CHG-031).
-    no_due_date = args.record_type == "invoice" and failures(checks) == {"dates": NO_DUE_DATE}
+    no_due_date = (args.record_type == "invoice" and failures(checks) == {"dates": NO_DUE_DATE}
+                   and not any(v.startswith("skipped") for v in checks.values()))  # every other check ran
     if no_due_date:
         status = "VALID"
     cid = ctx.conn.execute(

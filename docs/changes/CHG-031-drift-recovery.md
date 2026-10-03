@@ -26,3 +26,7 @@ Batch 8 plan, docs/batches/2026-10-04-8/plan.md:
 
 ## History
 - 2026-10-04: found by the live pilot; PO folded it into batch 8
+- 2026-10-04: batch 8 review round 1: AC1's "generated from the extract schemas" is met by a two-way test
+  (tests/test_batch8_review_fixes.py: the prompt's field lists equal BankAlertExtract, InvoiceExtract and
+  InvoiceLine exactly), not by rendering the lists at load time. That kept the prompt text and version
+  (2026-10-04.2) the AFTER live run used. The reviewer accepted it as meeting the criterion.

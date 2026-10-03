@@ -198,10 +198,11 @@ class OwnerFormRefused(Exception):
         self.component = component
 
 
-# The confirm form's fields whose values come from the document as read; the rest (priority, how sure, the
-# account a bank email is matched to) are the app's own, so a refusal of them is the app's fault, not the model's.
+# The confirm form's fields whose values come from the document as read. The account comes from the last
+# four digits read, so a misread there is the model's too. The rest (priority, how sure) are the app's own,
+# so a refusal of them is the app's fault, not the model's.
 READ_FIELDS = frozenset({"party", "invoice_number", "invoice_date", "due_date", "amount",
-                         "direction", "txn_date", "counterparty", "reference"})
+                         "account_id", "direction", "txn_date", "counterparty", "reference"})
 
 
 def refusal_component(errors: dict[str, str], filled: set[str]) -> str | None:

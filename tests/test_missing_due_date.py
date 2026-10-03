@@ -118,6 +118,10 @@ def test_the_scripted_owner_fills_only_what_the_page_marks(monkeypatch):
     seen.clear()
     r = runner.run_once(s, FixtureBackend(), runner.load_config(None)[0])  # no date read: marked, filled
     assert seen[-1]["due_date"] == "2026-11-05" and r.status == "PASSED"
+    seen.clear()
+    monkeypatch.setattr(runner, "flagged_fields", lambda c, shown: {})  # empty, but the page marks nothing
+    runner.run_once(s, FixtureBackend(), runner.load_config(None)[0])
+    assert seen[-1]["due_date"] == ""  # so the fill is not applied: only what the page marks is typed
 
 
 def test_a_refusal_blames_extract_validate_or_nobody():
