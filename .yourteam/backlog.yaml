@@ -187,13 +187,13 @@ changes:
   - id: CHG-008
     title: Exception agent — loop, tools, case file, escalation
     file: docs/changes/CHG-008-exception-agent.md
-    status: draft
+    status: ready
     priority: 8
     type: feature
-    lane: null
-    expected_paths: []
+    lane: sliced
+    expected_paths: [app/agent/, app/ai/, app/jobs/, app/db/, app/web/, app/validate/, fixtures/, tests/, docs/notes/, pyproject.toml]
     depends_on: CHG-005
-    batch: null
+    batch: 6
   - id: CHG-009
     title: Live connections — Gmail OAuth, GmailSource, SMTP alerts
     file: docs/changes/CHG-009-live-connections.md
@@ -304,13 +304,13 @@ changes:
   - id: CHG-018
     title: explain_plan job — plan diff to a plain-language summary (Gemini), number check, template fallback
     file: docs/changes/CHG-018-explain-plan.md
-    status: draft
+    status: ready
     priority: 18
     type: feature
-    lane: null
-    expected_paths: []
+    lane: planned
+    expected_paths: [app/agent/, app/ai/, app/jobs/, app/db/, app/web/, app/validate/, fixtures/, tests/, docs/notes/, pyproject.toml]
     depends_on: CHG-013
-    batch: null
+    batch: 6
 
   - id: CHG-019
     title: Batch 2 review notes not fixed in the batch

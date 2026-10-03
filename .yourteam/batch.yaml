@@ -1,37 +1,33 @@
 # Active batch. status: none means no batch is running.
-batch: 5
-status: closed      # none | active | review | closed | aborted
-goal: "TDD Phase 6: bills arrive by email, photo, password-locked PDF or Hinglish voice note; every rule check runs in pure code; the owner confirms each into one payable, even across sources (CHG-007, D19, D20)."
-branch: batch-5
+batch: 6
+status: active      # none | active | review | closed | aborted
+goal: "TDD Phase 7: the exception agent works the cases code cannot settle within code-counted limits, with five tools and evidence checked by code, never changing payment state (CHG-008, D21); each replan gets a number-checked plain-text summary (CHG-018)."
+branch: batch-6
 start_tag: null
-started: "2026-10-03T14:10:00+05:30"
+started: "2026-10-03T18:00:00+05:30"
 changes:
-  - id: CHG-007
+  - id: CHG-008
     lane: sliced
-    board: done
-    start_commit: 5e8b6ad
+    board: in_progress
+    start_commit: c8b450a
     blocked_question: null
     slices:
-      - {id: S1, title: "pure validators, GSTIN, invoice and statement arithmetic", start_commit: 5e8b6ad, end_commit: 2804f3d, board: done, prepatch: "yt_prepatch --since 5e8b6ad --to 2804f3d: PASS (the new test modules fail to import at the start tree; the boundary scan would also fail there: validate imported sqlite3 and app.clock)"}
-      - {id: S2, title: "multimodal AI input", start_commit: 6ca7fa3, end_commit: e8f47ed, board: done, prepatch: "yt_prepatch --since 6ca7fa3: PASS (test_ai_multimodal fails to import Part at the start tree). Masked edits, refactor only: fake_ai and test_demo_mode follow the replies file move and pass before and after"}
-      - {id: S3, title: "invoices by email and upload, cross-source duplicates", start_commit: 83a4564, end_commit: 6f8632d, board: done, prepatch: "yt_prepatch --since 83a4564: PASS (test_invoice_pipeline fails to import app.validate.invoice). Masked edits: test_web_add now expects the upload queued (no job at the start tree), test_ai_client expects sort.v2 (absent at the start tree); test_reconcile_match only follows normalise_name to app.domain.names"}
-      - {id: S4, title: "vendor bank change (D20)", start_commit: 8a24dbc, end_commit: cbf08bb, board: done, prepatch: "yt_prepatch --since 8a24dbc: PASS, all 6 new tests fail at the start tree"}
-      - {id: S5, title: "PDF unlock and statements", start_commit: f34e7f5, end_commit: 0e025b1, board: done, prepatch: "yt_prepatch --since f34e7f5: PASS (test_pdf_unlock fails to import app.ingest.pdf). Masked edits: test_pipeline now uses challan for a type not read yet (statement is read now; passes before and after); test_web_accounts_settings drops the unlock stub test, superseded by test_pdf_unlock"}
-      - {id: S6, title: "voice notes", start_commit: 2afe1bf, end_commit: 039943f, board: done, prepatch: "yt_prepatch --since 2afe1bf: PASS (test_voice fails to import parse_spoken_inr)"}
-      - {id: S7, title: "D11 MISSING tax amounts", start_commit: 4ee9d41, end_commit: 7816e19, board: done, prepatch: "yt_prepatch --since 4ee9d41: PASS, the 5 new tests and the edited writer test (a MISSING obligation is now recorded, not refused) fail at the start tree"}
-      - {id: S8, title: "fixtures and the Phase 6 exit test", start_commit: 16988a0, end_commit: 39a4449, board: done, prepatch: "yt_prepatch --since 16988a0: PASS, the 4 exit tests and the 3 edited test_eml_folder inventory tests fail at the start tree (no fixtures 08-10 or uploads there)"}
-    gate_evidence:
-      - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 63 files, 171 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 6 kept, 0 broken. | Building cashflow-agent @ file:///C:/Hyn/PayablesAgent | Built cashflow-agent @ file:///C:/Hyn/PayablesAgent | Uninstalled 1 package in 3ms | Installed 1 package in 6ms", commit: 2804f3d, at: 2026-10-03T08:31:12+00:00}
-      - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 63 files, 171 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 6 kept, 0 broken. | Uninstalled 1 package in 1ms | Installed 1 package in 32ms", commit: e8f47ed, at: 2026-10-03T08:37:48+00:00}
-      - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 66 files, 186 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 6 kept, 0 broken. | Uninstalled 1 package in 3ms | Installed 1 package in 9ms", commit: 6f8632d, at: 2026-10-03T08:48:21+00:00}
-      - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 67 files, 189 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 6 kept, 0 broken. | Uninstalled 1 package in 2ms | Installed 1 package in 9ms", commit: cbf08bb, at: 2026-10-03T08:56:03+00:00}
-      - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 69 files, 200 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 6 kept, 0 broken. | Uninstalled 1 package in 2ms | Installed 1 package in 9ms", commit: 0e025b1, at: 2026-10-03T09:04:00+00:00}
-      - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 70 files, 205 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 6 kept, 0 broken. | Uninstalled 1 package in 2ms | Installed 1 package in 9ms", commit: 039943f, at: 2026-10-03T09:09:38+00:00}
-      - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 70 files, 206 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 6 kept, 0 broken. | Uninstalled 1 package in 1ms | Installed 1 package in 10ms", commit: 7816e19, at: 2026-10-03T09:15:19+00:00}
-      - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 70 files, 206 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 6 kept, 0 broken. | Uninstalled 1 package in 2ms | Installed 1 package in 10ms", commit: 39a4449, at: 2026-10-03T09:23:44+00:00}
-      - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 70 files, 209 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 6 kept, 0 broken. | Uninstalled 1 package in 1ms | Installed 1 package in 11ms", commit: ee819fa, at: 2026-10-03T09:39:57+00:00}
-      - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 70 files, 209 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 6 kept, 0 broken. | Uninstalled 1 package in 1ms | Installed 1 package in 9ms", commit: 856eb9f, at: 2026-10-03T09:47:52+00:00}
-      - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 70 files, 209 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 6 kept, 0 broken. | Uninstalled 1 package in 1ms | Installed 1 package in 8ms", commit: a57ee6e, at: 2026-10-03T09:51:39+00:00}
-      - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 70 files, 209 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 6 kept, 0 broken. | Uninstalled 1 package in 1ms | Installed 1 package in 8ms", commit: 28fddaf, at: 2026-10-03T09:54:06+00:00}
+      - {id: S1, title: "case state, case file, contracts", start_commit: c8b450a, board: in_progress}
+      - {id: S2, title: "AgentStep and the prompt", start_commit: null, board: todo}
+      - {id: S3, title: "read-only tools", start_commit: null, board: todo}
+      - {id: S4, title: "add_candidate and ask_owner", start_commit: null, board: todo}
+      - {id: S5, title: "loop, escalation, resume, loop detection", start_commit: null, board: todo}
+      - {id: S6, title: "apply_final and the run_case job", start_commit: null, board: todo}
+      - {id: S7, title: "scripted scenarios", start_commit: null, board: todo}
+      - {id: S8, title: "Phase 7 exit and the permissions note", start_commit: null, board: todo}
+    gate_evidence: []
+    prepatch: null
+    notes_resolved: false
+  - id: CHG-018
+    lane: planned
+    board: todo
+    start_commit: null
+    blocked_question: null
+    gate_evidence: []
     prepatch: null
     notes_resolved: false

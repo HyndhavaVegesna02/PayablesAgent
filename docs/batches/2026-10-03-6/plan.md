@@ -172,3 +172,8 @@
 **Risks:**
 - The exception prompt is unproven on real Gemini (scripted only); Phase 9's evals cover it.
 - The agent's step cost is real money once live: at most 12 calls per case (6 at medium, 6 at high).
+
+## PO decisions (2026-10-03; plan c8b450a approved by payablesagent-ac)
+- **Scope:** CHG-008 (sliced, S1–S8), then CHG-018 in the same batch.
+- **Q1–Q5:** the defaults are accepted.
+- **D21 (adds to Q4):** a transaction the agent recovered is written by code as actor `pipeline`. Its event's source_ref carries where it came from, `agent:case:<id> via gmail:<message id>`, so the audit trail shows the agent found it even though code wrote it. The drift-recovered scenario asserts this.
