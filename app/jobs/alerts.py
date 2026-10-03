@@ -6,7 +6,8 @@ business as one fixed-template email, to the owner's address in the database,
 at most once per `alerts.min_minutes_between_emails`; an alert raised inside
 the window waits for the window's end. Every figure is read from the ledger
 when the email is built. With no SMTP host configured nothing is sent and the
-alerts wait."""
+alerts wait; so do alerts whose job ran out of attempts. Waiting alerts go
+with the next alert's email: the next raise_alert queues a send_alert again."""
 
 from __future__ import annotations
 
@@ -26,12 +27,14 @@ from app.notify.smtp import message, send_email
 if TYPE_CHECKING:
     from app.worker import Handler, JobContext
 
+DEFAULT_BASE_URL = "http://localhost:8000"  # APP_BASE_URL set but blank still links somewhere
 KINDS = ("money_received", "payment_failed", "unexpected_debit", "balance_mismatch")
 
 
 def raise_alert(conn: sqlite3.Connection, business_id: int, kind: str, ref: str, *, clock: Clock) -> None:
-    """Records one alert (once per kind and record) and makes sure a send_alert
-    job is queued for the business; a queued one absorbs it."""
+    """Records one alert and makes sure a send_alert job is queued for the
+    business; a queued one absorbs it. An unsent alert of the same kind for the
+    same record absorbs this one; once that was sent, the event raises anew."""
     if kind not in KINDS:
         raise ValueError(f"not an alert kind: {kind!r}")
     conn.execute("INSERT OR IGNORE INTO owner_alert (business_id, kind, ref, created_at) VALUES (?, ?, ?, ?)",
@@ -96,7 +99,7 @@ def send_alerts(conn: sqlite3.Connection, business_id: int, *, settings, app_con
     if owner is None:
         raise PermanentJobError(f"business {business_id} has no owner to alert")
     subject, body = templates.digest([alert_line(conn, r["kind"], r["ref"]) for r in rows],
-                                     settings.app_base_url.rstrip("/") + "/attention")
+                                     (settings.app_base_url or DEFAULT_BASE_URL).rstrip("/") + "/attention")
     msg = message(settings.alert_from or settings.smtp_user, owner["email"], subject, body)
     kwargs = {} if smtp_factory is None else {"smtp_factory": smtp_factory}
     send_email(msg, host=settings.smtp_host, port=settings.smtp_port, user=settings.smtp_user,
@@ -112,7 +115,7 @@ def handle_send_alert(ctx: JobContext, *, smtp_factory: Callable | None = None) 
     try:
         result = send_alerts(ctx.conn, ctx.payload["business_id"], settings=ctx.settings, app_config=ctx.app_config,
                              clock=ctx.clock, smtp_factory=smtp_factory)
-    except ValueError as e:  # an address the database should never hold
+    except ValueError as e:  # a bad address, kind or ref: data the database should never hold
         raise PermanentJobError(str(e)) from None
     ctx.tracer.step(input_ref=f"business:{ctx.payload['business_id']}", tool="send_alert", result=result)
 

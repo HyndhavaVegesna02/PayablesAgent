@@ -367,9 +367,7 @@ def _settle_debit_question(conn: sqlite3.Connection, user: User, txn_id: int, wh
         "AND json_extract(choices_json, '$.bank_txn_id') = ?", (user.business_id, txn_id),
     ).fetchall():
         if case_id is not None:
-            case = conn.execute("SELECT status FROM agent_case WHERE id = ?", (case_id,)).fetchone()
-            if case is not None and case[0] in ("OPEN", "ASK_OWNER"):
-                writer.close_case(case_id, user.actor, why, f"bank_txn:{txn_id}", conn=conn, clock=clock)
+            _settle_case(conn, user, case_id, why, f"bank_txn:{txn_id}", clock)
         _answer(conn, user, question_id, {"decision": "settled", "why": why}, clock)
 
 

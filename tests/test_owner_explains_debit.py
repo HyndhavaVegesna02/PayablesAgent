@@ -387,3 +387,14 @@ def test_the_debit_can_still_be_explained_after_the_agents_question_closed_its_c
     assert _answer(client, csrf, env, _question(env, t), PAPER).status_code == 303  # was refused (409): the case was closed
     assert _status(env, "bank_txn", t) == "MATCHED"
     assert _status(env, "owner_question", _question(env, t)["id"]) == "ANSWERED"
+
+
+def test_marking_the_bill_paid_with_the_held_debit_also_settles_the_agents_question(web):
+    # Review round 1 (major): the sibling settle path, mark-paid, left the agent's question OPEN.
+    env, client, csrf = web
+    twin, t, result = _twin_in_review(env)
+    agent_q = _agent_asked(env, result.case_ids[0])
+    assert post(client, f"/payables/{PAPER}/mark-paid", csrf, {"version": str(version(env, PAPER))}).status_code == 303
+    assert _status(env, "agent_case", result.case_ids[0]) == "CLOSED_BY_OWNER"
+    assert _status(env, "owner_question", agent_q) == "ANSWERED"
+    assert "What was this debit?" not in client.get("/attention").text

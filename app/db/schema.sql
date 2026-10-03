@@ -296,8 +296,7 @@ CREATE TABLE owner_alert (
   kind TEXT NOT NULL CHECK (kind IN ('money_received','payment_failed','unexpected_debit','balance_mismatch')),
   ref TEXT NOT NULL,                    -- 'receivable:3', 'payable:5', 'agent_case:2', 'bank_txn:7', 'bank_account:1'
   created_at TEXT NOT NULL,
-  sent_at TEXT,
-  UNIQUE (business_id, kind, ref)
+  sent_at TEXT
 );
 
 CREATE VIEW account_balance AS
@@ -316,3 +315,5 @@ CREATE TRIGGER event_no_update BEFORE UPDATE ON event
 
 CREATE TRIGGER event_no_delete BEFORE DELETE ON event
   BEGIN SELECT RAISE(ABORT, 'event is append-only'); END;
+
+CREATE UNIQUE INDEX owner_alert_unsent ON owner_alert (business_id, kind, ref) WHERE sent_at IS NULL;

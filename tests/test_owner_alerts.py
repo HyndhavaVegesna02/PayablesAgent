@@ -19,10 +19,12 @@ class FakeSMTP:
     """Records what would have been sent; refuses when told to."""
 
     sent: list = []
+    sessions: list = []  # (STARTTLS ran, login user) for each message sent
     fail = False
 
     def __init__(self, host, port, timeout):
         self.host, self.port = host, port
+        self.tls, self.user = False, None
 
     def __enter__(self):
         return self
@@ -40,6 +42,7 @@ class FakeSMTP:
         if FakeSMTP.fail:
             raise OSError("connection refused")
         FakeSMTP.sent.append((self.host, self.port, msg))
+        FakeSMTP.sessions.append((self.tls, self.user))
 
 
 @pytest.fixture
@@ -48,7 +51,7 @@ def env(tmp_path):
     e.settings = e.settings.model_copy(update={
         "smtp_host": "smtp.example.test", "smtp_port": 587, "smtp_user": "alerts-sender", "smtp_password": "pw",
         "alert_from": "alerts@example.test", "app_base_url": "https://cash.example.test"})
-    FakeSMTP.sent, FakeSMTP.fail = [], False
+    FakeSMTP.sent, FakeSMTP.sessions, FakeSMTP.fail = [], [], False
     yield e
     e.conn.close()
 
@@ -70,6 +73,7 @@ def test_an_unknown_debit_raises_an_alert_and_one_email_goes_to_the_owner(env):
     assert kinds(env) == [("unexpected_debit", "bank_txn:1")]
     ((host, port, msg),) = FakeSMTP.sent
     assert (host, port) == ("smtp.example.test", 587)
+    assert FakeSMTP.sessions == [(True, "alerts-sender")]  # STARTTLS, then the alert account's own login
     assert (msg["From"], msg["To"], msg["Subject"]) == ("alerts@example.test", "owner@example.test",
                                                         "Cash-flow assistant: 1 thing needs you")
     body = msg.get_content()
@@ -107,8 +111,9 @@ def test_a_matched_credit_says_money_received_with_the_new_lowest_balance(env):
     run_all(env, handlers("02-credit-kaveri-traders.eml"))
     ((kind, ref),) = [k for k in kinds(env) if k[0] == "money_received"]
     lowest = env.conn.execute("SELECT lowest_balance_paise FROM plan_run WHERE is_current = 1").fetchone()[0]
-    assert alerts.alert_line(env.conn, kind, ref) == (
-        f"₹33,000 received from Kaveri Traders. Lowest projected balance is now {format_inr(lowest)}. Plan updated.")
+    line = f"₹33,000 received from Kaveri Traders. Lowest projected balance is now {format_inr(lowest)}. Plan updated."
+    assert alerts.alert_line(env.conn, kind, ref) == line
+    assert any(line in m.get_content() for _, _, m in FakeSMTP.sent)  # and that is what the owner was sent
 
 
 def test_a_drift_the_agent_cannot_explain_alerts_a_balance_mismatch(tmp_path):
@@ -189,8 +194,9 @@ def test_a_stored_name_cannot_add_lines_or_headers(env):
         ["From", "To", "Subject", "Content-Type", "Content-Transfer-Encoding", "MIME-Version"])
     alert_lines = [line for line in msg.get_content().splitlines() if line.startswith("- ")]
     assert len(alert_lines) == 1  # the name added no line
-    assert alert_lines[0].startswith("- A ₹1,000 debit from HDFC Bcc: attacker@example.test Click")
-    assert alert_lines[0].endswith(" wasn't in the plan. What was it for?")
+    assert alert_lines[0] == "- A ₹1,000 debit from HDFC Bcc: [link removed] Click [link removed] wasn't in the plan. " \
+                             "What was it for?"  # no address or web link survives to be clicked
+    assert "evil.example" not in msg.get_content() and "attacker@" not in msg.get_content()
     assert chr(13) not in msg.get_content()
     assert not any(line.startswith("Click") for line in msg.get_content().splitlines())
     assert templates.clean("x" * 100).endswith("…") and len(templates.clean("x" * 100)) == 60
@@ -208,3 +214,35 @@ def test_an_smtp_failure_is_retried_and_the_alerts_stay_unsent(env):
 def test_an_address_with_a_newline_is_refused():
     with pytest.raises(ValueError):
         smtp.message("alerts@example.test", "owner@example.test\r\nBcc: x@example.test", "s", "b")
+
+
+def test_the_same_event_on_the_same_record_alerts_again_once_the_first_was_sent(env):
+    t = _debit(env, 1000)
+    _raise(env, t)
+    _raise(env, t)  # a rerun before the email: absorbed
+    run_all(env, alerts.handlers(smtp_factory=FakeSMTP))
+    assert len(FakeSMTP.sent) == 1
+    env.clock.advance(timedelta(days=14))
+    alerts.raise_alert(env.conn, 1, "balance_mismatch", "bank_account:1", clock=env.clock)
+    alerts.raise_alert(env.conn, 1, "balance_mismatch", "bank_account:1", clock=env.clock)
+    env.conn.commit()
+    run_all(env, alerts.handlers(smtp_factory=FakeSMTP))
+    env.clock.advance(timedelta(days=14))  # a second mismatch on the same account, weeks later
+    alerts.raise_alert(env.conn, 1, "balance_mismatch", "bank_account:1", clock=env.clock)
+    env.conn.commit()
+    run_all(env, alerts.handlers(smtp_factory=FakeSMTP))
+    assert len(FakeSMTP.sent) == 3
+    assert env.conn.execute("SELECT COUNT(*) FROM owner_alert WHERE kind = 'balance_mismatch'").fetchone()[0] == 2
+
+
+def test_a_blank_app_base_url_still_links_to_the_app(env):
+    env.settings = env.settings.model_copy(update={"app_base_url": ""})
+    _raise(env, _debit(env, 1000))
+    run_all(env, alerts.handlers(smtp_factory=FakeSMTP))
+    assert "http://localhost:8000/attention" in FakeSMTP.sent[0][2].get_content()
+
+
+def test_a_name_cannot_hide_behind_bidi_controls_or_line_separators():
+    assert templates.clean("Prime\u2028Chem\u202eLtd\u2066") == "Prime Chem Ltd"
+    assert templates.clean("pay at www.evil.in today") == "pay at [link removed] today"
+    assert templates.clean("M/s Kaveri Traders Pvt. Ltd.") == "M/s Kaveri Traders Pvt. Ltd."

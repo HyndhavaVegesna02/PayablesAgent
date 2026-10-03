@@ -1,7 +1,9 @@
 """The owner alert texts (TDD Part 1, the alert table; batch 7, CHG-010b).
 Fixed sentences; code fills in only figures and names it read from the
-ledger. A name is cleaned to one short line, so it can add no line, header or
-link to the email. The subject holds no stored text at all."""
+ledger. A name is cleaned to one short line, so it can add no line or header
+to the email, and anything shaped like a web address is cut out of it, so a
+vendor's name can't put a link in front of the owner (TDD Part 1, "Messages").
+The subject holds no stored text at all."""
 
 from __future__ import annotations
 
@@ -12,9 +14,19 @@ from app.domain.money import format_inr
 MAX_NAME = 60
 
 
+# Control characters, the line and paragraph separators, and the bidi controls
+# (which can make a name read backwards on screen).
+_UNSAFE = re.compile("[\\x00-\\x1f\\x7f\\u2028\\u2029\\u200e\\u200f\\u202a-\\u202e\\u2066-\\u2069]+")
+# A scheme (http://, ftp://), www., an email address, or a dotted name ending in
+# a common top-level domain.
+_ADDRESS = re.compile(r"(?i)\b(?:[a-z][a-z0-9+.-]*://|www\.)\S*|[\w.+-]+@[\w-]+(?:\.[\w-]+)+"
+                      r"|\b[\w-]+(?:\.[\w-]+)*\.(?:com|net|org|in|io|co|info|biz|xyz|app|example)\b\S*")
+
+
 def clean(name: str | None) -> str:
-    """One printable line of at most 60 characters."""
-    text = re.sub(r"[\x00-\x1f\x7f  ]+", " ", name or "")
+    """One printable line of at most 60 characters, with no web address."""
+    text = _UNSAFE.sub(" ", name or "")
+    text = _ADDRESS.sub("[link removed]", text)
     text = " ".join(text.split())
     return (text[:MAX_NAME - 1] + "…") if len(text) > MAX_NAME else (text or "someone")
 
