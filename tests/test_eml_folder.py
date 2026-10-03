@@ -32,14 +32,14 @@ def test_emails_are_released_day_by_day_by_the_clock():
     ]
     assert _names(EmlFolderSource(INBOX, at(14)).list_new(date(2026, 10, 1), [BANK])) == [
         "01-debit-ashirwad-paper.eml", "02-credit-kaveri-traders.eml", "03-return-ashirwad-paper.eml",
-        "06-debit-ashirwad-paper-resent.eml", "10-statement-hdfc-locked.eml", "11-debit-shree-transport-missed.eml",
+        "06-debit-ashirwad-paper-resent.eml", "10-statement-hdfc-locked.eml",
     ]
 
 
 def test_only_the_given_senders_are_listed_whatever_their_case():
     source = EmlFolderSource(INBOX, at(31))
     assert source.list_new(date(2026, 10, 1), ["billing@vendor.example"]) == []
-    assert len(source.list_new(date(2026, 10, 1), ["ALERTS@HDFCBANK.EXAMPLE"])) == 9  # 8 alerts, 1 statement
+    assert len(source.list_new(date(2026, 10, 1), ["ALERTS@HDFCBANK.EXAMPLE"])) == 8  # 7 alerts, 1 statement
     assert len(source.list_new(date(2026, 10, 1), ["Accounts@AshirwadPaper.example"])) == 2  # invoices 08, 09
 
 

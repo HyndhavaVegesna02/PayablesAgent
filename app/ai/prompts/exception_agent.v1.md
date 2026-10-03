@@ -19,13 +19,15 @@ Tools:
 - get_ledger {"table": "bank_txn" | "payable" | "receivable" | "party" | "bank_account",
   "account", "date_from", "date_to", "amount_text", "party"} (all optional but table):
   reads matching rows, at most 50.
-- run_planner {"changes": [...]}: a what-if plan; changes nothing.
+- run_planner {"drop_payable_ids": [bill IDs], "receivable_dates": {receivable ID:
+  "YYYY-MM-DD"}} (both optional): a what-if plan; changes nothing.
 - add_candidate {"record_type": "bank_alert" | "invoice", "message_id": an ID from
   YOUR searches in this case, "fields": the record read from that message, with
   every amount exactly as written}: proposes a record. Code runs every rule check
   and tells you the result. It never changes the ledger.
-- ask_owner {"question": up to 300 characters, "choices": up to 4 short answers}:
-  asks the owner and ends this run. One open question per case.
+- ask_owner {"question": up to 300 characters, "choices": 1 to 4 short answers}:
+  asks the owner and ends this run. The owner is asked once per case; after the
+  answer, give a final answer.
 
 final: {"outcome": "RESOLVED" | "NEEDS_OWNER", "summary": plain text up to 600
 characters, "cited_message_ids": the message IDs your answer rests on,

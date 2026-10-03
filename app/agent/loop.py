@@ -54,9 +54,13 @@ class Deps:
     to_owner: Callable[[sqlite3.Connection, Case, str], None] | None = None
 
 
+def _cut(text: str, limit: int = 300) -> str:
+    return text if len(text) <= limit else text[:limit - 1].rsplit(" ", 1)[0] + "…"
+
+
 def ask_agent_question(conn: sqlite3.Connection, case: Case, question: str, d: Deps) -> None:
     open_question(ToolContext(conn, d.db_path, case, d.mail, d.clock, case.state.get("steps_total", 0), d.store),
-                  question[:300], [])
+                  _cut(question), [])
     case.status = "ASK_OWNER"
 
 
@@ -93,7 +97,14 @@ def _tool_step(conn: sqlite3.Connection, case: Case, d: Deps, name: str, args: d
                       result=f"refused: {problem}")
         return
     ctx = ToolContext(conn, d.db_path, case, d.mail, d.clock, step, d.store)
-    result = spec.run(ctx, parsed)
+    try:
+        result = spec.run(ctx, parsed)
+    except Exception as e:  # noqa: BLE001 - a source error is a step the agent reads, not a crash
+        problem = f"{type(e).__name__}: {e}"[:200]
+        case.add_note(f"step {step}: {name} failed: {problem}")
+        d.tracer.step(input_ref=f"agent_case:{case.id}", tool=f"agent:{name}", arguments=args,
+                      result=f"error: {problem}")
+        return
     args_text = ", ".join(f"{k}={v!r}" for k, v in parsed.model_dump(mode="json").items())
     case.state.setdefault("findings", []).append(finding(step, name, args_text, result))
     d.tracer.step(input_ref=f"agent_case:{case.id}", tool=f"agent:{name}", arguments=args, result=result)
@@ -140,6 +151,7 @@ def run_case(conn: sqlite3.Connection, case_id: int, d: Deps) -> Outcome:
                       result=f"run over at {case.thinking}: {escalation.after_run(case.thinking)}")
         if escalation.after_run(case.thinking) == "rerun_high":
             case.thinking, case.steps, case.validation_failures = "high", 0, 0
+            case.state.pop("last_call", None)  # loop detection is per run
             case.add_note(f"the medium run ended ({rule}); rerunning at high thinking")
             _save(conn, case, d.clock)
             continue

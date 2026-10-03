@@ -17,7 +17,13 @@ change by itself:
   found. The gap closed: CHECKING -> OK and the case is RESOLVED. It did not,
   or the case ends at the owner any other way: the account goes to ASK_OWNER
   and the owner is asked for the real balance (confirm_balance).
-- A relied-on bill or invoice goes to the owner to confirm (confirm_record).
+- A relied-on bill or invoice is handed to the mail pipeline, which reads it
+  as it reads any email: the owner confirms the pipeline's entry, and new
+  bank details are flagged there.
+- Every message the agent stored and no answer applied is handed to the
+  pipeline when the run ends, so finding a message never hides it from the
+  pipeline. A run that dies (a permanent error, the last retry) hands the
+  case to the owner.
 - NEEDS_OWNER asks the owner (agent_question).
 - There is no path from an answer to approving, paying, marking paid, or
   changing a priority or date."""
@@ -30,7 +36,7 @@ from datetime import date
 from typing import TYPE_CHECKING
 
 from app.agent import cases
-from app.agent.cases import Case
+from app.agent.cases import Case, CaseChanged, CaseNotFound
 from app.agent.loop import Deps, ask_agent_question, run_case
 from app.ai.agent_step import FinalAnswer
 from app.ai.client import AIUnavailable, Backend
@@ -51,6 +57,7 @@ if TYPE_CHECKING:
 def _refuse(conn: sqlite3.Connection, case: Case, why: str, ctx: JobContext) -> bool:
     case.validation_failures += 1
     case.add_note(f"final answer refused by code: {why}")
+    case.state.pop("last_call", None)  # a final answer came between: the next call is not a repeat
     cases.save(conn, case, ctx.clock)
     conn.commit()
     ctx.tracer.step(input_ref=f"agent_case:{case.id}", tool="apply_final", validation=f"refused: {why}")
@@ -77,6 +84,7 @@ def _write_alert(conn: sqlite3.Connection, case: Case, cid: int, ctx: JobContext
         source_ref=f"agent:case:{case.id} via gmail:{message_id}",  # D21: the audit trail says who found it
         conn=conn, clock=ctx.clock, trace_run_id=ctx.tracer.run_id,
     )
+    case.state.setdefault("applied_documents", []).append(row["source_document_id"])
     queue.enqueue(conn, kind="reconcile_txn", payload={"bank_txn_id": txn.id},
                   idempotency_key=f"reconcile_txn:{txn.id}", clock=ctx.clock)
     if rec["balance_after_paise"] is not None:
@@ -87,14 +95,16 @@ def _write_alert(conn: sqlite3.Connection, case: Case, cid: int, ctx: JobContext
     return f"candidate {cid}: bank_txn {txn.id} written"
 
 
-def _ask_to_confirm(conn: sqlite3.Connection, case: Case, cid: int, summary: str) -> str:
-    conn.execute(
-        "INSERT INTO owner_question (business_id, case_id, kind, body_text, choices_json, status) "
-        "VALUES (?, ?, 'confirm_record', ?, ?, 'OPEN')",
-        (case.business_id, case.id, f"The assistant found this record while working a case: {summary}"[:500],
-         json.dumps({"candidate_id": cid})),
-    )
-    return f"candidate {cid}: the owner confirms it"
+def _hand_to_pipeline(conn: sqlite3.Connection, case: Case, ctx: JobContext) -> None:
+    """The messages this case stored: one its answer applied is PROCESSED; the
+    rest go to the pipeline as if the poll had fetched them."""
+    applied = set(case.state.get("applied_documents", []))
+    for doc_id in case.state.get("stored_documents", []):
+        if doc_id in applied:
+            conn.execute("UPDATE source_document SET status = 'PROCESSED' WHERE id = ? AND status = 'NEW'", (doc_id,))
+        else:
+            queue.enqueue(conn, kind="process_document", payload={"document_id": doc_id},
+                          idempotency_key=f"process_document:{doc_id}", clock=ctx.clock)
 
 
 def _account_id(case: Case) -> int:
@@ -105,7 +115,8 @@ def to_owner(conn: sqlite3.Connection, case: Case, question: str, d: Deps, ctx: 
     """A case that ends without an answer goes to the owner. A drift case asks
     for the real balance: the account moves CHECKING -> ASK_OWNER (the
     reconciler's step 5 move) and one confirm_balance question opens. Any
-    other case asks an agent_question with no choices, which the owner closes."""
+    other case asks an agent_question with no choices, which the owner closes
+    (or resumes, for a drift case: app/web/actions.py)."""
     if case.kind != "drift":
         ask_agent_question(conn, case, question, d)
         return
@@ -138,6 +149,9 @@ def _settle_drift(conn: sqlite3.Connection, case: Case, d: Deps, ctx: JobContext
     result = reconcile.check_drift(conn, account_id, source="new_txn", clock=ctx.clock,
                                    trace_run_id=ctx.tracer.run_id)
     status = conn.execute("SELECT drift_status FROM bank_account WHERE id = ?", (account_id,)).fetchone()[0]
+    # A closed gap resolves the account's drift cases, this one too, in this same
+    # transaction: that move is this job's own, so the save writes over it.
+    (case.loaded_status,) = conn.execute("SELECT status FROM agent_case WHERE id = ?", (case.id,)).fetchone()
     case.add_note(f"drift check after the findings: {result.outcome}")
     if result.replan:
         enqueue_replan(conn, case.business_id, f"agent_case:{case.id}", clock=ctx.clock)
@@ -168,7 +182,7 @@ def apply_final(conn: sqlite3.Connection, case: Case, final: FinalAnswer, d: Dep
             if known[str(cid)]["record_type"] == "bank_alert":
                 done.append(_write_alert(conn, case, cid, ctx))
             else:
-                done.append(_ask_to_confirm(conn, case, cid, final.summary))
+                done.append(f"candidate {cid}: its message goes to the pipeline, and the owner confirms the bill")
         case.status = "RESOLVED"
         case.state["summary"] = final.summary
         case.add_note(f"resolved: {final.summary}")
@@ -178,6 +192,17 @@ def apply_final(conn: sqlite3.Connection, case: Case, final: FinalAnswer, d: Dep
     ctx.tracer.step(input_ref=f"agent_case:{case.id}", tool="apply_final", validation="evidence checked",
                     result="; ".join(done) or "nothing to write")
     return True
+
+
+def _give_up(conn: sqlite3.Connection, case_id: int, why: str, d: Deps, ctx: JobContext) -> None:
+    """The run died for good: the case goes to the owner, with what it stored."""
+    case = cases.load(conn, case_id)
+    if case.status != "OPEN":
+        return
+    case.add_note(f"the run stopped: {why}")
+    to_owner(conn, case, f"The assistant stopped working on this case ({why}). {case.state.get('goal', '')}", d, ctx)
+    _hand_to_pipeline(conn, case, ctx)
+    cases.save(conn, case, ctx.clock)
 
 
 def handle_run_case(ctx: JobContext, *, backend: Backend) -> None:
@@ -191,15 +216,27 @@ def handle_run_case(ctx: JobContext, *, backend: Backend) -> None:
     d = Deps(backend, ctx.app_config, ctx.tracer, mail_source(ctx.settings, ctx.clock), ctx.clock,
              ctx.settings.database_path, store)
     d.to_owner = lambda conn, case, question: to_owner(conn, case, question, d, ctx)
-    while True:
-        try:
-            outcome = run_case(ctx.conn, case_id, d)
-        except AIUnavailable as e:
-            raise _ai_failure(e) from e
-        except LookupError as e:
-            raise PermanentJobError(str(e)) from None
-        if outcome.final is None or apply_final(ctx.conn, outcome.case, outcome.final, d, ctx):
-            return
+    conn = ctx.conn
+    try:
+        while True:
+            outcome = run_case(conn, case_id, d)
+            if outcome.final is None or apply_final(conn, outcome.case, outcome.final, d, ctx):
+                break
+        if outcome.case.status != "OPEN":  # the run ended: what it stored goes on
+            _hand_to_pipeline(conn, outcome.case, ctx)
+    except CaseChanged as e:
+        conn.rollback()  # this step's writes: the case is someone else's now
+        ctx.tracer.step(input_ref=f"agent_case:{case_id}", tool="run_case", result=f"stopped: {e}")
+    except CaseNotFound as e:
+        raise PermanentJobError(str(e)) from None
+    except Exception as e:
+        failure = _ai_failure(e) if isinstance(e, AIUnavailable) else e
+        last = isinstance(failure, PermanentJobError) or ctx.job["attempts"] + 1 >= ctx.job["max_attempts"]
+        if last:
+            conn.rollback()
+            _give_up(conn, case_id, f"{type(e).__name__}: {e}"[:200], d, ctx)
+            conn.commit()  # kept, though the job itself fails
+        raise failure from e
 
 
 def handlers(backend: Backend) -> dict[str, Handler]:

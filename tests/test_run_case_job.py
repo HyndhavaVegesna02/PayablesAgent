@@ -96,7 +96,7 @@ def test_an_answer_citing_unfound_mail_or_unchecked_candidates_is_refused(env):
     assert all(after[t] == before[t] for t in ("payable", "receivable", "bank_txn", "event", "candidate"))
 
 
-def test_a_found_bill_goes_to_the_owner_to_confirm(env):
+def test_a_found_bill_is_handed_to_the_pipeline_not_shown_as_the_agents_entry(env):
     deliver(env, "09-invoice-ashirwad-new-bank.eml")
     cid = open_unknown_debit_case(env)
     msg = "09-invoice-ashirwad-new-bank.eml"
@@ -106,8 +106,12 @@ def test_a_found_bill_goes_to_the_owner_to_confirm(env):
                step("propose", "add_candidate", {"record_type": "invoice", "message_id": msg, "fields": BILL_09}),
                step("done", final=final(summary="The debit paid bill AP/2610/140.", cited=[msg], relied=[1])))
     assert case.status == "RESOLVED" and table_counts(env)["payable"] == payables
-    q = env.conn.execute("SELECT kind, case_id, choices_json FROM owner_question").fetchone()
-    assert (q[0], q[1], json.loads(q[2])) == ("confirm_record", cid, {"candidate_id": 1})
+    doc = env.conn.execute("SELECT id, status FROM source_document").fetchone()
+    assert doc["status"] == "NEW"  # stored by the agent, not yet read by the pipeline
+    job = env.conn.execute("SELECT kind, payload_json, status FROM job WHERE kind = 'process_document'").fetchone()
+    assert (job["payload_json"], job["status"]) == (json.dumps({"document_id": doc["id"]}), "queued")
+    assert env.conn.execute("SELECT COUNT(*) FROM owner_question").fetchone()[0] == 0
+    assert repo.waiting_candidates(env.conn, 1) == []  # the agent's candidate is the case's evidence only
 
 
 def test_an_answer_saying_mark_paid_changes_nothing(env):
@@ -174,3 +178,114 @@ def test_a_drift_case_resolved_without_closing_the_gap_goes_to_confirm_balance(e
     assert env.conn.execute("SELECT drift_status FROM bank_account WHERE id = 1").fetchone()[0] == "ASK_OWNER"
     q = env.conn.execute("SELECT kind, choices_json FROM owner_question WHERE case_id = ?", (cid,)).fetchone()
     assert (q[0], json.loads(q[1])) == ("confirm_balance", {"account_id": 1, "case_id": cid})
+
+
+# --- review fix round 1 ----------------------------------------------------------------
+
+
+def _run_job(env, case_id, backend, key):
+    queue.enqueue(env.conn, kind="run_case", payload={"case_id": case_id}, idempotency_key=key, clock=env.clock)
+    env.conn.commit()
+    run_all(env, {"run_case": functools.partial(handle_run_case, backend=backend)})
+    return env.conn.execute("SELECT status, last_error FROM job WHERE idempotency_key = ?", (key,)).fetchone()
+
+
+def _drift_case(env):
+    from app.ledger import writer
+    from app.ledger.reconcile import open_case
+
+    writer.set_drift_status(1, "CHECKING", "reconciler", "test gap", "test", conn=env.conn, clock=env.clock)
+    cid = open_case(env.conn, 1, "drift", "bank_account:1", 2_000_000, goal="Explain the gap.", facts=["a gap"],
+                    unknowns=["what is missing"], clock=env.clock)
+    env.conn.commit()
+    return cid
+
+
+def test_a_message_the_agent_stored_but_no_answer_applied_goes_on_to_the_pipeline(env):
+    deliver(env, "09-invoice-ashirwad-new-bank.eml")
+    cid = open_unknown_debit_case(env)
+    msg = "09-invoice-ashirwad-new-bank.eml"
+    run(env, cid, step("look", "search_gmail", {"query": "AP/2610/140"}),
+        step("propose", "add_candidate", {"record_type": "invoice", "message_id": msg,
+                                          "fields": {**BILL_09, "total_text": "Rs.1.00"}}),
+        step("give up", final=final("NEEDS_OWNER", "Not sure.")))
+    (doc_id,) = env.conn.execute("SELECT id FROM source_document WHERE status = 'NEW'").fetchone()
+    assert queued(env) == ["process_document"]
+    # and if that job were lost, the next poll reads the stored-but-unread message itself
+    env.conn.execute("DELETE FROM job WHERE kind = 'process_document'")
+    queue.enqueue(env.conn, kind="poll_mail", payload={}, clock=env.clock)
+    env.conn.commit()
+    from app.ingest.pipeline import handle_poll_mail
+
+    run_all(env, {"poll_mail": handle_poll_mail})
+    job = env.conn.execute("SELECT payload_json FROM job WHERE kind = 'process_document'").fetchone()
+    assert json.loads(job[0]) == {"document_id": doc_id}
+
+
+def test_a_run_that_dies_hands_a_drift_case_to_the_owners_confirm_balance(env):
+    from app.ai.client import AIUnavailable
+
+    cid = _drift_case(env)
+    status, error = _run_job(env, cid, FakeBackend().queue(
+        "AgentStep", AIUnavailable("402 credits used up", retryable=False, code=402)), "dies")
+    assert status == "dead" and "402" in error
+    assert cases.load(env.conn, cid).status == "ASK_OWNER"
+    assert env.conn.execute("SELECT drift_status FROM bank_account WHERE id = 1").fetchone()[0] == "ASK_OWNER"
+    (kind,) = env.conn.execute("SELECT kind FROM owner_question WHERE case_id = ?", (cid,)).fetchone()
+    assert kind == "confirm_balance"
+
+
+def test_a_run_that_will_be_retried_leaves_the_case_open(env):
+    from app.ai.client import AIUnavailable
+
+    cid = _drift_case(env)
+    status, _ = _run_job(env, cid, FakeBackend().queue("AgentStep", AIUnavailable("503", retryable=True)), "retry")
+    assert status == "queued" and cases.load(env.conn, cid).status == "OPEN"
+    assert env.conn.execute("SELECT COUNT(*) FROM owner_question").fetchone()[0] == 0
+
+
+def test_a_tool_error_is_a_noted_step_not_a_crash(env):
+    env.settings = env.settings.model_copy(update={"fernet_key": ""})  # no store: add_candidate cannot keep the message
+    deliver(env, "09-invoice-ashirwad-new-bank.eml")
+    cid = open_unknown_debit_case(env)
+    msg = "09-invoice-ashirwad-new-bank.eml"
+    case = run(env, cid, step("look", "search_gmail", {"query": "AP/2610/140"}),
+               step("propose", "add_candidate", {"record_type": "invoice", "message_id": msg, "fields": BILL_09}),
+               step("give up", final=final("NEEDS_OWNER", "Could not keep the email.")))
+    assert any("add_candidate failed: ValueError" in n for n in case.state["notes"])
+    assert case.status == "ASK_OWNER"
+
+
+def test_the_owners_close_during_a_run_is_kept(env):
+    from app.db.connection import write_connection
+
+    cid = open_unknown_debit_case(env)
+
+    class OwnerClosesMidStep(FakeBackend):
+        def generate(self, **kw):
+            other = write_connection(env.settings.database_path)  # the owner, in the web app
+            other.execute("UPDATE agent_case SET status = 'CLOSED_BY_OWNER' WHERE id = ?", (cid,))
+            other.commit()
+            other.close()
+            return super().generate(**kw)
+
+    backend = OwnerClosesMidStep().queue("AgentStep", step("ask", "ask_owner", {"question": "Which?",
+                                                                               "choices": ["Yes"]}))
+    status, _ = _run_job(env, cid, backend, "closed")
+    assert status == "done"
+    assert cases.load(env.conn, cid).status == "CLOSED_BY_OWNER"
+    assert env.conn.execute("SELECT COUNT(*) FROM owner_question WHERE case_id = ?", (cid,)).fetchone()[0] == 0
+
+
+def test_an_answer_to_a_drift_cases_question_always_resumes_it(env):
+    cid = _drift_case(env)
+    case = run(env, cid, step("ask", "ask_owner", {"question": "Did you withdraw cash on 13 Oct?",
+                                                   "choices": ["Yes", "No"]}))
+    case.state["resumed"] = True  # even after one resume: closing would leave the account CHECKING
+    cases.save(env.conn, case, env.clock)
+    env.conn.commit()
+    (qid,) = env.conn.execute("SELECT id FROM owner_question WHERE case_id = ?", (cid,)).fetchone()
+    q = repo.question(env.conn, 1, qid)
+    q["choices"] = json.loads(q["choices_json"])
+    actions.answer_agent_question(env.conn, OWNER, q, "No", clock=env.clock)
+    assert cases.load(env.conn, cid).status == "OPEN" and queued(env) == ["run_case"]

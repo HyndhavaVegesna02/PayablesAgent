@@ -131,12 +131,15 @@ def handle_poll_mail(ctx: JobContext, *, source: MailSource | None = None) -> No
         msg = parse_message(raw)
         external_ref = str(msg.get("Message-ID") or "").strip() or f"sha256:{sha}"
         seen = conn.execute(
-            "SELECT id FROM source_document WHERE business_id = ? "
+            "SELECT id, status FROM source_document WHERE business_id = ? "
             "AND (content_sha256 = ? OR (kind = 'email' AND external_ref = ?))",
             (business_id, sha, external_ref),
         ).fetchone()
         if seen is not None:
             skipped += 1
+            if seen["status"] == "NEW":  # stored (by the exception agent) but never read: read it now
+                queue.enqueue(conn, kind="process_document", payload={"document_id": seen["id"]},
+                              idempotency_key=f"process_document:{seen['id']}", clock=ctx.clock)
             continue
         at = sent_at(msg)
         cur = conn.execute(

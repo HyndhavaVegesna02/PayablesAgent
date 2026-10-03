@@ -92,18 +92,19 @@ def test_1_an_unknown_debit_is_explained_by_an_invoice_email(web):
     case = case_of(env, "unknown_txn", f"bank_txn:{txn}")
     assert case.status == "RESOLVED" and "invoice AP/2610/140" in case.state["summary"]
     assert [f["source"].split("(")[0] for f in case.state["findings"]] == ["search_gmail", "add_candidate"]
-    (q,) = questions(env, case.id, "confirm_record")
-    assert q["status"] == "OPEN"
-    cid = json.loads(q["choices_json"])["candidate_id"]
     assert env.conn.execute("SELECT COUNT(*) FROM payable WHERE invoice_number = 'AP/2610/140'").fetchone()[0] == 0
-    # the owner confirms the bill; its new bank details still raise a bank change (defence in depth)
-    c = next(c for c in repo.waiting_candidates(env.conn, 1) if c["id"] == cid)  # on the owner's page
-    actions.confirm_candidate(env.conn, OWNER, cid, prefill(c, repo.accounts(env.conn, 1)), clock=env.clock)
-    env.conn.commit()
+    # the email went on to the pipeline, which reads it as any email: the owner sees one entry to
+    # confirm (the pipeline's, not the agent's), and the new bank details are flagged, never applied
+    (entry,) = repo.waiting_candidates(env.conn, 1)
+    assert entry["created_by"] == "pipeline" and entry["record"]["invoice_number"] == "AP/2610/140"
     party = env.conn.execute("SELECT bank_account_mask, bank_status FROM party WHERE id = 1").fetchone()
     assert tuple(party) == ("XXXX4410", "change_pending")
     assert env.conn.execute("SELECT COUNT(*) FROM owner_question WHERE kind = 'approve_bank_change' "
                             "AND status = 'OPEN'").fetchone()[0] == 1
+    actions.confirm_candidate(env.conn, OWNER, entry["id"], prefill(entry, repo.accounts(env.conn, 1)),
+                              clock=env.clock)
+    env.conn.commit()
+    assert env.conn.execute("SELECT COUNT(*) FROM payable WHERE invoice_number = 'AP/2610/140'").fetchone()[0] == 1
     assert dead_jobs(env) == []
 
 

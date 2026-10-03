@@ -275,10 +275,13 @@ def answer_agent_question(conn: sqlite3.Connection, user: User, question: dict[s
         case = agent_cases.load(conn, case_id)
         if case.status != "ASK_OWNER":
             return
-        if allowed and not case.state.get("resumed"):
+        # A drift case always resumes: its run ends at confirm_balance, never at a close
+        # that would leave the account CHECKING with no case.
+        if case.kind == "drift" or (allowed and not case.state.get("resumed")):
             case.state.setdefault("facts", []).append(f"The owner was asked: {question['body_text']} "
                                                       f"The answer: {choice}")
             case.state["resumed"] = True
+            case.state.pop("last_call", None)
             case.status, case.steps, case.validation_failures = "OPEN", 0, 0
             agent_cases.save(conn, case, clock)
             queue.enqueue(conn, kind="run_case", payload={"case_id": case_id},

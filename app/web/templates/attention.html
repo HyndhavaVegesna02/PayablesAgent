@@ -8,6 +8,7 @@
 
 {% if findings %}
 <h2>What the assistant found</h2>
+<p class="muted">The assistant's own words. They change nothing: only what you confirm or approve does.</p>
 {% for f in findings %}<article><p>{{ f.summary }}</p><small class="muted">case {{ f.id }}, {{ f.kind | replace("_", " ") }}</small></article>{% endfor %}
 {% endif %}
 

@@ -123,3 +123,34 @@ def test_escalation_rules_are_plain_code():
     assert escalation.run_over(2, 2, max_steps=6, max_failures=2) == escalation.MAX_FAILURES
     assert escalation.run_over(5, 1, max_steps=6, max_failures=2) is None
     assert (escalation.after_run("medium"), escalation.after_run("high")) == ("rerun_high", "ask_owner")
+
+
+def test_a_long_tool_result_is_cut_in_the_case_file_and_whole_in_the_trace(env):
+    import json
+    from pathlib import Path
+
+    env.conn.executemany("INSERT INTO party (business_id, kind, name) VALUES (1, 'vendor', ?)",
+                         [(f"Bulk Vendor {i}",) for i in range(60)])
+    env.conn.commit()
+    cid = open_unknown_debit_case(env)
+    get = {"notes": "list", "tool": {"name": "get_ledger", "args": {"table": "party", "party": "Bulk Vendor"}}}
+    run_case(env.conn, cid, deps(env, FakeBackend().queue("AgentStep", get, {"notes": "done", "final": FINAL})))
+    md = cases.load(env.conn, cid).case_file_md
+    assert "Bulk Vendor 19" in md and "Bulk Vendor 20" not in md and "(+31 more lines in the trace)" in md
+    traced = [s for f in Path(env.settings.trace_dir).rglob("*.jsonl")
+              for s in map(json.loads, f.read_text(encoding="utf-8").splitlines()) if s.get("tool") == "agent:get_ledger"]
+    assert len(traced[0]["result"].splitlines()) == 51  # 50 rows and the truncation line
+
+
+def test_the_prompt_names_each_tools_arguments_as_its_model_does():
+    import re
+
+    from app.agent.tools import TOOLS
+    from app.ai.client import load_prompt
+
+    prompt = load_prompt("exception_agent.v1")
+    for name, spec in TOOLS.items():
+        bullet = re.search(rf"^- {name} \{{.*?(?=^- |^\n)", prompt, re.M | re.S)  # this tool's bullet only
+        assert bullet, name
+        written = set(re.findall(r'"([a-z_]+)"[:,}]', bullet.group(0)))
+        assert set(spec.args_model.model_fields) <= written, (name, set(spec.args_model.model_fields) - written)

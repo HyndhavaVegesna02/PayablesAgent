@@ -243,7 +243,7 @@ def invoice_on_record(conn: sqlite3.Connection, business_id: int, key: InvoiceKe
     for cid, payload_json in conn.execute(
         "SELECT c.id, c.payload_json FROM candidate c JOIN source_document d ON d.id = c.source_document_id "
         "WHERE d.business_id = ? AND c.status IN ('VALID', 'AWAITING_OWNER') "
-        "AND c.record_type IN ('payable', 'receivable') ORDER BY c.id",
+        "AND c.record_type IN ('payable', 'receivable') AND c.created_by NOT LIKE 'agent:%' ORDER BY c.id",
         (business_id,),
     ).fetchall():
         if cid == skip_candidate:

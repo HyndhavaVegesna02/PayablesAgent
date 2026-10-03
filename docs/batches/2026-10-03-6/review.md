@@ -58,3 +58,23 @@ Nits:
 - there is no test that the trace holds the full tool result;
 - fixture 11 is in the demo inbox;
 - read.py import order.
+
+**Fixes (fix round 1, CHG-008):**
+- **1 (stored message hidden from the poll):** the agent stores a message as NEW. When the run ends, code marks it PROCESSED if the answer applied it as an alert; otherwise it is handed to the pipeline (process_document). The poll also queues any stored-but-unread (NEW) message it sees. A relied-on bill goes to the pipeline instead of an agent confirm_record, so the owner confirms the pipeline's entry and the bank change is flagged there. Agent candidates are hidden from waiting_candidates and left out of invoice_on_record's duplicate scan (this also fixes the should-fix about duplicates).
+- **2 (drift account stuck at CHECKING):**
+  - ask_owner needs 1 to 4 choices.
+  - An answer to a drift case's question always resumes it.
+  - A run that dies for good (permanent error or last retry) hands the case to the owner through to_owner, so a drift case reaches confirm_balance. That is committed before the job fails.
+  - A tool exception is a noted step.
+- **3 (owner's close overwritten):** cases.save writes only over the status it was read with and raises CaseChanged otherwise. The job rolls back that step and stops. _settle_drift takes over its own in-transaction resolve.
+- **4 (wrong run_planner arguments):** the prompt names run_planner's real arguments. A test checks every tool's bullet in the prompt against its args model; it fails on the old prompt.
+- **Should-fix:**
+  - only CaseNotFound becomes a permanent error;
+  - the findings section is labelled as the assistant's own words that change nothing;
+  - the AC4 record now says the false claim reached the owner, labelled.
+- **Nits:**
+  - last_call is cleared on a refused final answer, the high rerun and a resume;
+  - questions are cut at a word;
+  - a trace test checks that the full tool result is traced while the case file holds 20 lines;
+  - fixture 11 moved to fixtures/agent_inbox (out of the inbox the demo polls);
+  - read.py import order is fixed in the CHG-018 round.

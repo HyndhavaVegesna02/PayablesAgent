@@ -56,7 +56,8 @@ def deliver(env: Env, *names: str) -> None:
     import shutil
 
     for name in names:
-        shutil.copy(ROOT / "fixtures" / "test_inbox" / name, env.settings.test_inbox_path)
+        folder = "agent_inbox" if (ROOT / "fixtures" / "agent_inbox" / name).exists() else "test_inbox"
+        shutil.copy(ROOT / "fixtures" / folder / name, env.settings.test_inbox_path)
 
 
 def run_all(env: Env, handlers, limit: int = 100) -> None:

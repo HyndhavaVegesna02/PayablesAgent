@@ -5,8 +5,11 @@ is generated from. A name not in TOOLS is refused by the loop.
 
 None of them changes the ledger: search_gmail, get_ledger and run_planner
 read; add_candidate writes a candidate row (and, for a message the mail poll
-never stored, that message as a source document, encrypted like every stored
-email); ask_owner writes one owner question and ends the run."""
+never stored, that message as a NEW source document, encrypted like every
+stored email, which the pipeline reads when the case ends); ask_owner writes
+one owner question and ends the run. An agent's candidate is evidence for its
+case only: the owner never sees it as an entry to confirm (app/web/repo.py),
+and it counts in no duplicate check (app/db/read.py)."""
 
 from __future__ import annotations
 
@@ -209,19 +212,23 @@ def _document_for(ctx: ToolContext, message_id: str, raw: bytes) -> int:
     if ctx.store is None:
         raise ValueError("no document store is set up (FERNET_KEY) to keep the message")
     at = sent_at(msg)
-    return ctx.conn.execute(
+    doc_id = ctx.conn.execute(
         "INSERT INTO source_document (business_id, kind, external_ref, content_sha256, received_at, storage_path, "
-        "status) VALUES (?, 'email', ?, ?, ?, ?, 'PROCESSED')",
+        "status) VALUES (?, 'email', ?, ?, ?, ?, 'NEW')",
         (ctx.case.business_id, external_ref, sha, (at or ctx.clock.now()).isoformat(), ctx.store.put(raw, sha)),
     ).lastrowid
+    # NEW: the pipeline has not read it. When the case ends, code hands it to the
+    # pipeline (app/jobs/run_case.py), unless the case's own answer applied it.
+    ctx.case.state.setdefault("stored_documents", []).append(doc_id)
+    return doc_id
 
 
 def add_candidate(ctx: ToolContext, args: CandidateArgs) -> str:
     """A record read from a message this case's searches found, put through
     the pipeline's own rule checks (pure, app/validate). It never writes the
-    ledger: what a VALID candidate leads to is decided by code when the case
-    ends (app/jobs/run_case.py). A candidate that fails counts toward the
-    case's limit of 2."""
+    ledger and never reaches the owner by itself: what a VALID candidate leads
+    to is decided by code when the case ends (app/jobs/run_case.py). A
+    candidate that fails counts toward the case's limit of 2."""
     if args.message_id not in ctx.case.seen_message_ids:
         return f"refused: message {args.message_id} did not come from this case's searches"
     model = BankAlertExtract if args.record_type == "bank_alert" else InvoiceExtract
@@ -271,7 +278,7 @@ def add_candidate(ctx: ToolContext, args: CandidateArgs) -> str:
 
 class AskArgs(_Args):
     question: str = Field(min_length=1, max_length=MAX_QUESTION)
-    choices: list[str] = Field(default_factory=list, max_length=MAX_CHOICES)
+    choices: list[str] = Field(min_length=1, max_length=MAX_CHOICES)  # the owner answers by choosing
 
 
 def ask_owner(ctx: ToolContext, args: AskArgs) -> str:

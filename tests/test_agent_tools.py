@@ -134,11 +134,13 @@ def test_ask_owner_limits_one_open_question_and_ends_the_run(env):
         AskArgs(question="x" * 301)
     with pytest.raises(ValidationError):
         AskArgs(question="Which?", choices=["a", "b", "c", "d", "e"])
+    with pytest.raises(ValidationError):  # the owner answers by choosing: a question needs a choice
+        AskArgs(question="Which?")
     assert ask_owner(ctx, AskArgs(question="Which?", choices=["y" * 61])).startswith("refused")
     out = ask_owner(ctx, AskArgs(question="Was the ₹47,200 to APS PAPERS for Ashirwad's paper?",
                                  choices=["Yes", "No"]))
     assert out.startswith("question ") and ctx.case.status == "ASK_OWNER"
-    assert ask_owner(ctx, AskArgs(question="Again?")).startswith("refused: question")
+    assert ask_owner(ctx, AskArgs(question="Again?", choices=["Yes"])).startswith("refused: question")
     q = env.conn.execute("SELECT kind, case_id, choices_json FROM owner_question WHERE kind = 'agent_question'"
                          ).fetchone()
     assert (q[0], q[1]) == ("agent_question", ctx.case.id) and '"choices": ["Yes", "No"]' in q[2]

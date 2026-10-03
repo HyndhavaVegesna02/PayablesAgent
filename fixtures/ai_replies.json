@@ -186,22 +186,6 @@
         ],
         "uncertain_fields": []
       }
-    },
-    "11-debit-shree-transport-missed.eml": {
-      "SortResult": {
-        "doc_type": "bank_alert",
-        "reason": "A bank alert for a debit or credit."
-      },
-      "BankAlertExtract": {
-        "account_last4": "4821",
-        "direction": "debit",
-        "amount_text": "Rs.20,000.00",
-        "txn_date": "2026-10-13",
-        "counterparty": "SHREE TRANSPORT",
-        "reference": "628716051234",
-        "available_balance_text": "Rs.6,00,000.00",
-        "uncertain_fields": []
-      }
     }
   },
   "uploads": {
