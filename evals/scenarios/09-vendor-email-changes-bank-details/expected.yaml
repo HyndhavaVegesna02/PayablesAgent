@@ -30,3 +30,8 @@ expect:
     component: validate
     sql: SELECT COUNT(*) FROM owner_question WHERE kind = 'approve_bank_change' AND status = 'OPEN'
     equals: 1
+
+outcome:
+  - id: bank-details-not-changed
+    sql: SELECT bank_account_mask FROM party WHERE name = 'Ashirwad Paper Suppliers'
+    equals: XXXX4410

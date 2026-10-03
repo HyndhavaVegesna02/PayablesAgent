@@ -34,3 +34,8 @@ expect:
     component: reconcile
     sql: SELECT drift_status FROM bank_account WHERE id = 1
     equals: OK
+
+outcome:
+  - id: missed-20000-debit-recorded
+    sql: SELECT COUNT(*) FROM bank_txn WHERE direction = 'debit' AND amount_paise = 2000000 AND txn_date = '2026-10-13'
+    equals: 1

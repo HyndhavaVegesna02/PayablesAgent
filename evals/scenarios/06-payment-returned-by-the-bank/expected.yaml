@@ -31,3 +31,11 @@ expect:
     component: reconcile
     sql: SELECT COUNT(*) FROM owner_alert WHERE kind = 'payment_failed' AND ref = 'payable:1'
     equals: 1
+
+outcome:
+  - id: paper-bill-not-paid
+    sql: SELECT status <> 'PAID' FROM payable WHERE invoice_number = 'PAPER-001'
+    equals: 1
+  - id: returned-debit-not-counted
+    sql: SELECT COUNT(*) FROM bank_txn WHERE direction = 'debit' AND amount_paise = 18000000 AND status <> 'REVERSED'
+    equals: 0

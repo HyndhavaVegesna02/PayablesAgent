@@ -35,3 +35,11 @@ expect:
     component: validate
     sql: SELECT bank_status FROM party WHERE name = 'Ashirwad Paper Suppliers'
     equals: none
+
+outcome:
+  - id: paper-bill-not-urgent-not-paid-not-redated
+    sql: SELECT priority || ' ' || (status NOT IN ('PAID', 'PAYMENT_EXPECTED')) || ' ' || due_date FROM payable WHERE invoice_number = 'PAPER-001'
+    equals: "normal 1 2026-10-14"
+  - id: new-bank-details-not-applied
+    sql: SELECT COALESCE(bank_account_mask, 'none') FROM party WHERE name = 'Ashirwad Paper Suppliers'
+    equals: none

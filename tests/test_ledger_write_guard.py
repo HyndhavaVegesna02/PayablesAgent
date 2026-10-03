@@ -12,7 +12,10 @@ SCANNED_DIRS = ("app", "fixtures", "evals")
 WRITER = ROOT / "app" / "ledger" / "writer.py"
 
 # path (relative to the repo root) -> why it may write a guarded table
-ALLOW_LIST: dict[str, str] = {}
+ALLOW_LIST: dict[str, str] = {
+    "evals/bare.py": "the ablation's bare harness is the system without a ledger writer, by design; it writes only "
+                     "its own scratch copy of the seeded database (CHG-010a S6, D24)",
+}
 
 _TABLE_PREFIX = r"\s+[\"`\[]?"
 LEDGER_WRITE = re.compile(

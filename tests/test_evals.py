@@ -223,3 +223,142 @@ def test_live_mode_will_not_start_without_yes_spend():
 
     with pytest.raises(SystemExit, match="--yes-spend"):
         live_backend(CONFIG, confirmed=False)
+
+
+# --- S6: the ablation -------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("name", scenario.names())
+def test_the_full_harness_meets_every_outcome_check(name):
+    s = scenario.load(name)
+    assert s.outcome, f"{name} has no outcome checks for the ablation"
+    r = run(s)
+    assert r.outcome_ok, [o for o in r.outcomes if not o[1]]
+
+
+from evals import ablation, bare, knockouts  # noqa: E402
+
+
+def mechanics():
+    return ablation.MechanicsModel(FixtureBackend())
+
+
+def test_every_knock_out_patches_its_seams_and_restores_them():
+    for name in knockouts.KNOCKOUTS:
+        patches = knockouts.SEAMS[name](knockouts.Binding())
+        before = [getattr(module, attr) for module, attr, _ in patches]
+        with knockouts.applied(name, knockouts.Binding()) as seams:
+            assert seams and all(getattr(m, a) is not b for (m, a, _), b in zip(patches, before, strict=True))
+        assert [getattr(module, attr) for module, attr, _ in patches] == before, name
+
+
+def test_a_knock_out_is_restored_when_its_run_raises():
+    import app.jobs.replan as replan
+
+    real = replan.build_snapshot
+    with pytest.raises(RuntimeError), knockouts.applied("no_drift_rule", knockouts.Binding()):
+        raise RuntimeError("the run crashed")
+    assert replan.build_snapshot is real
+
+
+def outcome(r, oid):
+    return next(ok for i, ok, _ in r.outcomes if i == oid)
+
+
+def test_without_rule_checks_the_same_invoice_becomes_two_bills():
+    s = scenario.load("05-same-invoice-by-email-and-photo")
+    r, seams = ablation.run_harness("no_rule_checks", s, FixtureBackend(), CONFIG, 1)
+    assert "app.ingest.pipeline.invoice_on_record" in seams
+    assert not outcome(r, "one-payable-not-two") and not r.outcome_ok
+
+
+def test_without_the_drift_rule_the_plan_spends_money_that_may_not_be_there():
+    s = scenario.load("08-drift-with-no-explanation")
+    r, _ = ablation.run_harness("no_drift_rule", s, FixtureBackend(), CONFIG, 1)
+    assert outcome(r, "no-transaction-invented") and not outcome(r, "plan-counts-only-money-that-is-there")
+
+
+def test_without_escalation_the_agent_runs_on_past_the_rules():
+    s = scenario.load("08-drift-with-no-explanation")
+    full, _ = ablation.run_harness("full", s, FixtureBackend(), CONFIG, 1)
+    cut, _ = ablation.run_harness("no_escalation", s, FixtureBackend(), CONFIG, 1)
+    assert full.metrics["escalations"].count("max_steps") == 2  # the run at medium hits its cap, then the rerun at high
+    assert cut.metrics["escalations"] == ["max_steps"]  # one run, to the plain cap of 20 steps
+    assert cut.metrics["ai_calls_by_job"]["exception"] > full.metrics["ai_calls_by_job"]["exception"]
+
+
+def test_without_the_planner_the_model_plans_and_the_check_reads_its_plan():
+    s = scenario.load("11-shortfall-week")
+    r, seams = ablation.run_harness("no_planner", s, mechanics(), CONFIG, 1)
+    assert seams == ["app.jobs.replan.plan"]
+    assert r.metrics["ai_calls_by_job"]["plan"] >= 1
+    assert not r.outcome_ok  # the stand-in planned nothing: Prime Chem is not paid Thursday
+
+
+def test_the_bare_harness_is_given_the_same_inputs_as_text():
+    s = scenario.load("02-password-protected-statement")
+    env = bare.BareEnv(None, bare.FakeClock(runner.START))
+    said = "\n".join(bare._events(env, s))
+    assert "Email arrived (id 10-statement-hdfc-locked.eml)" in said and "read_attachment" in said
+    assert "SPW-4821-oct" in said  # the owner's password, as the owner typed it
+    assert set(env.emails) == {"10-statement-hdfc-locked.eml"}
+    voice = bare._events(bare.BareEnv(None, bare.FakeClock(runner.START)), scenario.load("04-hinglish-voice-note"))
+    assert any("voice" in line and "attached" in line for line in voice)
+
+
+def test_the_bare_harness_runs_its_tools_on_its_own_database_and_is_scored():
+    s = scenario.load("08-drift-with-no-explanation")
+    r = bare.run_once(s, mechanics(), CONFIG, 1)
+    assert r.metrics["ai_calls"] == 2 and r.metrics["tool_calls_by_tool"] == {"list_bills": 1}
+    assert [i for i, _, _ in r.outcomes] == [o.id for o in s.outcome]
+    assert outcome(r, "no-transaction-invented") and not outcome(r, "plan-counts-only-money-that-is-there")
+    assert r.status == "FAILED"
+
+
+def test_a_bare_write_tool_changes_only_the_scratch_database(tmp_path):
+    from app.db.connection import write_connection
+    from app.db.migrate import apply_migrations
+    from fixtures.seed import seed
+
+    apply_migrations(tmp_path / "b.db")
+    conn = write_connection(tmp_path / "b.db")
+    seed(conn, bare.FakeClock(runner.START))
+    env = bare.BareEnv(conn, bare.FakeClock(runner.START))
+    assert bare.TOOLS["record_transaction"](env, {"direction": "debit", "amount": "20,000", "date": "2026-10-13"}) \
+        .startswith("transaction")
+    assert conn.execute("SELECT amount_paise FROM bank_txn ORDER BY id DESC").fetchone()[0] == 2000000
+    assert bare.TOOLS["set_bill_status"](env, {"bill_id": 999, "status": "PAID"}) == "no such record"
+
+
+def test_a_bare_step_is_one_tool_call_or_a_final_answer():
+    with pytest.raises(ValidationError):
+        bare.BareStep(notes="", tool=None, final=None)
+    with pytest.raises(ValidationError):
+        bare.BareStep(tool=bare.BareTool(name="list_bills"), final=bare.BareFinal(lowest_balance_text="Rs.0"))
+
+
+def test_the_ablation_report_states_the_fair_comparison_and_names_the_biggest_drop(tmp_path):
+    names = ["05-same-invoice-by-email-and-photo", "08-drift-with-no-explanation"]
+    chosen = [scenario.load(n) for n in names]
+    results, seams = {}, {}
+    for h in ("full", "bare", "no_rule_checks", "no_drift_rule"):
+        results[h] = []
+        for s in chosen:
+            r, seams[h] = ablation.run_harness(h, s, mechanics(), CONFIG, 1)
+            results[h].append(r)
+    meta = {"label": "t", "mode": "fixtures", "model": "fixture-ai", "prompt_version": "v", "config_sha256": "0" * 64,
+            "commit": "abc1234", "date": "2026-10-03T00:00:00+05:30", "runs_per_scenario": 1, "status": "COMPLETE"}
+    built = ablation.build(meta, list(results), chosen, results, seams)
+    assert built["harnesses"]["full"]["outcome_success_rate"] == 1.0
+    assert built["drops"] == {"no_rule_checks": 0.5, "no_drift_rule": 0.5}  # bare is never a knock-out
+    assert built["harnesses"]["bare"]["mechanics_only"] and not built["harnesses"]["no_drift_rule"]["mechanics_only"]
+    md = ablation.write(built, chosen, tmp_path).joinpath("report.md").read_text(encoding="utf-8")
+    assert "(D24)" in md and "the same inputs" in md and "the model is the same" in md
+    assert "Only the harness differs." in md and "*mechanics only*" in md
+    assert "Knocking out **no_drift_rule, no_rule_checks** cost the most" in md
+    assert "abc1234" in md and "`app.jobs.replan.build_snapshot`" in md
+
+
+def test_make_ablation_is_no_longer_a_stub():
+    text = (runner.ROOT / "Makefile").read_text(encoding="utf-8")
+    assert "python -m evals.ablation" in text and "not yet implemented" not in text.split("ablation:")[-1]

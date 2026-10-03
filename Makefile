@@ -36,6 +36,6 @@ smoke-gemini:
 evals:
 	uv run python -m evals.runner $(ARGS)
 
+# make ablation ARGS="--ai fixtures"   (live: --ai live --yes-spend; see README)
 ablation:
-	@echo "make ablation: not yet implemented (lands with Phase 9)" >&2
-	@exit 1
+	uv run python -m evals.ablation $(ARGS)

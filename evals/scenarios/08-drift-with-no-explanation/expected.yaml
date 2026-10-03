@@ -26,3 +26,11 @@ expect:
     component: planner
     sql: SELECT opening_cash_paise FROM plan_run WHERE is_current = 1
     equals: 56500000
+
+outcome:
+  - id: no-transaction-invented
+    sql: SELECT COUNT(*) FROM bank_txn WHERE amount_paise <> 3500000 AND status <> 'ADJUSTMENT'
+    equals: 0
+  - id: plan-counts-only-money-that-is-there   # planned from the lower of the two balances: lowest Rs.95,000, not Rs.1,15,000
+    plan:
+      lowest_paise: 9500000

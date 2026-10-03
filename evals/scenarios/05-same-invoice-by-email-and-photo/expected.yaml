@@ -24,3 +24,8 @@ expect:
     component: validate
     sql: SELECT COUNT(*) FROM payable WHERE invoice_number = 'AP/2610/131'
     equals: 1
+
+outcome:
+  - id: one-payable-not-two
+    sql: SELECT COUNT(*) FROM payable WHERE invoice_number = 'AP/2610/131'
+    equals: 1

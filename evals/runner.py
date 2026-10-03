@@ -87,6 +87,11 @@ class RunResult:
     component: str | None = None  # the first failed check's, in pipeline order
     error: str | None = None
     metrics: dict[str, Any] = field(default_factory=dict)
+    outcomes: list[tuple[str, bool, Any]] = field(default_factory=list)  # the ablation's checks (evals/outcomes.py)
+
+    @property
+    def outcome_ok(self) -> bool:
+        return self.status != "ERRORED" and bool(self.outcomes) and all(ok for _, ok, _ in self.outcomes)
 
     @property
     def met(self) -> float:
@@ -241,7 +246,8 @@ def make_env(tmp: Path, scenario: Scenario, backend: Backend, app_config: AppCon
 
 def run_once(scenario: Scenario, backend: Backend, app_config: AppConfig, run: int = 1, *,
              should_stop: Callable[[], str | None] = never,
-             inspect: Callable[[RunEnv], dict[str, Any]] | None = None, keep: Path | None = None) -> RunResult:
+             inspect: Callable[[RunEnv], dict[str, Any]] | None = None, keep: Path | None = None,
+             setup: Callable[[RunEnv], None] | None = None) -> RunResult:
     """Plays the scenario once and checks it. `inspect` reads the finished run
     (its traces and jobs) before the run's files are removed; `keep` copies
     the run's traces there."""
@@ -249,6 +255,8 @@ def run_once(scenario: Scenario, backend: Backend, app_config: AppConfig, run: i
         tmp = Path(tmp_name)
         env = make_env(tmp, scenario, backend, app_config)
         env.should_stop = should_stop
+        if setup is not None:  # an ablation knock-out binds to the run (evals/knockouts.py)
+            setup(env)
         result = RunResult(scenario.name, run, "PASSED")
         try:
             for step in scenario.steps:
@@ -262,6 +270,10 @@ def run_once(scenario: Scenario, backend: Backend, app_config: AppConfig, run: i
         except Exception as e:  # noqa: BLE001 - a crash is the system failing the scenario
             result.status, result.error, result.component = "FAILED", f"{type(e).__name__}: {e}", "crash"
             result.checks = [check(env.conn, e2) for e2 in scenario.expect]
+        if result.status != "ERRORED":
+            from evals import outcomes
+
+            result.outcomes = outcomes.score(env.conn, scenario.outcome, outcomes.plan_from_db(env.conn))
         if inspect is not None:
             result.metrics = inspect(env)
         if keep is not None and (tmp / "traces").is_dir():

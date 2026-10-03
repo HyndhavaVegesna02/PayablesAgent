@@ -31,3 +31,9 @@ expect:
     component: planner
     sql: SELECT l.decision || ' ' || l.pay_on FROM plan_line l JOIN plan_run r ON r.id = l.plan_run_id WHERE r.is_current = 1 AND l.payable_id = 5
     equals: "PAY 2026-10-22"
+
+outcome:
+  - id: prime-chem-paid-thursday-without-going-below-the-floor
+    plan:
+      lowest_at_least: 25000000
+      decisions: {5: "PAY 2026-10-22"}
