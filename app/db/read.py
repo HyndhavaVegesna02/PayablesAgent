@@ -148,10 +148,10 @@ def _read_snapshot(conn: sqlite3.Connection, business_id: int, today: date) -> P
 
     planned_ids = {p.payable_id for p in payables}
     overrides = tuple(
-        OverrideIn(r["payable_id"], r["kind"], r["floor_paise"])
+        OverrideIn(r["payable_id"], r["kind"], r["floor_paise"], r["shortfall_option_id"])
         for r in _rows(
             conn,
-            "SELECT payable_id, kind, floor_paise FROM plan_override WHERE business_id = ? AND status = 'ACTIVE' "
+            "SELECT payable_id, kind, floor_paise, shortfall_option_id FROM plan_override WHERE business_id = ? AND status = 'ACTIVE' "
             "ORDER BY id",  # the order chosen: D18 measures each authorisation on the plan the owner saw
             (business_id,),
         )

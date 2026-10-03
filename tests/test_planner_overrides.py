@@ -333,3 +333,26 @@ def test_a_second_authorisation_is_measured_on_the_plan_the_owner_saw():
     assert third.lapsed == ()
     assert _line(third, 1).decision == "PAY" and _line(third, 2).decision == "PAY"
     assert third.lowest_balance_paise == second.lowest_balance_paise
+
+
+def test_one_choice_covering_two_bills_is_measured_as_one():
+    # Re-review round 3: one authorise choice records an override for each escalated
+    # bill, all at the low of the same run. Paying A takes C's early-payment discount
+    # away; that knock-on must not lapse B, chosen in the same breath.
+    from app.planner.plan import AccountCash, PlanSnapshot
+
+    s = PlanSnapshot(
+        today=date(2026, 10, 12), horizon_days=14, payment_days=frozenset({0, 3}), safety_paise=1_000_000,
+        accounts=(AccountCash(1, 2_000_000, None, False),),
+        payables=(PayableIn(1, 1_200_000, date(2026, 10, 22), "normal"),
+                  PayableIn(2, 1_100_000, date(2026, 10, 22), "normal"),
+                  PayableIn(3, 500_000, date(2026, 10, 22), "flexible", discount_paise=50_000,
+                            discount_by=date(2026, 10, 15))),
+        inflows=(), commitments=(),
+    )
+    shown = plan(s)
+    assert _line(shown, 1).decision == _line(shown, 2).decision == "ESCALATE"
+    choice = tuple(OverrideIn(i, "authorise_breach", shown.lowest_balance_paise, choice_id=7) for i in (1, 2))
+    r = plan(replace(s, overrides=choice))
+    assert r.lapsed == ()
+    assert _line(r, 1).decision == "PAY" and _line(r, 2).decision == "PAY"

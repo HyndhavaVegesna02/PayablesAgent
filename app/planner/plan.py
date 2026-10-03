@@ -87,11 +87,14 @@ class OverrideIn:
     """An owner's choice the planner honours (CHG-021, D17). authorise_breach
     pays the bill below the safety amount while the plan's lowest balance
     stays at or above floor_paise, the lowest the owner saw (D18);
-    delay_flexible targets its grace days."""
+    delay_flexible targets its grace days. choice_id is the shortfall option
+    the owner chose it with: one authorise choice covers every escalated bill
+    of its run, and those overrides are measured together."""
 
     payable_id: int
     kind: Literal["authorise_breach", "delay_flexible"]
     floor_paise: int | None = None
+    choice_id: int | None = None
 
 
 @dataclass(frozen=True)
@@ -254,12 +257,12 @@ def plan(s: PlanSnapshot) -> PlanResult:
     """The plan for a snapshot, honouring the owner's overrides.
 
     D18: an authorisation covers its bill while the breach is no deeper than
-    the floor the owner saw. Each one is measured on the plan the owner was
-    shown when he chose it: the plan with the authorisations chosen before it
-    (s.overrides holds them in the order chosen) and without itself or any
-    later one. So a deeper breach from outside (a new bill, a failed receipt,
-    drift) lapses it, while its own knock-on effects, and those of later
-    authorisations (say, a smaller bill losing its early-payment discount),
+    the floor the owner saw. Each choice is measured on the plan the owner
+    was shown when he made it: the plan with the authorisations chosen before
+    it (s.overrides holds them in the order chosen) and without its own or
+    any later one. So a deeper breach from outside (a new bill, a failed
+    receipt, drift) lapses it, while its own knock-on effects, and those of
+    later choices (say, a smaller bill losing its early-payment discount),
     never do. A lapsed authorisation is dropped and its bill escalates with a
     reason saying why; any other override on the bill (a delay) still applies."""
     authorisations = [o for o in s.overrides if o.kind == "authorise_breach"]
@@ -269,12 +272,19 @@ def plan(s: PlanSnapshot) -> PlanResult:
     others = tuple(o for o in s.overrides if o.kind != "authorise_breach")
     kept: list[OverrideIn] = []
     lapsed: dict[int, tuple[int, int]] = {}  # payable_id -> (its floor, the low it is measured on)
+    choices: list[list[OverrideIn]] = []  # one choice's overrides together, in the order chosen
     for o in authorisations:
-        shown = _plan(replace(s, overrides=others + tuple(kept))).lowest_balance_paise
-        if o.payable_id in result.authorised and shown < o.floor_paise:
-            lapsed[o.payable_id] = (o.floor_paise, shown)
+        if choices and o.choice_id is not None and choices[-1][0].choice_id == o.choice_id:
+            choices[-1].append(o)
         else:
-            kept.append(o)
+            choices.append([o])
+    for choice in choices:
+        shown = _plan(replace(s, overrides=others + tuple(kept))).lowest_balance_paise
+        for o in choice:
+            if o.payable_id in result.authorised and shown < o.floor_paise:
+                lapsed[o.payable_id] = (o.floor_paise, shown)
+            else:
+                kept.append(o)
     if not lapsed:
         return result
     result = _plan(_without_lapsed(s, lapsed))
