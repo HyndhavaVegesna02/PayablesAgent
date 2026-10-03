@@ -31,7 +31,7 @@ from app.ledger import writer
 from app.ledger.reconcile import name_matches, normalise_name, party_names
 from app.ledger.writer import EntityRef
 from app.planner.options import options
-from app.planner.plan import InflowIn, canonical_json, format_day, plan
+from app.planner.plan import InflowIn, canonical_json, effective_snapshot, format_day, plan
 from app.validate import CHECK_NAMES, NOT_APPLICABLE, PASSED, failed, failures
 from app.validate.duplicates import bank_txn_with_key, txn_dedup_key
 from app.web import repo
@@ -125,32 +125,76 @@ def mark_paid(conn: sqlite3.Connection, user: User, payable_id: int, version: in
             raise Refused(f"This bill is {bill['status'].replace('_', ' ').lower()}; "
                           "only an approved payment can be marked paid.")
         fields = {}
-        if bill["status"] == "REVIEW":
-            txn_id = _reviewed_debit(conn, payable_id)
-            if txn_id is not None:
-                fields["matched_txn_id"] = txn_id
+        txn_id = _reviewed_debit(conn, payable_id) if bill["status"] == "REVIEW" else None
+        if txn_id is not None:
+            fields["matched_txn_id"] = txn_id
         writer.transition(EntityRef("payable", payable_id), "PAID", user.actor,
                           "Owner marked the payment paid", f"payable:{payable_id}",
                           conn=conn, expected_version=version, fields=fields, clock=clock)
+        if txn_id is not None:
+            # The owner said this debit paid this bill: the other bills held for it are
+            # still expected, and its question is settled (no second link later).
+            _release_held(conn, user, txn_id, except_id=payable_id, why="the owner marked another bill paid with it",
+                          clock=clock)
+            _settle_debit_question(conn, user, txn_id, "Owner marked a bill paid with this debit", clock)
         return _replan(conn, user, clock)
 
 
-def _reviewed_debit(conn: sqlite3.Connection, payable_id: int) -> int | None:
-    """The debit a REVIEW bill was held for (its PAYABLE_REVIEW event's
-    source_ref), if no other bill has claimed it. Marking the bill paid says
-    that debit paid it, so it is linked and not counted twice (D12): an
-    unlinked PAID bill counts as money still to leave."""
+def held_debit(conn: sqlite3.Connection, payable_id: int) -> int | None:
+    """The debit a REVIEW bill was held for: its latest PAYABLE_REVIEW event's
+    source_ref ("bank_txn:<id>"). The one lookup for mark-paid and explain_txn."""
     row = conn.execute(
         "SELECT source_ref FROM event WHERE entity = 'payable' AND entity_id = ? "
         "AND event_type = 'PAYABLE_REVIEW' ORDER BY id DESC LIMIT 1", (payable_id,),
     ).fetchone()
     if row is None or not (row[0] or "").startswith("bank_txn:"):
         return None
-    txn_id = int(row[0].removeprefix("bank_txn:"))
+    return int(row[0].removeprefix("bank_txn:"))
+
+
+def debit_holder(conn: sqlite3.Connection, txn_id: int) -> int | None:
+    """The bill a debit already pays, if any (payable.matched_txn_id)."""
+    row = conn.execute("SELECT id FROM payable WHERE matched_txn_id = ?", (txn_id,)).fetchone()
+    return None if row is None else row[0]
+
+
+def _reviewed_debit(conn: sqlite3.Connection, payable_id: int) -> int | None:
+    """The debit a REVIEW bill was held for, if it is still UNMATCHED and no
+    other bill has claimed it. Marking the bill paid says that debit paid it,
+    so it is linked and not counted twice (D12): an unlinked PAID bill counts
+    as money still to leave. A reversed debit paid nothing."""
+    txn_id = held_debit(conn, payable_id)
+    if txn_id is None:
+        return None
     status = conn.execute("SELECT status FROM bank_txn WHERE id = ?", (txn_id,)).fetchone()
-    taken = conn.execute("SELECT 1 FROM payable WHERE matched_txn_id = ?", (txn_id,)).fetchone()
-    # A reversed debit paid nothing, and a debit another bill holds is not this one's.
-    return txn_id if status is not None and status[0] == "UNMATCHED" and taken is None else None
+    return txn_id if status is not None and status[0] == "UNMATCHED" and debit_holder(conn, txn_id) is None else None
+
+
+def _release_held(conn: sqlite3.Connection, user: User, txn_id: int, *, except_id: int | None, why: str,
+                  clock: Clock) -> None:
+    """REVIEW bills held for this debit that it did not pay go back to expected (Q4)."""
+    for (bill_id, bill_version) in conn.execute(
+        "SELECT id, version FROM payable WHERE business_id = ? AND status = 'REVIEW' ORDER BY id",
+        (user.business_id,),
+    ).fetchall():
+        if bill_id != except_id and held_debit(conn, bill_id) == txn_id:
+            writer.transition(EntityRef("payable", bill_id), "PAYMENT_EXPECTED", user.actor,
+                              f"Owner: debit {txn_id} did not pay this bill ({why}); still expected",
+                              f"bank_txn:{txn_id}", conn=conn, expected_version=bill_version, clock=clock)
+
+
+def _settle_debit_question(conn: sqlite3.Connection, user: User, txn_id: int, why: str, clock: Clock) -> None:
+    """Closes the open case and answers the open explain_txn question about a
+    debit that has been settled another way."""
+    for (question_id, case_id) in conn.execute(
+        "SELECT id, case_id FROM owner_question WHERE business_id = ? AND kind = 'explain_txn' AND status = 'OPEN' "
+        "AND json_extract(choices_json, '$.bank_txn_id') = ?", (user.business_id, txn_id),
+    ).fetchall():
+        if case_id is not None:
+            case = conn.execute("SELECT status FROM agent_case WHERE id = ?", (case_id,)).fetchone()
+            if case is not None and case[0] in ("OPEN", "ASK_OWNER"):
+                writer.close_case(case_id, user.actor, why, f"bank_txn:{txn_id}", conn=conn, clock=clock)
+        _answer(conn, user, question_id, {"decision": "settled", "why": why}, clock)
 
 
 # --- shortfall options ---------------------------------------------------------------
@@ -524,14 +568,6 @@ def reject_candidate(conn: sqlite3.Connection, user: User, candidate_id: int, *,
 # --- the owner explains a debit (batch 4 plan, CHG-022) -------------------------------
 
 
-def _held_for(conn: sqlite3.Connection, payable_id: int) -> str | None:
-    row = conn.execute(
-        "SELECT source_ref FROM event WHERE entity = 'payable' AND entity_id = ? AND event_type = 'PAYABLE_REVIEW' "
-        "ORDER BY id DESC LIMIT 1", (payable_id,),
-    ).fetchone()
-    return None if row is None else row[0]
-
-
 def explain_debit(conn: sqlite3.Connection, user: User, question: dict, values: dict[str, Any], *,
                   clock: Clock) -> int | None:
     """The owner answers an explain_txn question: the debit paid one bill, or
@@ -545,13 +581,20 @@ def explain_debit(conn: sqlite3.Connection, user: User, question: dict, values: 
     source = f"owner_question:{question['id']}"
     with writer.atomic(conn):
         txn = repo.debit(conn, user.business_id, txn_id)
-        if txn["status"] != "UNMATCHED":
-            raise Refused(f"This debit is already {txn['status'].lower()}.")
+        holder = debit_holder(conn, txn_id)
+        if txn["status"] != "UNMATCHED" or holder is not None:
+            # Settled another way meanwhile (matched, reversed, or a bill marked paid
+            # with it): the question is closed; a second link would pay two bills.
+            why = (f"this debit already pays bill {holder}" if holder is not None
+                   else f"this debit is {txn['status'].lower()}")
+            _settle_debit_question(conn, user, txn_id, f"Settled: {why}", clock)
+            return None
         if values.get("decision") == "not_a_bill":
+            _release_held(conn, user, txn_id, except_id=None, why="not a bill payment", clock=clock)
             writer.close_case(case_id, user.actor, "Owner: this debit was not a bill payment", source,
                               conn=conn, clock=clock)
             _answer(conn, user, question["id"], {"decision": "not_a_bill"}, clock)
-            return None
+            return _replan(conn, user, clock)
         bill_id = int_or_none(values.get("payable_id"))
         if bill_id is None:
             raise FieldErrors({"payable_id": "Choose the bill this debit paid."}, values)
@@ -577,15 +620,8 @@ def explain_debit(conn: sqlite3.Connection, user: User, question: dict, values: 
         else:
             writer.transition(EntityRef("payable", bill_id), "PAID", user.actor, why, ref, conn=conn,
                               expected_version=bill["version"], fields={"matched_txn_id": txn_id}, clock=clock)
-        for (twin_id, twin_version) in conn.execute(
-            "SELECT id, version FROM payable WHERE business_id = ? AND status = 'REVIEW' AND id <> ?",
-            (user.business_id, bill_id),
-        ).fetchall():
-            if _held_for(conn, twin_id) == ref:
-                writer.transition(EntityRef("payable", twin_id), "PAYMENT_EXPECTED", user.actor,
-                                  f"Owner: debit {txn_id} paid {name}, not this bill; still expected", ref,
-                                  conn=conn, expected_version=twin_version, clock=clock)
-        if values.get("alias") and txn["counterparty"] and bill["party_id"] is not None \
+        _release_held(conn, user, txn_id, except_id=bill_id, why=f"it paid {name}", clock=clock)
+        if values.get("alias") and (txn["counterparty"] or "").strip() and bill["party_id"] is not None \
                 and not name_matches(txn["counterparty"], party_names(conn, bill["party_id"])):
             writer.add_party_alias(bill["party_id"], txn["counterparty"], user.actor,
                                    f"Owner: '{txn['counterparty']}' in a bank alert is {name}", source,
@@ -717,6 +753,7 @@ def what_if(conn: sqlite3.Connection, user: User, body: dict[str, Any], *, clock
     except (TypeError, ValueError) as e:
         raise Refused(str(e)) from None
     result = plan(s)
+    s = effective_snapshot(s, result)
     return {
         "plan": json.loads(canonical_json(result)),
         "options": [

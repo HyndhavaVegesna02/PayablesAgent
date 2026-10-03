@@ -321,10 +321,14 @@ def active_overrides(conn: sqlite3.Connection, business_id: int) -> list[dict[st
     names = bill_names(conn, business_id)
     rows = _rows(conn, "SELECT * FROM plan_override WHERE business_id = ? AND status = 'ACTIVE' ORDER BY id",
                  (business_id,))
+    seen: set[int] = set()
     for r in rows:
         r["name"] = names.get(r["payable_id"], f"Bill {r['payable_id']}")
         r["breach_on"] = _day(r["breach_on"])
         r["created_on"] = date.fromisoformat(r["created_at"][:10])
+        # One Undo per choice: undoing it ends every override the choice made.
+        r["show_undo"] = r["shortfall_option_id"] not in seen
+        seen.add(r["shortfall_option_id"])
     return rows
 
 
@@ -350,7 +354,8 @@ def bills_a_debit_could_pay(conn: sqlite3.Connection, business_id: int, amount_p
     for r in rows:
         r["name"] = names.get(r["id"], f"Bill {r['id']}")
         r["difference_paise"] = r["amount_paise"] - amount_paise
-    return sorted(rows, key=lambda r: (abs(r["difference_paise"]), r["planned_date"] or "", r["id"]))
+        r["planned_date"] = _day(r["planned_date"])
+    return sorted(rows, key=lambda r: (abs(r["difference_paise"]), r["planned_date"] or date.max, r["id"]))
 
 
 def open_questions(conn: sqlite3.Connection, business_id: int) -> list[dict[str, Any]]:

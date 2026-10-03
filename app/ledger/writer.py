@@ -416,6 +416,11 @@ def transition(
         _check_owner(conn, who, business_id)
         _check_version(kind, who, before, expected_version)
 
+        if kind == "payable" and fields.get("matched_txn_id") is not None:
+            holder = _fetch(conn, "SELECT id FROM payable WHERE matched_txn_id = ? AND id <> ?",
+                            (fields["matched_txn_id"], entity.id))
+            if holder is not None:  # one debit pays one bill (D12): never count it for two
+                raise IllegalTransition(f"bank_txn {fields['matched_txn_id']} already pays bill {holder['id']}")
         sets: dict[str, Any] = {col: to_state, **fields}
         if kind == "payable" and to_state == "PAYMENT_EXPECTED":
             sets["approved_by"] = who.owner_id

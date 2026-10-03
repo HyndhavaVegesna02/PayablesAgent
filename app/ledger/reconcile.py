@@ -19,6 +19,7 @@ from typing import Any, Literal
 
 from app.clock import TIMEZONE, Clock
 from app.domain.money import format_inr
+from app.planner.plan import format_day
 from app.ledger import writer
 from app.ledger.writer import EntityRef
 
@@ -143,7 +144,7 @@ def ask_about_debit(conn: sqlite3.Connection, t: dict[str, Any], case_id: int) -
     if existing is not None:
         return existing[0]
     payee = t["counterparty"] or "an unnamed payee"
-    body = (f"A {format_inr(t['amount_paise'])} debit on {t['txn_date']} to {payee}"
+    body = (f"A {format_inr(t['amount_paise'])} debit on {format_day(date.fromisoformat(t['txn_date']))} to {payee}"
             f"{' (reference ' + t['reference'] + ')' if t['reference'] else ''} was not matched to a bill. "
             "Which bill did it pay, if any?")
     return conn.execute(

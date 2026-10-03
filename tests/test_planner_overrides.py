@@ -198,3 +198,111 @@ def test_a_helper_cannot_undo(web):
     helper_csrf = login(client, HELPER)
     assert post(client, f"/options/{option_id}/choose", helper_csrf, {"undo": "1"}).status_code == 403
     assert env.conn.execute("SELECT status FROM plan_override").fetchone()[0] == "ACTIVE"
+
+
+# --- batch 4 review round 1 ---------------------------------------------------------------
+
+
+def test_c2_an_authorisations_own_knock_on_never_lapses_it():
+    # Paying A lowers the curve, so B's early-payment discount no longer fits and B
+    # is paid in full: the lowest drops, but nothing outside the authorisation changed.
+    from app.planner.plan import AccountCash, PlanSnapshot
+
+    s = PlanSnapshot(
+        today=date(2026, 10, 12), horizon_days=14, payment_days=frozenset({0, 3}), safety_paise=1_000_000,
+        accounts=(AccountCash(1, 2_000_000, None, False),),
+        payables=(PayableIn(1, 1_200_000, date(2026, 10, 22), "normal"),
+                  PayableIn(2, 500_000, date(2026, 10, 22), "flexible", discount_paise=50_000,
+                            discount_by=date(2026, 10, 15))),
+        inflows=(), commitments=(),
+    )
+    shown = plan(s)
+    assert _line(shown, 1).decision == "ESCALATE"
+    r = plan(replace(s, overrides=(OverrideIn(1, "authorise_breach", shown.lowest_balance_paise),)))
+    assert r.lapsed == () and _line(r, 1).decision == "PAY"
+
+
+def test_c3_a_lapse_keeps_the_bills_delay():
+    # Electricity made flexible (3 grace days, so Thu 15 -> Mon 19) and large enough to
+    # escalate; it carries both a delay and an authorisation, and a new statutory bill
+    # deepens the breach. The authorisation lapses; the delay must still apply.
+    s = worked_example()
+    elec = replace(s.payables[2], priority="flexible", grace_days=3, amount_paise=12_000_000)
+    s = replace(s, payables=tuple(elec if p.payable_id == 3 else p for p in s.payables))
+    floor = plan(replace(s, overrides=(OverrideIn(3, "delay_flexible"),))).lowest_balance_paise
+    deeper = replace(s, payables=s.payables + (PayableIn(99, 1_300_000, date(2026, 10, 19), "statutory"),))
+    r = plan(replace(deeper, overrides=(OverrideIn(3, "authorise_breach", floor), OverrideIn(3, "delay_flexible"))))
+    assert r.lapsed == (3,)
+    assert r.days == plan(replace(deeper, overrides=(OverrideIn(3, "delay_flexible"),))).days
+    assert r.days != plan(deeper).days  # so dropping the delay would show
+
+
+def test_c4_an_approved_authorised_bill_is_still_covered():
+    # The mainline flow: every earlier bill approved, then Prime approved under the authorisation.
+    s = _authorised(worked_example())
+    approved = tuple(replace(p, status="PAYMENT_EXPECTED", planned_date=day) for p, day in zip(
+        s.payables, (date(2026, 10, 12), date(2026, 10, 15), date(2026, 10, 15), date(2026, 10, 19),
+                     date(2026, 10, 22))))
+    s = replace(s, payables=approved)
+    r = plan(s)
+    assert r.authorised == (PRIME,) and r.escalations == () and not r.valid
+    assert options(s, r) == []  # not offered again while the authorisation covers the breach
+
+
+def test_c1_the_run_that_lapses_an_authorisation_is_not_stale(web):
+    env, client, csrf = web
+    _authorise(env, client, csrf)
+    from app.domain.models import PayableNew
+    from app.db.read import build_snapshot
+    from app.jobs.replan import inputs_sha256
+
+    bill = writer.create_payable(PayableNew(business_id=1, amount_paise=1_300_000, due_date=date(2026, 10, 19),
+                                            priority="statutory"),
+                                 actor="owner:1", reason="t", source_ref=None, conn=env.conn, clock=env.clock)
+    writer.transition(EntityRef("payable", bill.id), "CONFIRMED", "owner:1", "t", None, conn=env.conn,
+                      expected_version=bill.version, clock=env.clock)
+    plan_now(env, "event:new-bill")
+    run = current_run(env)
+    assert run["inputs_sha256"] == inputs_sha256(build_snapshot(env.conn, 1, env.clock.today()))
+    page = client.get("/attention").text
+    option_id = int(page.split("Authorise going below")[1].split("/options/")[1].split("/")[0])
+    assert post(client, f"/options/{option_id}/choose", csrf).status_code == 303  # not refused as stale
+
+
+def test_an_override_ends_when_its_bill_is_split_or_reopened(web):
+    env, client, csrf = web
+    _authorise(env, client, csrf)
+    writer.split_payable(EntityRef("payable", PRIME), 5_000_000, date(2026, 11, 10), "owner:1", "split", None,
+                         conn=env.conn, expected_version=version(env, PRIME), clock=env.clock)
+    assert env.conn.execute("SELECT status FROM plan_override").fetchone()[0] == "ENDED"
+    # REOPENED: an authorised bill approved, then its payment fails.
+    o = writer.record_override(1, 4, "delay_flexible", "owner:1", "x", None, conn=env.conn, clock=env.clock)
+    for to, actor in (("PAYMENT_EXPECTED", "owner:1"), ("REOPENED", "reconciler")):
+        writer.transition(EntityRef("payable", 4), to, actor, "t", None, conn=env.conn,
+                          expected_version=version(env, 4), clock=env.clock)
+    row = env.conn.execute("SELECT status FROM plan_override WHERE id = ?", (o["id"],)).fetchone()
+    assert row[0] == "ENDED"
+    ev = env.conn.execute("SELECT actor FROM event WHERE event_type = 'PLAN_OVERRIDE_ENDED' "
+                          "AND entity_id = ?", (o["id"],)).fetchone()
+    assert ev[0] == "reconciler"
+
+
+def test_choosing_a_delay_through_the_app_gives_the_options_figures(tmp_path):
+    # Electricity made flexible with 3 grace days: due Fri 16 -> Mon 19, inside the horizon.
+    env, client = make_web_env(tmp_path)
+    env.conn.execute("UPDATE payable SET priority = 'flexible', grace_days = 3 WHERE id = 3")
+    env.conn.commit()
+    plan_now(env)
+    csrf = login(client)
+    opt = env.conn.execute("SELECT id, lowest_balance_paise FROM shortfall_option WHERE kind = 'delay_flexible'"
+                           ).fetchone()
+    mark = last_event_id(env)
+    assert post(client, f"/options/{opt['id']}/choose", csrf).status_code == 303
+    o = env.conn.execute("SELECT payable_id, kind, status FROM plan_override").fetchone()
+    assert tuple(o) == (3, "delay_flexible", "ACTIVE")
+    assert ("PLAN_OVERRIDE_RECORDED", "owner:1") in owner_events(env, mark)
+    assert plan_lines(env)[3] == ("PAY", "2026-10-19")
+    assert current_run(env)["lowest_balance_paise"] == opt["lowest_balance_paise"]
+    assert post(client, f"/options/{opt['id']}/choose", csrf, {"undo": "1"}).status_code == 303
+    assert plan_lines(env)[3] == ("PAY", "2026-10-15")
+    env.conn.close()

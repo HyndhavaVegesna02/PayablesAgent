@@ -14,7 +14,7 @@
     {% if o.kind == "authorise_breach" %}<strong>{{ o.name }}</strong> is paid below the safety amount, as you authorised on {{ o.created_on | day }}, while the lowest balance stays at or above {{ o.floor_paise | inr }}.
     {% else %}<strong>{{ o.name }}</strong> is paid within its grace days, as you chose on {{ o.created_on | day }}.{% endif %}
   </p>
-  {% if o.shortfall_option_id %}
+  {% if o.shortfall_option_id and o.show_undo %}
   <form method="post" action="/options/{{ o.shortfall_option_id }}/choose" hx-post="/options/{{ o.shortfall_option_id }}/choose" hx-target="#main">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="undo" value="1">
@@ -83,16 +83,22 @@
     <label>Actual balance (₹) <input name="amount" required></label>
     <button type="submit">Confirm balance</button>
   </form>
-  {% elif q.kind == "explain_txn" and q.get("debit") and q.debit.status == "UNMATCHED" %}
+  {% elif q.kind == "explain_txn" and q.get("debit") and (q.debit.status != "UNMATCHED" or q.held_by) %}
+  <form method="post" action="/questions/{{ q.id }}/answer" hx-post="/questions/{{ q.id }}/answer" hx-target="#main">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <p class="muted">This debit has been settled another way{% if q.held_by %} (it already pays a bill){% endif %}.</p>
+    <button type="submit" name="decision" value="settled" class="secondary outline">Close this question</button>
+  </form>
+  {% elif q.kind == "explain_txn" and q.get("debit") %}
   <form method="post" action="/questions/{{ q.id }}/answer" hx-post="/questions/{{ q.id }}/answer" hx-target="#main">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <fieldset>
       <legend>This debit paid</legend>
       {% for b in q.bills %}
       <label>
-        <input type="radio" name="payable_id" value="{{ b.id }}"{% if loop.first %} checked{% endif %}>
+        <input type="radio" name="payable_id" value="{{ b.id }}">
         {{ b.name }} {{ b.amount_paise | inr }}
-        <small class="muted">({{ b.status | replace("_", " ") | lower }}{% if b.planned_date %}, planned {{ b.planned_date }}{% endif %}{% if b.difference_paise %}; differs by {{ (b.difference_paise if b.difference_paise > 0 else -b.difference_paise) | inr }}{% endif %})</small>
+        <small class="muted">({{ b.status | replace("_", " ") | lower }}{% if b.planned_date %}, planned {{ b.planned_date | day }}{% endif %}{% if b.difference_paise %}; differs by {{ (b.difference_paise if b.difference_paise > 0 else -b.difference_paise) | inr }}{% endif %})</small>
         <input type="hidden" name="version_{{ b.id }}" value="{{ b.version }}">
       </label>
       {% else %}<p class="muted">No open bill is waiting for a payment.</p>{% endfor %}

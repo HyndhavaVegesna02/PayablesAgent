@@ -251,29 +251,49 @@ def with_grace(p: PayableIn) -> PayableIn:
 
 
 def plan(s: PlanSnapshot) -> PlanResult:
-    """The plan for a snapshot. An authorisation whose bill would take the
-    lowest balance below the floor the owner saw lapses (D18): the plan is
-    made again without it, and that bill escalates with a reason saying so."""
-    lapsed: dict[int, int] = {}  # payable_id -> its floor
-    while True:
-        result = _plan(replace(s, overrides=tuple(o for o in s.overrides if o.payable_id not in lapsed)))
-        newly = {
-            o.payable_id: o.floor_paise for o in s.overrides
-            if o.kind == "authorise_breach" and o.payable_id in result.authorised
-            and result.lowest_balance_paise < o.floor_paise
-        }
-        if not newly:
-            break
-        lapsed.update(newly)
+    """The plan for a snapshot, honouring the owner's overrides.
+
+    D18: an authorisation covers its bill while the breach is no deeper than
+    the floor the owner saw. The breach is measured on the plan made without
+    any authorisation, which is the plan the owner was shown when he chose:
+    so a deeper breach from outside (a new bill, a failed receipt, drift)
+    lapses it, while the authorisation's own knock-on effects (say, a smaller
+    bill losing its early-payment discount) never do. A lapsed authorisation
+    is dropped and its bill escalates with a reason saying why; any other
+    override on the bill (a delay) still applies."""
+    authorisations = [o for o in s.overrides if o.kind == "authorise_breach"]
+    if not authorisations:
+        return _plan(s)
+    result = _plan(s)
+    shown = _plan(replace(s, overrides=tuple(o for o in s.overrides if o.kind != "authorise_breach")))
+    lapsed = {
+        o.payable_id: o.floor_paise for o in authorisations
+        if o.payable_id in result.authorised and shown.lowest_balance_paise < o.floor_paise
+    }
     if not lapsed:
         return result
+    result = _plan(_without_lapsed(s, lapsed))
     lines = tuple(
         replace(ln, reason=ln.reason + f" Your authorisation covered a low of {format_inr(lapsed[ln.payable_id])};"
-                f" the plan now goes to {format_inr(result.lowest_balance_paise)}.")
+                f" the plan now goes to {format_inr(shown.lowest_balance_paise)}.")
         if ln.payable_id in lapsed else ln
         for ln in result.lines
     )
     return replace(result, lines=lines, lapsed=tuple(sorted(lapsed)))
+
+
+def _without_lapsed(s: PlanSnapshot, lapsed) -> PlanSnapshot:
+    return replace(s, overrides=tuple(
+        o for o in s.overrides if not (o.kind == "authorise_breach" and o.payable_id in lapsed)
+    ))
+
+
+def effective_snapshot(s: PlanSnapshot, r: PlanResult) -> PlanSnapshot:
+    """The inputs the result was actually planned from: the snapshot without
+    the authorisations it lapsed. A run stores its hash, and its options are
+    worked out, over this, so the next snapshot (where those rows are LAPSED)
+    matches it."""
+    return _without_lapsed(s, set(r.lapsed))
 
 
 def _plan(s: PlanSnapshot) -> PlanResult:
@@ -288,7 +308,11 @@ def _plan(s: PlanSnapshot) -> PlanResult:
     for c in s.commitments:
         if first <= c.day <= last:
             base.append(Movement(c.day, -c.amount_paise, "commitment", c.commitment_id))
+    authorised = {o.payable_id for o in s.overrides if o.kind == "authorise_breach"}
+    paid_authorised: list[int] = []
     for p in s.payables:
+        if p.status == "PAYMENT_EXPECTED" and p.payable_id in authorised:
+            paid_authorised.append(p.payable_id)  # approved under the authorisation: still covered
         if p.status == "PAYMENT_EXPECTED":
             # Approved but not yet seen leaving the bank: counted on its planned day,
             # or today if that day has passed (or is unknown).
@@ -301,9 +325,7 @@ def _plan(s: PlanSnapshot) -> PlanResult:
     escalations: list[Escalation] = []
     bill_moves: list[Movement] = []
 
-    authorised = {o.payable_id for o in s.overrides if o.kind == "authorise_breach"}
     delayed = {o.payable_id for o in s.overrides if o.kind == "delay_flexible"}
-    paid_authorised: list[int] = []
     plannable = sorted(
         (with_grace(p) if p.payable_id in delayed and p.priority == "flexible" else p
          for p in s.payables if p.status != "PAYMENT_EXPECTED"),

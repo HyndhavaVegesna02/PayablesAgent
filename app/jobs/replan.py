@@ -26,6 +26,7 @@ from app.planner.plan import (
     PlanResult,
     PlanSnapshot,
     canonical_json,
+    effective_snapshot,
     format_day,
     plan,
 )
@@ -92,8 +93,11 @@ def replan(
     with writer.atomic(conn):
         snapshot = build_snapshot(conn, business_id, clock.today())
         result = plan(snapshot)
+        # D18: a lapsed authorisation is LAPSED from now on, so the run is stored
+        # (hash and options) over the inputs without it, which the next snapshot matches.
+        planned_from = effective_snapshot(snapshot, result)
         run_id = persist_plan(
-            conn, business_id, snapshot, result, options(snapshot, result),
+            conn, business_id, planned_from, result, options(planned_from, result),
             triggered_by=triggered_by, clock=clock,
         )
         apply_moves(conn, snapshot, result, run_id, clock=clock, trace_run_id=trace_run_id)

@@ -35,6 +35,7 @@ def attention_page(request: Request, conn: sqlite3.Connection, user: User, *, me
             except repo.NotFound:
                 continue
             q["bills"] = repo.bills_a_debit_could_pay(conn, user.business_id, q["debit"]["amount_paise"])
+            q["held_by"] = actions.debit_holder(conn, q["debit"]["id"])
     return render(request, "attention.html", {
         "questions": questions,
         "candidates": candidates, "shown": shown,
