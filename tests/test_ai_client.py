@@ -192,6 +192,7 @@ def test_a_response_with_no_candidates_has_no_text():
     (500, "INTERNAL", True),
     (503, "UNAVAILABLE", True),
     (400, "INVALID_ARGUMENT", False),
+    (402, "RESOURCE_EXHAUSTED", False),  # prepaid credits used up: billing, never retried (batch 6)
     (403, "PERMISSION_DENIED", False),
 ])
 def test_api_errors_map_to_retryable_or_permanent(code, status, retryable):

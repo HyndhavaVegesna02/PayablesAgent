@@ -186,3 +186,10 @@
 5. The agent may store an encrypted source_document for a message the poll never read.
 6. The what-if snapshot and accounts_of moved to app/db/read.py.
 7. An agent-found alert reports its balance at the alert's own time (the document's received_at), as the pipeline does.
+
+## Notes
+- **Live Gemini smoke, passed (2026-10-03).** The PO ran `make smoke-gemini` on the main tree after the user fixed the Gemini key and billing. Result: 3 calls, 3,214 micro-USD, trace run `smoke-gemini-20261003T170517`, passed. This resolves the earlier failures:
+  - batch 2, at 78ee267: 403 PERMISSION_DENIED (key or project configuration);
+  - later: 402 (prepaid credits used up), which the PO's run showed surfacing as AIUnavailable.
+  The trace is not committed. CHG-025's "live smoke of new prompts" item stays open for sort.v2 and the CHG-007 prompts; the PO will authorise a small multi-prompt smoke in batch 7.
+- **HTTP 402 is permanent.** `GeminiBackend` treats every 4xx except 429 as not retryable, so a 402 (billing, credits used up) is never retried, as Google's guidance says. That was already the behaviour. `tests/test_ai_client.py::test_api_errors_map_to_retryable_or_permanent` now pins it with a 402 case. No code changed; the test guards existing behaviour, so it has no prepatch.
