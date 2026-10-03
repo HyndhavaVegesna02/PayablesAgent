@@ -140,3 +140,86 @@ def test_the_report_gives_rate_spread_worst_run_and_keeps_errored_runs_apart():
     md = report.markdown(report.build(meta, [s], runs))
     assert md.startswith("# Eval report: t") and "**ABORTED**: budget: 600 calls used" in md
     assert "| Bank debit alert for a planned payment | 2/3 (67%), 1 errored | 50% – 100% | run 2: reconcile, 1 failed |" in md
+
+
+# --- S5: the live budget guard (with a fake backend: nothing here calls Gemini) ------------------
+
+from app.ai.client import AIUnavailable, RawAIResponse  # noqa: E402
+from evals.budget import BudgetGuard  # noqa: E402
+
+
+class Priced:
+    """A backend that answers with fixed token counts, or raises what it is given."""
+
+    def __init__(self, *replies):
+        self.replies, self.calls = list(replies), 0
+
+    def generate(self, **kw):
+        self.calls += 1
+        r = self.replies.pop(0) if self.replies else RawAIResponse("{}", 1000, 100, 50)
+        if isinstance(r, Exception):
+            raise r
+        return r
+
+
+def guard(backend, **kw):
+    slept = []
+    return BudgetGuard(backend, CONFIG, sleep=slept.append, **kw), slept
+
+
+def test_the_guard_refuses_the_call_past_the_call_cap():
+    g, slept = guard(Priced(), max_calls=3)
+    for _ in range(3):
+        g.generate(model="m", system="s", contents="c", thinking="low", json_schema=None)
+    with pytest.raises(AIUnavailable) as e:
+        g.generate(model="m", system="s", contents="c", thinking="low", json_schema=None)
+    assert e.value.retryable is False and g.calls == 3 and g.should_stop().startswith("call cap reached: 3 of 3")
+    assert slept == [1.0, 1.0]  # paced between calls
+
+
+def test_the_guard_stops_before_a_call_that_could_pass_the_cost_cap():
+    one = RawAIResponse("{}", 1_000_000, 0, 0)  # 1M input tokens at 750,000 micro-USD per Mtok
+    g, _ = guard(Priced(one, one, one), max_micro_usd=2_000_000)
+    g.generate(model="m", system="s", contents="c", thinking="low", json_schema=None)
+    g.generate(model="m", system="s", contents="c", thinking="low", json_schema=None)
+    assert g.micro_usd == 1_500_000
+    with pytest.raises(AIUnavailable):  # 1.5M spent + 0.75M for the dearest call so far > 2M
+        g.generate(model="m", system="s", contents="c", thinking="low", json_schema=None)
+    assert g.calls == 2 and "cost cap reached" in g.should_stop()
+
+
+def test_a_429_backs_off_and_resumes_and_one_that_outlasts_the_backoff_stops():
+    rate = AIUnavailable("429", retryable=True, code=429)
+    g, slept = guard(Priced(rate, rate, RawAIResponse("{}", 1, 1, 0)), delay_s=0)
+    assert g.generate(model="m", system="s", contents="c", thinking="low", json_schema=None).text == "{}"
+    assert slept == [5, 10] and g.calls == 3 and g.rate_limited == 2 and g.should_stop() is None
+    g, slept = guard(Priced(*[rate] * 6), delay_s=0)
+    with pytest.raises(AIUnavailable):
+        g.generate(model="m", system="s", contents="c", thinking="low", json_schema=None)
+    assert slept == [5, 10, 20, 40, 60] and g.should_stop().startswith("rate limited")
+
+
+def test_other_errors_pass_through_untouched():
+    g, _ = guard(Priced(AIUnavailable("503", retryable=True, code=503)))
+    with pytest.raises(AIUnavailable) as e:
+        g.generate(model="m", system="s", contents="c", thinking="low", json_schema=None)
+    assert e.value.code == 503 and g.should_stop() is None
+
+
+def test_a_stopped_guard_ends_the_suite_with_a_partial_aborted_report(tmp_path):
+    g, _ = guard(FixtureBackend(), max_calls=6, delay_s=0)
+    chosen = [scenario.load(DEBIT), scenario.load("02-password-protected-statement")]
+    results, stopped = runner.run_suite(chosen, lambda: g, CONFIG, 2, should_stop=g.should_stop)
+    assert stopped.startswith("call cap reached") and g.calls == 6
+    assert [r.status for r in results][-1] == "ERRORED" and len(results) < 4
+    meta = {"label": "cap", "mode": "live", "model": "m", "prompt_version": "p", "config_sha256": "0" * 64,
+            "commit": "c", "date": "d", "runs_per_scenario": 2, "status": "ABORTED", "stopped_because": stopped}
+    out = report.write(report.build(meta, chosen, results), tmp_path / "r")
+    assert "**ABORTED**: call cap reached" in (out / "report.md").read_text(encoding="utf-8")
+
+
+def test_live_mode_will_not_start_without_yes_spend():
+    from evals.budget import live_backend
+
+    with pytest.raises(SystemExit, match="--yes-spend"):
+        live_backend(CONFIG, confirmed=False)

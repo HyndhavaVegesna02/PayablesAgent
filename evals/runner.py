@@ -340,12 +340,17 @@ def main(argv: list[str] | None = None) -> int:
     today = SystemClock().now()
     out_dir = args.out / f"{today.date().isoformat()}-{args.ai}-{args.label}"
     should_stop: Callable[[], str | None] = never
-    if args.ai == "fixtures":
-        backend_factory: Callable[[], Backend] = FixtureBackend
-    else:
+    guard = None
+    backend_factory: Callable[[], Backend] = FixtureBackend
+    if args.ai == "live":
         from evals.budget import live_backend
 
-        backend_factory, should_stop = live_backend(config, confirmed=args.yes_spend)
+        guard = live_backend(config, confirmed=args.yes_spend)  # one guard for the whole invocation
+
+        def backend_factory() -> Backend:
+            return guard
+
+        should_stop = guard.should_stop
     results, stopped = run_suite(
         chosen, backend_factory, config, args.runs, should_stop=should_stop,
         keep=out_dir / "traces" if args.keep_traces else None,
@@ -355,7 +360,7 @@ def main(argv: list[str] | None = None) -> int:
             "config_sha256": config_hash, "variant": args.config.as_posix() if args.config else None,
             "commit": report.git_commit(), "date": today.isoformat(timespec="seconds"),
             "runs_per_scenario": args.runs, "status": "COMPLETE" if stopped is None else "ABORTED",
-            "stopped_because": stopped}
+            "stopped_because": stopped, "budget": guard.summary() if guard else None}
     built = report.build(meta, chosen, results)
     report.write(built, out_dir)
     t = built["totals"]
