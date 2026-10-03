@@ -12,9 +12,9 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
-from collections.abc import Mapping, Sequence
 from typing import Any, Literal
 
 from app.clock import TIMEZONE, Clock
@@ -395,6 +395,20 @@ def handle_failure(conn: sqlite3.Connection, candidate_id: int, *, window_days: 
 # --- drift ----------------------------------------------------------------------------
 
 
+def _senders(acct: sqlite3.Row) -> list[str]:
+    try:
+        senders = json.loads(acct["alert_senders_json"])
+    except json.JSONDecodeError:
+        return []
+    return [s for s in senders if isinstance(s, str)]
+
+
+def _since(acct: sqlite3.Row) -> str:
+    """The day the account's balances last agreed: its last reconciliation, or its opening balance."""
+    return datetime.fromisoformat(acct["last_reconciled_at"] or acct["opening_balance_at"]).astimezone(
+        TIMEZONE).date().isoformat()
+
+
 def resolve_drift_cases(conn: sqlite3.Connection, account_id: int, *, clock: Clock) -> list[int]:
     """The gap closed by itself (a found transaction): the account's open
     drift cases are RESOLVED, with a note in the case file."""
@@ -475,6 +489,11 @@ def check_drift(
         facts=[f"Bank-reported balance: {format_inr(reported)} at {acct['reported_at']}",
                f"Calculated balance for that day: {format_inr(calc)}",
                f"Gap (reported minus calculated): {format_inr(gap)}",
+               f"A missing {'debit' if gap < 0 else 'credit'} of {format_inr(abs(gap))}, or several adding up to "
+               "it, would explain the gap",
+               f"The bank's alert senders for this account: {', '.join(_senders(acct)) or 'none on record'}",
+               f"Dates to look between: {_since(acct)} (the last time the balances agreed) and "
+               f"{at.astimezone(TIMEZONE).date()}",
                f"Found by: {source}"],
         unknowns=["Which transactions are missing from the ledger"], clock=clock,
     )

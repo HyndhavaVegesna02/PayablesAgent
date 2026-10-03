@@ -6,6 +6,6 @@
 # code has no flag for it.
 #   python -m evals.runner --ai live --yes-spend --runs 5 --config evals/variants/prompt-degraded.yaml --label prompt-degraded
 prompts:
-  version: 2026-10-04.1-degraded
+  version: 2026-10-04.2-degraded
 eval_prompts:
   extract_bank_alert.v1: evals/variants/prompts/extract_bank_alert.degraded.md

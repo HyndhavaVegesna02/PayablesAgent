@@ -109,7 +109,8 @@ def test_a_found_bill_is_handed_to_the_pipeline_not_shown_as_the_agents_entry(en
     doc = env.conn.execute("SELECT id, status FROM source_document").fetchone()
     assert doc["status"] == "NEW"  # stored by the agent, not yet read by the pipeline
     job = env.conn.execute("SELECT kind, payload_json, status FROM job WHERE kind = 'process_document'").fetchone()
-    assert (job["payload_json"], job["status"]) == (json.dumps({"document_id": doc["id"]}), "queued")
+    assert job["status"] == "queued" and json.loads(job["payload_json"]) == {
+        "document_id": doc["id"], "found_by": f"agent:case:{cid} via gmail:{msg}"}  # D21, CHG-031
     assert env.conn.execute("SELECT COUNT(*) FROM owner_question").fetchone()[0] == 0
     assert repo.waiting_candidates(env.conn, 1) == []  # the agent's candidate is the case's evidence only
 
@@ -161,7 +162,7 @@ def test_the_owners_answer_resumes_the_case_once_then_closes_it(env):
     assert ev[0] == "owner:1"
 
 
-def test_a_drift_case_resolved_without_closing_the_gap_goes_to_confirm_balance(env):
+def _gap_case(env):
     from app.ledger import writer
     from app.ledger.reconcile import open_case
 
@@ -170,9 +171,27 @@ def test_a_drift_case_resolved_without_closing_the_gap_goes_to_confirm_balance(e
     cid = open_case(env.conn, 1, "drift", "bank_account:1", 2_000_000, goal="Explain the gap.", facts=["a gap"],
                     unknowns=["what is missing"], clock=env.clock)
     env.conn.commit()
-    msg = "01-debit-ashirwad-paper.eml"
+    return cid
+
+
+def test_a_drift_answer_relying_on_no_found_alert_is_refused_and_the_run_goes_on(env):
+    cid, msg = _gap_case(env), "01-debit-ashirwad-paper.eml"
     case = run(env, cid, step("look", "search_gmail", {"query": "ASHIRWAD"}),
-               step("done", final=final(summary="It must be the paper payment.", cited=[msg])))
+               step("done", final=final(summary="It must be the paper payment.", cited=[msg])),
+               step("give up", final=final(outcome="NEEDS_OWNER", summary="I could not find it.")))
+    assert "final answer refused by code: a gap is closed by the missing transaction: propose its alert with " \
+           "add_candidate and rely on that VALID candidate" in case.state["notes"]  # CHG-031
+    assert case.validation_failures == 1
+    assert case.status == "ASK_OWNER"  # it was the agent's own NEEDS_OWNER that went to the owner
+    q = env.conn.execute("SELECT kind FROM owner_question WHERE case_id = ?", (cid,)).fetchone()
+    assert q[0] == "confirm_balance"
+
+
+def test_a_drift_case_resolved_without_closing_the_gap_goes_to_confirm_balance(env):
+    cid, msg = _gap_case(env), "01-debit-ashirwad-paper.eml"
+    case = run(env, cid, step("look", "search_gmail", {"query": "ASHIRWAD"}),
+               step("propose", "add_candidate", {"record_type": "bank_alert", "message_id": msg, "fields": ALERT_01}),
+               step("done", final=final(summary="It must be the paper payment.", cited=[msg], relied=[1])))
     assert case.status == "ASK_OWNER"
     assert any(n.startswith("drift check after the findings:") for n in case.state["notes"])
     assert env.conn.execute("SELECT drift_status FROM bank_account WHERE id = 1").fetchone()[0] == "ASK_OWNER"
@@ -219,7 +238,7 @@ def test_a_message_the_agent_stored_but_no_answer_applied_goes_on_to_the_pipelin
 
     run_all(env, {"poll_mail": handle_poll_mail})
     job = env.conn.execute("SELECT payload_json FROM job WHERE kind = 'process_document'").fetchone()
-    assert json.loads(job[0]) == {"document_id": doc_id}
+    assert json.loads(job[0]) == {"document_id": doc_id}  # the poll found it: no case to name
 
 
 def test_a_run_that_dies_hands_a_drift_case_to_the_owners_confirm_balance(env):
@@ -315,4 +334,4 @@ def test_a_run_the_owner_stops_still_hands_on_the_mail_it_stored(env):
     assert status == "done" and cases.load(env.conn, cid).status == "CLOSED_BY_OWNER"
     (doc_id,) = env.conn.execute("SELECT id FROM source_document").fetchone()
     job = env.conn.execute("SELECT payload_json FROM job WHERE kind = 'process_document'").fetchone()
-    assert json.loads(job[0]) == {"document_id": doc_id}
+    assert json.loads(job[0]) == {"document_id": doc_id, "found_by": f"agent:case:{cid} via gmail:{msg}"}

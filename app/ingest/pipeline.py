@@ -400,6 +400,15 @@ def _check_bank_details(ctx: JobContext, doc: sqlite3.Row, outcome: Outcome, can
                         result=f"party {party['id']} bank change pending; approve_bank_change asked")
 
 
+def _found_ref(ctx: JobContext, input_ref: str) -> str:
+    """A ledger write's source: the document, and, for a message the exception
+    agent found and handed on, the case that found it (D21; CHG-031)."""
+    found_by = ctx.payload.get("found_by")
+    if isinstance(found_by, str) and found_by.startswith("agent:case:"):
+        return f"{found_by} via {input_ref}"
+    return input_ref
+
+
 def _route_invoice(ctx: JobContext, doc: sqlite3.Row, outcome: Outcome, candidate_id: int,
                    msg: EmailMessage | None) -> None:
     input_ref = f"source_document:{doc['id']}"
@@ -518,7 +527,7 @@ def _route(ctx: JobContext, doc: sqlite3.Row, doc_type: str, outcome: Outcome, c
                        txn_date=rec.txn_date, counterparty=rec.counterparty, reference=rec.reference,
                        balance_after_paise=rec.balance_after_paise, dedup_key=rec.dedup_key,
                        source_document_id=doc["id"], candidate_id=candidate_id, status="UNMATCHED"),
-            actor="pipeline", reason=f"bank alert, candidate {candidate_id}", source_ref=input_ref,
+            actor="pipeline", reason=f"bank alert, candidate {candidate_id}", source_ref=_found_ref(ctx, input_ref),
             conn=conn, clock=ctx.clock, trace_run_id=ctx.tracer.run_id,
         )
         job_id = queue.enqueue(conn, kind="reconcile_txn", payload={"bank_txn_id": txn.id},

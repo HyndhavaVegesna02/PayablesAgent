@@ -100,11 +100,15 @@ def _hand_to_pipeline(conn: sqlite3.Connection, case: Case, ctx: JobContext) -> 
     """The messages this case stored: one its answer applied is PROCESSED; the
     rest go to the pipeline as if the poll had fetched them."""
     applied = set(case.state.get("applied_documents", []))
+    messages = case.state.get("document_messages", {})
     for doc_id in case.state.get("stored_documents", []):
         if doc_id in applied:
             conn.execute("UPDATE source_document SET status = 'PROCESSED' WHERE id = ? AND status = 'NEW'", (doc_id,))
-        else:
-            queue.enqueue(conn, kind="process_document", payload={"document_id": doc_id},
+        else:  # D21: what the pipeline writes from it still says the agent found it
+            found_by = f"agent:case:{case.id}"
+            if str(doc_id) in messages:
+                found_by += f" via gmail:{messages[str(doc_id)]}"
+            queue.enqueue(conn, kind="process_document", payload={"document_id": doc_id, "found_by": found_by},
                           idempotency_key=f"process_document:{doc_id}", clock=ctx.clock)
 
 
@@ -180,6 +184,11 @@ def apply_final(conn: sqlite3.Connection, case: Case, final: FinalAnswer, d: Dep
     bad = [c for c in final.relied_on_candidate_ids if known.get(str(c), {}).get("status") != "VALID"]
     if bad:
         return _refuse(conn, case, f"relies on candidates that are not this case's VALID ones: {bad}", ctx)
+    if case.kind == "drift" and not case.state.get("resumed") and not any(
+            known[str(c)]["record_type"] == "bank_alert" for c in final.relied_on_candidate_ids):
+        # Nothing would be written, so the gap stays: say how to close it, not send it to the owner (CHG-031).
+        return _refuse(conn, case, "a gap is closed by the missing transaction: propose its alert with "
+                                   "add_candidate and rely on that VALID candidate", ctx)
     with writer.atomic(conn):
         done = []
         for cid in final.relied_on_candidate_ids:

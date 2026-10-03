@@ -220,7 +220,21 @@ def _document_for(ctx: ToolContext, message_id: str, raw: bytes) -> int:
     # NEW: the pipeline has not read it. When the case ends, code hands it to the
     # pipeline (app/jobs/run_case.py), unless the case's own answer applied it.
     ctx.case.state.setdefault("stored_documents", []).append(doc_id)
+    ctx.case.state.setdefault("document_messages", {})[str(doc_id)] = message_id
     return doc_id
+
+
+def schema_problems(e: ValidationError, model: type[BaseModel]) -> str:
+    """Every field a proposed record is missing or has wrongly, by name, and
+    the fields it should have, so the agent can fix its call (CHG-031)."""
+    errors = e.errors()
+    missing = sorted({str(x["loc"][0]) for x in errors if x["type"] == "missing" and x["loc"]})
+    unknown = sorted({str(x["loc"][0]) for x in errors if x["type"] == "extra_forbidden" and x["loc"]})
+    parts = ([f"missing {', '.join(missing)}"] if missing else []) + (
+        [f"not fields of this record: {', '.join(unknown)}"] if unknown else [])
+    parts += [f"{'.'.join(map(str, x['loc']))}: {x['msg']}" for x in errors
+              if x["type"] not in ("missing", "extra_forbidden")]
+    return "; ".join(parts) + f". Its fields are: {', '.join(model.model_fields)}"
 
 
 def add_candidate(ctx: ToolContext, args: CandidateArgs) -> str:
@@ -236,7 +250,7 @@ def add_candidate(ctx: ToolContext, args: CandidateArgs) -> str:
         extract = model.model_validate(args.fields)
         schema_error = None
     except ValidationError as e:
-        extract, schema_error = None, f"{len(e.errors())} field error(s): {e.errors()[0].get('msg')}"
+        extract, schema_error = None, schema_problems(e, model)
     raw = ctx.mail.fetch(MessageRef(args.message_id)).raw
     msg = parse_message(raw)
     bid = ctx.case.business_id

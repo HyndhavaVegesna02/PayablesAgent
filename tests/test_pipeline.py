@@ -72,7 +72,7 @@ def test_a_debit_alert_becomes_a_bank_txn_through_the_worker(env):
         "VALID", 1, "txn", "pipeline",
     )
     assert (cand["model_id"], cand["thinking"]) == ("gemini-3.8-flash", "medium")
-    assert cand["prompt_version"] == "2026-10-04.1/extract_bank_alert.v1"
+    assert cand["prompt_version"] == "2026-10-04.2/extract_bank_alert.v1"
     assert set(json.loads(cand["checks_json"]).values()) == {"passed", "not_applicable"}
 
     (txn,) = rows(env, "SELECT * FROM bank_txn")

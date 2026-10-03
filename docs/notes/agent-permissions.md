@@ -37,15 +37,21 @@ Refusals still count as steps.
 
 - **RESOLVED** needs evidence: at least one cited message, or the owner's answer to this case's
   question. Every cited message must come from this case's own searches, and every relied-on
-  candidate must be VALID. Otherwise the answer is refused and counted as a failed check.
+  candidate must be VALID. A drift case's RESOLVED must rely on a VALID bank_alert candidate, since
+  only a written transaction can close the gap (CHG-031). Otherwise the answer is refused, noted
+  with the reason, and counted as a failed check, and the run goes on within its limits.
 - A relied-on bank alert is written as the pipeline would write it (actor `pipeline`), with the
   source `agent:case:<id> via gmail:<message id>` (D21). A relied-on bill or invoice is handed to
   the mail pipeline, which reads it as it reads any email. The owner confirms the pipeline's entry,
-  and new bank details are flagged there.
+  and new or first bank details are flagged there (D26).
 - The agent's own candidates are its case's evidence. The owner never sees them as entries to
   confirm, and they count in no duplicate check. A message the agent stored and no answer applied
-  goes on to the pipeline when the run ends, and the next poll queues one that was stored but never
-  read. Finding a message never hides it from the pipeline.
+  goes on to the pipeline when the run ends, with the case named in the job, so what the pipeline
+  writes from it has the source `agent:case:<id> via gmail:<message id> via source_document:<id>`
+  (D21, CHG-031). The next poll queues one that was stored but never read, without the case.
+  Finding a message never hides it from the pipeline.
+- A candidate that fails the schema is refused with every missing and unknown field named, and the
+  record's fields listed, so the agent can fix its call.
 - A case is saved only over the status it was read with. If the owner closes it, or the gap closes
   during a run, the run stops and keeps nothing from that step.
 - A tool that fails (a mail error, no document store) is a noted step, not a crash. A run that dies
