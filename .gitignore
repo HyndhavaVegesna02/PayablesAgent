@@ -3,7 +3,8 @@ __pycache__/
 *.pyc
 .env
 data/
-traces/
+# the runtime trace dir (TRACE_DIR=./traces); docs/traces/ holds the curated, committed ones
+/traces/
 *.db
 *.db-journal
 *.db-wal

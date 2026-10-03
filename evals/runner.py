@@ -271,15 +271,17 @@ def run_once(scenario: Scenario, backend: Backend, app_config: AppConfig, run: i
         except Exception as e:  # noqa: BLE001 - a crash is the system failing the scenario
             result.status, result.error, result.component = "FAILED", f"{type(e).__name__}: {e}", "crash"
             result.checks = [check(env.conn, e2) for e2 in scenario.expect]
-        if result.status != "ERRORED":
-            from evals import outcomes
+        try:
+            if result.status != "ERRORED":
+                from evals import outcomes
 
-            result.outcomes = outcomes.score(env.conn, scenario.outcome, outcomes.plan_from_db(env.conn))
-        if inspect is not None:
-            result.metrics = inspect(env)
-        if keep is not None and (tmp / "traces").is_dir():
-            shutil.copytree(tmp / "traces", keep / f"{scenario.name}-run{run}", dirs_exist_ok=True)
-        env.conn.close()
+                result.outcomes = outcomes.score(env.conn, scenario.outcome, outcomes.plan_from_db(env.conn))
+            if inspect is not None:
+                result.metrics = inspect(env)
+            if keep is not None and (tmp / "traces").is_dir():
+                shutil.copytree(tmp / "traces", keep / f"{scenario.name}-run{run}", dirs_exist_ok=True)
+        finally:
+            env.conn.close()  # before the temp dir goes: Windows will not delete an open database
     return result
 
 

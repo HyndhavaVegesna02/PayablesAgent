@@ -36,7 +36,7 @@ no float ever holds an amount.
 - `make test` — runs pytest (incl. Hypothesis properties) and import-linter
 - `make worker` — runs the job worker and the scheduler (`python -m app.worker`); it writes a heartbeat that `/api/health` reports
 - `make smoke-gemini` — live and billed: at most 3 Gemini calls (sort and extract on two test-inbox fixtures) to check the prompts on Gemini itself; never part of `make test`, and run only when the PO authorises it
-- `make evals`, `make ablation` — intentional stub failures until Phase 9 implements them — they exist in the Makefile so nothing is silently green
+- `make evals ARGS="--ai fixtures --runs 5"`, `make ablation ARGS="--ai fixtures"` — the eval suite and the harness ablation; reports go to `docs/evals/`. `--ai live --yes-spend` calls Gemini behind a hard budget guard (600 calls / 5,000,000 micro-USD per invocation) and runs only when the PO authorises it
 
 ## Invariants that hold across every change
 
