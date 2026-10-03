@@ -100,3 +100,18 @@ Round 2's critical was confirmed fixed, and hash consistency and purity hold. Th
 5e3720d. The gate is recorded under CHG-021: green, 906 passed.
 
 `yt_prepatch --since b908f06`: PASS. The new test fails at b908f06.
+
+## Round 4: lean re-review of 5e3720d: APPROVE
+
+The reviewer ran its probes:
+- one choice covering two bills: no lapse;
+- two successive choices: no lapse;
+- C2 holds.
+
+71 tests pass in the touched files. Hash consistency and purity hold.
+
+Concept check:
+- A bill already authorised by an earlier choice cannot be offered again, because a consistent run never escalates it.
+- Three cases are design limits and go to the backlog in CHG-024: an earlier choice lapsed, an earlier choice undone, and a delay chosen after an authorisation.
+
+The deferred minors from every round are in CHG-024.
