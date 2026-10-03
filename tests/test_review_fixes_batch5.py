@@ -206,3 +206,44 @@ def test_doc_m3_two_identical_statement_rows_are_two_transactions(web):
     assert charges == 2  # the two identical charges are two debits
     assert env.conn.execute("SELECT COUNT(*) FROM bank_txn WHERE txn_date = '2026-10-11'").fetchone()[0] == 0
     assert Path(env.settings.database_path).exists()
+
+
+# --- round 2 ------------------------------------------------------------------------------
+
+
+def test_r2_a_bill_read_as_one_vendor_and_confirmed_as_another_moves_the_question(web):
+    env, client = web
+    env.conn.execute("UPDATE party SET bank_account_mask = 'XXXX7777', bank_ifsc = 'UTIB0000777', "
+                     "bank_status = 'verified' WHERE name = 'Prime Chem Industries'")
+    env.conn.commit()
+    deliver_bill(env, BILL)  # read as Ashirwad, whose details differ: Ashirwad pending, asked
+    cid = json.loads(bank_question(env)["choices_json"])["candidate_id"]
+    prime = env.conn.execute("SELECT id FROM party WHERE name = 'Prime Chem Industries'").fetchone()[0]
+    values = {**prefill(candidate(env, cid), []), "party": "Prime Chem Industries"}
+    actions.confirm_candidate(env.conn, OWNER, cid, values, clock=env.clock)
+    a = ashirwad(env)
+    assert (a["bank_account_mask"], a["bank_ifsc"], a["bank_status"]) == (*ON_RECORD, "verified")  # withdrawn
+    open_q = [json.loads(c) for (c,) in env.conn.execute(
+        "SELECT choices_json FROM owner_question WHERE kind = 'approve_bank_change' AND status = 'OPEN'")]
+    assert open_q == [{"party_id": prime, "candidate_id": cid}]
+    csrf = login(client)
+    assert post(client, f"/parties/{prime}/bank-change", csrf,
+                {"decision": "reject", "candidate_id": cid}).status_code == 303
+    status = env.conn.execute("SELECT bank_status FROM party WHERE id = ?", (prime,)).fetchone()[0]
+    assert status == "verified"
+
+
+@pytest.mark.parametrize("said, paise", [("1 lakh 50000", 15_000_000), ("ek lakh 25000", 12_500_000)])
+def test_r2_a_thousands_tail_after_lakh_still_reads(said, paise):
+    assert parse_spoken_inr(said) == paise
+
+
+def test_r2_the_transcript_match_ignores_punctuation():
+    from app.ai.extract import VoiceBillExtract
+    from app.validate.voice import check_voice
+    from tests.test_voice import NOTE
+
+    note = VoiceBillExtract.model_validate({**NOTE, "transcript": "Ashirwad ka bill, ek lakh, pachaas hazaar.",
+                                            "amount_spoken": "ek lakh pachaas hazaar"})
+    checks, rec, _ = check_voice(note, None, lambda key: None)
+    assert checks["amount"] == "passed" and rec.record["amount_paise"] == 15_000_000

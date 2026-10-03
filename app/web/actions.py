@@ -161,6 +161,30 @@ def decide_bank_change(conn: sqlite3.Connection, user: User, party_id: int, cand
                             {"decision": "matches the details now on record", "candidate_id": other}, clock)
 
 
+def _withdraw_proposals_for_others(conn: sqlite3.Connection, user: User, candidate_id: int, party_id: int,
+                                   source: str, clock: Clock) -> None:
+    """The owner confirmed a bill for another vendor than the one it was read
+    as: its bank-change question for that other vendor is withdrawn, and that
+    vendor goes back to its details on record unless another bill's proposal
+    is still open for it."""
+    for (other,) in conn.execute(
+        "SELECT DISTINCT json_extract(choices_json, '$.party_id') FROM owner_question WHERE business_id = ? "
+        "AND status = 'OPEN' AND kind = 'approve_bank_change' AND json_extract(choices_json, '$.candidate_id') = ? "
+        "AND json_extract(choices_json, '$.party_id') <> ?", (user.business_id, candidate_id, party_id),
+    ).fetchall():
+        conn.execute(
+            "UPDATE owner_question SET status = 'ANSWERED', answer_json = ?, answered_by = ?, answered_at = ? "
+            "WHERE business_id = ? AND status = 'OPEN' AND kind = 'approve_bank_change' "
+            "AND json_extract(choices_json, '$.candidate_id') = ? AND json_extract(choices_json, '$.party_id') = ?",
+            (json.dumps({"decision": "withdrawn: the owner confirmed the bill for another vendor"}), user.id,
+             clock.now().isoformat(), user.business_id, candidate_id, other),
+        )
+        if not _open_bank_proposals(conn, user.business_id, other) and \
+                repo.party(conn, user.business_id, other)["bank_status"] == "change_pending":
+            writer.decide_bank_change(other, False, user.actor, "The bill was confirmed for another vendor", source,
+                                      account_mask=None, ifsc=None, conn=conn, clock=clock)
+
+
 def _open_bank_proposals(conn: sqlite3.Connection, business_id: int, party_id: int) -> dict[int, dict[str, Any]]:
     """candidate id -> the bank details its bill printed, for this vendor's open questions."""
     out = {}
@@ -627,6 +651,7 @@ def _create_record(conn, user: User, cand, entry: Entry, source: str, clock: Clo
                 "Bank details from a bill the owner confirmed", source, conn=conn, clock=clock,
             )
         else:  # the vendor the owner chose may not be the one the bill was read as: compare again
+            _withdraw_proposals_for_others(conn, user, cand["id"], party_id, source, clock)
             writer.flag_bank_change(
                 party_id, cand["id"], account_last4(payee.get("account")), normalise_ifsc(payee.get("ifsc")),
                 user.actor, f"candidate {cand['id']} gives different bank details", source, conn=conn, clock=clock,

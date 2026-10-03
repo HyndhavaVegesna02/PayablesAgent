@@ -16,6 +16,11 @@ from app.validate.duplicates import normalise_invoice_number
 from app.validate.invoice import ExistingInvoice, InvoiceKey, InvoiceRecord
 
 
+def _words(text: str) -> str:
+    """Lower case, punctuation and spacing ignored: "Rs. 1,50,000" and "rs 150000" hold the same words."""
+    return " ".join("".join(ch if ch.isalnum() else " " for ch in text.lower()).split()).replace(" ", "")
+
+
 def check_voice(
     extract: BaseModel | None,
     schema_error: str | None,
@@ -35,7 +40,7 @@ def check_voice(
         checks["amount"] = failed("no amount was said")
     else:
         try:
-            if " ".join(x.amount_spoken.lower().split()) not in " ".join(x.transcript.lower().split()):
+            if _words(x.amount_spoken) not in _words(x.transcript):
                 raise ValueError("not said")  # the words must be the ones said, not the model's own figure
             amount = parse_spoken_inr(x.amount_spoken)
             checks["amount"] = PASSED

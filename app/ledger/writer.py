@@ -1104,7 +1104,8 @@ def flag_bank_change(
                       reason, source_ref, clock, trace_run_id)
         asked = conn.execute(
             "SELECT 1 FROM owner_question WHERE kind = 'approve_bank_change' AND status = 'OPEN' "
-            "AND json_extract(choices_json, '$.candidate_id') = ?", (candidate_id,)).fetchone()
+            "AND json_extract(choices_json, '$.candidate_id') = ? AND json_extract(choices_json, '$.party_id') = ?",
+            (candidate_id, party_id)).fetchone()
         if asked is None:
             conn.execute(
                 "INSERT INTO owner_question (business_id, kind, body_text, choices_json, status) "

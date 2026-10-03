@@ -157,7 +157,7 @@ def parse_spoken_inr(text: str) -> int:
             raise ValueError(f"{text!r} needs sau, hazaar, lakh or crore after the fraction")
         if last_scale is not None and scale >= last_scale:
             raise ValueError(f"the parts of {text!r} are not in descending order")
-        if scale == 1 and last_scale is not None and last_scale > 1000:
+        if scale == 1 and last_scale is not None and last_scale > 1000 and quantity < 1000:
             # "ek lakh pachaas" usually means 1.5 lakh, not 1,00,050: too ambiguous to read
             raise ValueError(f"{text!r} leaves out the hazaar or sau after its last number")
         total += quantity * scale
