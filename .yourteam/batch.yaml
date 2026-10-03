@@ -8,19 +8,20 @@ started: "2026-10-03T19:30:00+05:30"
 changes:
   - id: CHG-010b
     lane: planned
-    board: in_progress
+    board: done
     start_commit: cf791a4
     blocked_question: null
-    gate_evidence: []
-    prepatch: null
+    gate_evidence:
+      - {command: "make test", exit_code: 0, output_tail: "er is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | agent never imports the ledger writer, web or the pipeline KEPT | the AI and the agent never reach owner email KEPT | notify is pure text and sending: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 9 kept, 0 broken. | Building cashflow-agent @ file:///C:/Hyn/PayablesAgent | Built cashflow-agent @ file:///C:/Hyn/PayablesAgent | Uninstalled 1 package in 2ms | Installed 1 package in 8ms", commit: 8a7bba8, at: 2026-10-03T12:58:59+00:00}
+    prepatch: "PASS: test_owner_alerts fails to import app.jobs.alerts at cf791a4; reconcile_failure and worker tests only add send_alert"
     notes_resolved: false
   - id: CHG-010a
     lane: sliced
-    board: todo
-    start_commit: null
+    board: in_progress
+    start_commit: 8a7bba8
     blocked_question: null
     slices:
-      - {id: S1, title: "runner core", start_commit: null, board: todo}
+      - {id: S1, title: "runner core", start_commit: 8a7bba8, board: in_progress}
       - {id: S2, title: "scenarios 1-6", start_commit: null, board: todo}
       - {id: S3, title: "scenarios 7-11", start_commit: null, board: todo}
       - {id: S4, title: "metrics and the report", start_commit: null, board: todo}
