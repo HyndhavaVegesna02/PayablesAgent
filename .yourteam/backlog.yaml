@@ -1,6 +1,6 @@
 # Every change, ever. Entries are never deleted -- done and rejected are history.
 # Status is a field, never a folder.
-next_id: 30
+next_id: 32
 changes:
   - id: CHG-001
     title: Repo skeleton — layout, config, schema, Clock, tracer, job table, CI
@@ -440,23 +440,43 @@ changes:
   - id: CHG-028
     title: Statutory debits never match on their own (no party name to match a challan debit)
     file: docs/changes/CHG-028-statutory-debit-matching.md
-    status: draft
+    status: ready
     priority: 28
     type: defect
-    lane: null
-    expected_paths: []
+    lane: planned
+    expected_paths: ['config.yaml', 'app/config.py', 'app/ledger/reconcile.py', 'app/jobs/reconcile.py', 'evals/workflow_runs.py', 'scripts/make_workflow_fixtures.py', 'fixtures/', 'tests/', 'docs/']
     depends_on: null
-    batch: null
+    batch: 8
   - id: CHG-029
     title: A vendor's first bank details are recorded without a flag (only a change from details on record is)
     file: docs/changes/CHG-029-first-bank-details-unflagged.md
-    status: draft
+    status: ready
     priority: 29
     type: defect
-    lane: null
-    expected_paths: []
+    lane: planned
+    expected_paths: ['app/ingest/pipeline.py', 'app/ledger/writer.py', 'app/validate/bank.py', 'app/web/actions.py', 'evals/', 'fixtures/', 'tests/', 'README.md', 'docs/']
     depends_on: null
-    batch: null
+    batch: 8
+  - id: CHG-030
+    title: A missing due date reaches the owner flagged, never as a value the form refuses (live pilot, scenario 04)
+    file: docs/changes/CHG-030-missing-due-date.md
+    status: ready
+    priority: 30
+    type: defect
+    lane: planned
+    expected_paths: ['app/validate/', 'app/ingest/pipeline.py', 'app/ai/prompts/extract_voice.v1.md', 'evals/runner.py', 'evals/scenario.py', 'evals/scenarios/04-hinglish-voice-note/', 'tests/']
+    depends_on: null
+    batch: 8
+  - id: CHG-031
+    title: The agent can finish a drift case when the evidence is in the mailbox (live pilot, scenario 07)
+    file: docs/changes/CHG-031-drift-recovery.md
+    status: ready
+    priority: 31
+    type: defect
+    lane: planned
+    expected_paths: ['app/agent/', 'app/ai/prompts/exception_agent.v1.md', 'app/jobs/run_case.py', 'app/ingest/pipeline.py', 'app/ledger/reconcile.py', 'fixtures/', 'tests/']
+    depends_on: null
+    batch: 8
 
 # Shape of an entry:
 #   - id: CHG-001

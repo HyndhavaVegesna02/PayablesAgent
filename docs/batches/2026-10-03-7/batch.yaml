@@ -1,0 +1,60 @@
+# Active batch. status: none means no batch is running.
+batch: 7
+status: closed      # none | active | review | closed | aborted
+goal: "TDD Phase 9 plus the non-Gmail half of Phase 8: owner alerts by fixed-template email the AI cannot reach (CHG-010b); an eval runner scoring the 11 scenarios at three levels with the harness ablation and one regression caught (CHG-010a); the evidence documents someone else can run and judge (CHG-010c). D22-D25."
+branch: batch-7
+start_tag: null
+started: "2026-10-03T19:30:00+05:30"
+interrupts:
+  - {at: "2026-10-03T22:05:00+05:30", text: "PO (payablesagent-ac, for the user): add CHG-027 Full-workflow runs to batch 7, after CHG-010c and before the review; planned inline as a plan.md addendum, no separate approval round", became_change: CHG-027}
+changes:
+  - id: CHG-010b
+    lane: planned
+    board: done
+    start_commit: cf791a4
+    blocked_question: null
+    gate_evidence:
+      - {command: "make test", exit_code: 0, output_tail: "er is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | agent never imports the ledger writer, web or the pipeline KEPT | the AI and the agent never reach owner email KEPT | notify is pure text and sending: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 9 kept, 0 broken. | Building cashflow-agent @ file:///C:/Hyn/PayablesAgent | Built cashflow-agent @ file:///C:/Hyn/PayablesAgent | Uninstalled 1 package in 2ms | Installed 1 package in 8ms", commit: 8a7bba8, at: 2026-10-03T12:58:59+00:00}
+      - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 86 files, 282 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | agent never imports the ledger writer, web or the pipeline KEPT | the AI and the agent never reach owner email KEPT | notify is pure text and sending: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 9 kept, 0 broken.", commit: 5491826, at: 2026-10-03T21:40:42+00:00}
+    prepatch: "PASS: test_owner_alerts fails to import app.jobs.alerts at cf791a4; reconcile_failure and worker tests only add send_alert"
+    notes_resolved: false
+  - id: CHG-010a
+    lane: sliced
+    board: done
+    start_commit: 8a7bba8
+    blocked_question: null
+    slices:
+      - {id: S1, title: "runner core", start_commit: 8125f26, end_commit: a555cb7, board: done, prepatch: "PASS: test_evals fails to import evals at 8125f26"}
+      - {id: S2, title: "scenarios 1-6", start_commit: a555cb7, end_commit: aa99f5c, board: done, prepatch: "PASS after pinning the scenario names (the data-driven tests alone passed at a555cb7: caught and fixed)"}
+      - {id: S3, title: "scenarios 7-11", start_commit: aa99f5c, end_commit: 4046877, board: done, prepatch: "PASS: the pinned 11 names and the scenario parametrisation fail at aa99f5c"}
+      - {id: S4, title: "metrics and the report", start_commit: cb6d964, end_commit: 091cad1, board: done, prepatch: "PASS: the metrics and report tests fail to import evals.metrics and evals.report at cb6d964"}
+      - {id: S5, title: "live mode and the budget guard", start_commit: 091cad1, end_commit: fa66bbe, board: done, prepatch: "PASS: the guard tests fail to import evals.budget at 091cad1"}
+      - {id: S6, title: "the harness ablation", start_commit: fa66bbe, end_commit: da2384b, board: done, prepatch: "PASS: the ablation tests fail to import evals.ablation at fa66bbe"}
+      - {id: S7, title: "one regression caught; the fast check", start_commit: da2384b, end_commit: c885913, board: done, prepatch: "PASS: the regression, prompt-variant and kept-reports tests fail at da2384b"}
+    gate_evidence:
+      - {command: "make test", exit_code: 0, output_tail: "s, 282 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | agent never imports the ledger writer, web or the pipeline KEPT | the AI and the agent never reach owner email KEPT | notify is pure text and sending: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 9 kept, 0 broken. | Uninstalled 1 package in 2ms | Installed 1 package in 11ms", commit: 16ced63, at: 2026-10-03T13:04:59+00:00}
+      - {command: "make test", exit_code: 0, output_tail: "s, 282 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | agent never imports the ledger writer, web or the pipeline KEPT | the AI and the agent never reach owner email KEPT | notify is pure text and sending: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 9 kept, 0 broken. | Uninstalled 1 package in 2ms | Installed 1 package in 10ms", commit: cb6d964, at: 2026-10-03T13:11:22+00:00}
+      - {command: "make test", exit_code: 0, output_tail: "s, 282 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | agent never imports the ledger writer, web or the pipeline KEPT | the AI and the agent never reach owner email KEPT | notify is pure text and sending: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 9 kept, 0 broken. | Uninstalled 1 package in 4ms | Installed 1 package in 49ms", commit: 1fe0722, at: 2026-10-03T13:33:12+00:00}
+      - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 86 files, 282 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | agent never imports the ledger writer, web or the pipeline KEPT | the AI and the agent never reach owner email KEPT | notify is pure text and sending: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 9 kept, 0 broken.", commit: 76cf6fd, at: 2026-10-03T21:42:14+00:00}
+    prepatch: "per slice (above): S1-S7 PASS"
+    notes_resolved: false
+  - id: CHG-010c
+    lane: planned
+    board: done
+    start_commit: 1fe0722
+    blocked_question: null
+    gate_evidence:
+      - {command: "make test", exit_code: 0, output_tail: "s, 282 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | agent never imports the ledger writer, web or the pipeline KEPT | the AI and the agent never reach owner email KEPT | notify is pure text and sending: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 9 kept, 0 broken. | Uninstalled 1 package in 1ms | Installed 1 package in 37ms", commit: d284214, at: 2026-10-03T16:35:49+00:00}
+      - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 86 files, 282 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | agent never imports the ledger writer, web or the pipeline KEPT | the AI and the agent never reach owner email KEPT | notify is pure text and sending: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 9 kept, 0 broken.", commit: 9835fe1, at: 2026-10-03T21:43:48+00:00}
+    prepatch: "PASS at f0f4c40: the evidence-doc tests fail (no scripts.make_docs/make_traces, no pages); the two that pass on the old tree are docs/evals/README.md path and figure checks"
+    notes_resolved: false
+  - id: CHG-027
+    lane: planned
+    board: done
+    start_commit: e5a292b
+    blocked_question: null
+    gate_evidence:
+      - {command: "make test", exit_code: 0, output_tail: "es, 282 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | agent never imports the ledger writer, web or the pipeline KEPT | the AI and the agent never reach owner email KEPT | notify is pure text and sending: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 9 kept, 0 broken. | Uninstalled 1 package in 1ms | Installed 1 package in 8ms", commit: d1ac7f6, at: 2026-10-03T17:02:51+00:00}
+      - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 86 files, 282 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | agent never imports the ledger writer, web or the pipeline KEPT | the AI and the agent never reach owner email KEPT | notify is pure text and sending: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 9 kept, 0 broken.", commit: 98bfa58, at: 2026-10-03T21:45:16+00:00}
+    prepatch: "PASS at e5a292b: tests/test_workflow.py fails to import evals.workflow (collection error stops the replay); the two new explain_debit tests were run against the unfixed actions.py by hand and failed (agent question left OPEN; 409 after the case was closed)"
+    notes_resolved: false
