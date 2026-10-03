@@ -306,3 +306,30 @@ def test_choosing_a_delay_through_the_app_gives_the_options_figures(tmp_path):
     assert post(client, f"/options/{opt['id']}/choose", csrf, {"undo": "1"}).status_code == 303
     assert plan_lines(env)[3] == ("PAY", "2026-10-15")
     env.conn.close()
+
+
+def test_a_second_authorisation_is_measured_on_the_plan_the_owner_saw():
+    # Re-review round 2: authorising A takes C's early-payment discount away, which
+    # deepens the low; B then escalates and the owner authorises it at the low he saw
+    # (with A applied). With nothing else changed, B must stay covered, and so must A.
+    from app.planner.plan import AccountCash, InflowIn, PlanSnapshot
+
+    s = PlanSnapshot(
+        today=date(2026, 10, 12), horizon_days=14, payment_days=frozenset({0, 3}), safety_paise=1_000_000,
+        accounts=(AccountCash(1, 3_000_000, None, False),),
+        payables=(PayableIn(1, 2_500_000, date(2026, 10, 15), "normal"),
+                  PayableIn(2, 2_800_000, date(2026, 10, 22), "normal"),
+                  PayableIn(3, 500_000, date(2026, 10, 22), "flexible", discount_paise=50_000,
+                            discount_by=date(2026, 10, 15))),
+        inflows=(InflowIn(1, 3_000_000, date(2026, 10, 19), "COMMITTED"),), commitments=(),
+    )
+    first = plan(s)
+    assert _line(first, 1).decision == "ESCALATE"
+    a = OverrideIn(1, "authorise_breach", first.lowest_balance_paise)
+    second = plan(replace(s, overrides=(a,)))
+    assert second.lapsed == () and _line(second, 2).decision == "ESCALATE"
+    b = OverrideIn(2, "authorise_breach", second.lowest_balance_paise)
+    third = plan(replace(s, overrides=(a, b)))  # in the order chosen, as build_snapshot reads them
+    assert third.lapsed == ()
+    assert _line(third, 1).decision == "PAY" and _line(third, 2).decision == "PAY"
+    assert third.lowest_balance_paise == second.lowest_balance_paise

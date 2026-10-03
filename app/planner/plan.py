@@ -107,7 +107,7 @@ class PlanSnapshot:
     # PO-approved addition (D8): EXPECTED receivables and COMMITTED ones dated after
     # the horizon. Never counted; read only by the early_receipt option.
     uncounted_inflows: tuple[InflowIn, ...] = ()
-    overrides: tuple[OverrideIn, ...] = ()  # CHG-021: ACTIVE owner overrides, read by build_snapshot
+    overrides: tuple[OverrideIn, ...] = ()  # CHG-021: ACTIVE owner overrides in the order chosen (D18)
 
 
 # --- result (output) ------------------------------------------------------------
@@ -254,28 +254,33 @@ def plan(s: PlanSnapshot) -> PlanResult:
     """The plan for a snapshot, honouring the owner's overrides.
 
     D18: an authorisation covers its bill while the breach is no deeper than
-    the floor the owner saw. The breach is measured on the plan made without
-    any authorisation, which is the plan the owner was shown when he chose:
-    so a deeper breach from outside (a new bill, a failed receipt, drift)
-    lapses it, while the authorisation's own knock-on effects (say, a smaller
-    bill losing its early-payment discount) never do. A lapsed authorisation
-    is dropped and its bill escalates with a reason saying why; any other
-    override on the bill (a delay) still applies."""
+    the floor the owner saw. Each one is measured on the plan the owner was
+    shown when he chose it: the plan with the authorisations chosen before it
+    (s.overrides holds them in the order chosen) and without itself or any
+    later one. So a deeper breach from outside (a new bill, a failed receipt,
+    drift) lapses it, while its own knock-on effects, and those of later
+    authorisations (say, a smaller bill losing its early-payment discount),
+    never do. A lapsed authorisation is dropped and its bill escalates with a
+    reason saying why; any other override on the bill (a delay) still applies."""
     authorisations = [o for o in s.overrides if o.kind == "authorise_breach"]
     if not authorisations:
         return _plan(s)
     result = _plan(s)
-    shown = _plan(replace(s, overrides=tuple(o for o in s.overrides if o.kind != "authorise_breach")))
-    lapsed = {
-        o.payable_id: o.floor_paise for o in authorisations
-        if o.payable_id in result.authorised and shown.lowest_balance_paise < o.floor_paise
-    }
+    others = tuple(o for o in s.overrides if o.kind != "authorise_breach")
+    kept: list[OverrideIn] = []
+    lapsed: dict[int, tuple[int, int]] = {}  # payable_id -> (its floor, the low it is measured on)
+    for o in authorisations:
+        shown = _plan(replace(s, overrides=others + tuple(kept))).lowest_balance_paise
+        if o.payable_id in result.authorised and shown < o.floor_paise:
+            lapsed[o.payable_id] = (o.floor_paise, shown)
+        else:
+            kept.append(o)
     if not lapsed:
         return result
     result = _plan(_without_lapsed(s, lapsed))
     lines = tuple(
-        replace(ln, reason=ln.reason + f" Your authorisation covered a low of {format_inr(lapsed[ln.payable_id])};"
-                f" the plan now goes to {format_inr(shown.lowest_balance_paise)}.")
+        replace(ln, reason=ln.reason + f" Your authorisation covered a low of {format_inr(lapsed[ln.payable_id][0])};"
+                f" the plan now goes to {format_inr(lapsed[ln.payable_id][1])}.")
         if ln.payable_id in lapsed else ln
         for ln in result.lines
     )

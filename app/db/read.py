@@ -152,7 +152,7 @@ def _read_snapshot(conn: sqlite3.Connection, business_id: int, today: date) -> P
         for r in _rows(
             conn,
             "SELECT payable_id, kind, floor_paise FROM plan_override WHERE business_id = ? AND status = 'ACTIVE' "
-            "ORDER BY payable_id, kind",
+            "ORDER BY id",  # the order chosen: D18 measures each authorisation on the plan the owner saw
             (business_id,),
         )
         if r["payable_id"] in planned_ids
