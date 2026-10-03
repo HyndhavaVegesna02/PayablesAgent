@@ -12,6 +12,7 @@ hand.
 | `2026-10-04-fixtures-regress-max-steps/` | The same suite with `evals/variants/regress-max-steps.yaml` (the agent's step cap cut from 6 to 2): the regression it catches. |
 | `2026-10-04-fixtures-ablation/` | The harness ablation in fixture mode: full system, bare harness, and four knock-outs. |
 | `2026-10-04-live-pilot/` | The first live run, 11 scenarios once each on Gemini (PO-authorised): the BEFORE for batch 8's fixes. `traces/` holds the rerun of its two failures with traces kept. |
+| `2026-10-04-live-after-batch-8/` | The AFTER: scenarios 04 and 07 rerun live once batch 8's fixes were in (PO-authorised), traces kept. Its README says what the traces show. |
 | `superseded/before-review-round-1/`, `superseded/before-review-round-2/`, `superseded/before-batch-8/` | The reports as they were before each of batch 7's review rounds and before batch 8, kept and marked; each README says what changed. |
 
 ## Full-workflow runs

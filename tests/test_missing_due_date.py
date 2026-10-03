@@ -4,9 +4,13 @@ pipeline step 5: the owner fills the fields that still fail. A date that
 wasn't on the document or said is never asked of the model again, which
 would only invite a guess."""
 
+import json
+
 import pytest
 
+from app.ai.client import RawAIResponse
 from app.ai.extract import InvoiceExtract, VoiceBillExtract
+from app.ai.fixture_backend import load_replies
 from app.validate import NO_DUE_DATE, failed
 from app.validate.invoice import check_invoice
 from app.validate.voice import check_voice
@@ -18,6 +22,7 @@ from tests.test_voice import NOTE, OWNER, send_note
 from tests.web_helpers import login, make_web_env
 
 FLAGGED = failed(NO_DUE_DATE)
+SHARMA = load_replies("uploads")["voice-note-sharma.wav"]["VoiceBillExtract"]
 
 
 @pytest.fixture
@@ -74,7 +79,7 @@ def test_in_an_eval_a_form_refusal_of_what_was_read_is_an_extract_failure(tmp_pa
 
     r = runner.run_once(_scenario_04(True), FixtureBackend(), runner.load_config(None)[0])  # nobody fills the date
     assert (r.status, r.component) == ("FAILED", "extract")
-    assert r.error.startswith("the owner's form refused entry 1 as it was read: due_date: ")
+    assert r.error.startswith("the owner's form refused entry 1: due_date: ")
 
 
 def test_a_real_exception_is_still_a_crash(monkeypatch):
@@ -88,6 +93,58 @@ def test_a_real_exception_is_still_a_crash(monkeypatch):
     assert (r.status, r.component, r.error) == ("FAILED", "crash", "RuntimeError: the app broke")
 
 
-def test_the_scripted_owner_fills_only_what_the_entry_flags():
-    assert runner.flagged_fields({"checks": {"dates": FLAGGED}}) == {"due_date"}
-    assert runner.flagged_fields({"checks": {"dates": "passed"}}) == set()
+def test_the_scripted_owner_fills_only_what_the_page_marks(monkeypatch):
+    """The step itself: `fill` reaches the form only for a field the page marks
+    (the page's own rule, imported), never over a value that was read."""
+    from app.ai.fixture_backend import FixtureBackend
+
+    seen = []
+    real = runner.actions.confirm_candidate
+    monkeypatch.setattr(runner.actions, "confirm_candidate",
+                        lambda conn, user, cid, values, *, clock: seen.append(values) or real(
+                            conn, user, cid, values, clock=clock))
+
+    class ReadsADate(FixtureBackend):
+        def generate(self, *, model, system, contents, thinking, json_schema):
+            if (json_schema or {}).get("title") == "VoiceBillExtract":
+                return RawAIResponse(json.dumps({**SHARMA, "due_date": "2026-11-09"}), 0, 0, 0)
+            return super().generate(model=model, system=system, contents=contents, thinking=thinking,
+                                    json_schema=json_schema)
+
+    s = scenario.load("04-hinglish-voice-note")
+    r = runner.run_once(s, ReadsADate(), runner.load_config(None)[0])  # a date was read: nothing marked
+    assert seen[-1]["due_date"] == "2026-11-09"  # the fill's 2026-11-05 never overwrites what was read
+    assert [c.id for c in r.checks if not c.ok] == ["missing-due-date-flagged-not-guessed", "bill-due-as-the-owner-said"]
+    seen.clear()
+    r = runner.run_once(s, FixtureBackend(), runner.load_config(None)[0])  # no date read: marked, filled
+    assert seen[-1]["due_date"] == "2026-11-05" and r.status == "PASSED"
+
+
+def test_a_refusal_blames_extract_validate_or_nobody():
+    assert runner.refusal_component({"due_date": "Enter a date."}, set()) == "extract"
+    assert runner.refusal_component({"entry": "the same entry is already waiting"}, set()) == "validate"
+    assert runner.refusal_component({"priority": "Choose a priority."}, set()) is None  # the app's own value
+    assert runner.refusal_component({"due_date": "Enter a date."}, {"due_date"}) is None  # the owner typed it
+
+
+def test_in_an_eval_a_rule_check_refusal_is_a_validate_failure(monkeypatch):
+    from app.ai.fixture_backend import FixtureBackend
+
+    def refuse(conn, user, cid, values, *, clock):
+        raise runner.actions.FieldErrors({"entry": "the same entry is already waiting for confirmation"}, values)
+
+    monkeypatch.setattr(runner.actions, "confirm_candidate", refuse)
+    r = runner.run_once(_scenario_04({"fill": {"due_date": "2026-11-05"}}), FixtureBackend(),
+                        runner.load_config(None)[0])
+    assert (r.status, r.component) == ("FAILED", "validate")
+
+
+def test_an_app_side_refusal_is_still_a_crash(monkeypatch):
+    from app.ai.fixture_backend import FixtureBackend
+
+    def refuse(conn, user, cid, values, *, clock):
+        raise runner.actions.FieldErrors({"priority": "Choose a priority."}, values)
+
+    monkeypatch.setattr(runner.actions, "confirm_candidate", refuse)
+    r = runner.run_once(_scenario_04(True), FixtureBackend(), runner.load_config(None)[0])
+    assert (r.status, r.component) == ("FAILED", "crash") and r.error.startswith("FieldErrors")

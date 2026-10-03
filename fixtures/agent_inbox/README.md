@@ -18,7 +18,7 @@ The full-workflow runs (batch 7, CHG-027; `evals/workflow_runs.py`) add the bank
 | --- | --- |
 | 20-debit-pf-esi-45000.eml | Run A: PF and ESI paid Thu 15 Oct, ₹45,000 to EPFO ESIC CHALLAN; balance ₹4,28,000 |
 | 21-debit-city-electricity-35000.eml | Run A: electricity paid Thu 15 Oct; balance ₹3,93,000 (the TDD's golden table) |
-| 22-debit-gst-90000.eml | Run A: GST paid Mon 19 Oct, ₹90,000 to GST CHALLAN CBIC; balance ₹5,03,000 |
+| 22-debit-gst-90000.eml | Run A: GST paid Mon 19 Oct, ₹90,000 as a NETBANKING TAX PAYMENT; balance ₹5,03,000. The wording was chosen to name no tax office (CHG-028), so the owner links it |
 | 23-debit-prime-chem-120000.eml | Run A: Prime Chem paid Thu 22 Oct; balance ₹3,83,000 (the TDD's golden figure) |
 | 24-debit-shree-ganesh-12390.eml | Run A: Shree Ganesh's bill 418 paid Thu 22 Oct; balance ₹3,70,610 |
 | 30-debit-shree-transport-25000-delayed.eml | Run B: ₹25,000 to SHREE TRANSPORT on Wed 14 Oct, whose alert reaches the mailbox two days late, after the mail check's window has passed its date. Only the agent's search finds it |

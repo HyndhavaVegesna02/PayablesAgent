@@ -37,9 +37,7 @@ def attention_page(request: Request, conn: sqlite3.Connection, user: User, *, me
                 continue
             q["bills"] = repo.bills_a_debit_could_pay(conn, user.business_id, q["debit"]["amount_paise"])
             q["held_by"] = actions.debit_holder(conn, q["debit"]["id"])
-    # A field the document didn't give is shown empty and marked, for the owner to fill (CHG-030).
-    flagged = {c["id"]: {"due_date": "Not given on the document: fill it in."} for c in candidates
-               if c["checks"].get("dates") == failed(NO_DUE_DATE) and not shown[c["id"]].get("due_date")}
+    flagged = {c["id"]: f for c in candidates if (f := flagged_fields(c, shown[c["id"]]))}
     return render(request, "attention.html", {
         "questions": questions,
         "candidates": candidates, "shown": shown,
@@ -51,6 +49,14 @@ def attention_page(request: Request, conn: sqlite3.Connection, user: User, *, me
         if run else [],
         "message": message, "errors": {**flagged, **(errors or {})}, "values": values or {},
     }, status=status)
+
+
+def flagged_fields(c: dict, shown: dict[str, str]) -> dict[str, str]:
+    """The fields the document didn't give, shown empty and marked for the
+    owner to fill (CHG-030): field -> the note beside it."""
+    if c["checks"].get("dates") == failed(NO_DUE_DATE) and not shown.get("due_date"):
+        return {"due_date": "Not given on the document: fill it in."}
+    return {}
 
 
 def prefill(c: dict, accounts: list[dict]) -> dict[str, str]:

@@ -21,7 +21,8 @@ RIGHT = {"account_last4": "4821", "direction": "debit", "amount_text": "Rs.20,00
          "uncertain_fields": []}
 # The live model's own fields (docs/evals/2026-10-04-live-pilot/traces/07-missed-alert-causes-drift-run1, job 11)
 WRONG = {"account": "4821", "account_mask": "XXXX4821", "amount": "Rs.20,000.00", "counterparty": "SHREE TRANSPORT",
-         "party": "SHREE TRANSPORT", "date": "2026-10-13", "txn_date": "2026-10-13", "direction": "debit"}
+         "party": "SHREE TRANSPORT", "date": "2026-10-13", "txn_date": "2026-10-13", "direction": "debit",
+         "reference": "628716051234"}
 SEARCH = {"notes": "Search the alert sender's mail.",
           "tool": {"name": "search_gmail", "args": {"query": "alerts@hdfcbank.example"}}}
 PROPOSE_WRONG = {"notes": "Propose the missed alert.", "tool": {"name": "add_candidate", "args": {
@@ -91,7 +92,7 @@ def test_a_replay_of_the_live_mistake_now_resolves_the_case_at_medium():
     assert r.status == "PASSED", [(c.id, c.got) for c in r.checks if not c.ok]
     assert backend.steps == []  # every scripted step was used, the refused call included
     schema = seen["first_candidate"]["schema"]
-    assert schema.startswith("failed: missing account_last4, amount_text, available_balance_text, reference, "
+    assert schema.startswith("failed: missing account_last4, amount_text, available_balance_text, "
                              "uncertain_fields; not fields of this record: account, account_mask, amount, date, party")
     assert schema.endswith("Its fields are: account_last4, direction, amount_text, txn_date, counterparty, reference, "
                            "available_balance_text, uncertain_fields")

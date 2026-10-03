@@ -14,8 +14,8 @@ guard of evals/budget.py)."""
 
 from __future__ import annotations
 
-import json
 import contextlib
+import json
 import shutil
 import tempfile
 from collections.abc import Callable, Iterator
@@ -34,10 +34,9 @@ from app.db.connection import write_connection
 from app.db.migrate import apply_migrations
 from app.ingest.store import DocumentStore
 from app.jobs import queue
-from app.validate import NO_DUE_DATE, failed
 from app.web import actions, repo
 from app.web.auth import User
-from app.web.routes.attention import prefill
+from app.web.routes.attention import flagged_fields, prefill
 from app.worker import default_handlers, process_one
 from evals.scenario import COMPONENTS, Expectation, Scenario
 from fixtures.seed import seed
@@ -190,36 +189,62 @@ def _approve(env: RunEnv, _: Any) -> None:
 
 
 class OwnerFormRefused(Exception):
-    """The owner's form refused an entry as it was read: the extraction failed,
-    the app didn't crash (CHG-030)."""
+    """The owner's form refused an entry: what was read failed it (component
+    extract), or the rule checks did (validate). Anything else is a crash
+    (CHG-030; review round 1)."""
+
+    def __init__(self, message: str, component: str) -> None:
+        super().__init__(message)
+        self.component = component
 
 
-def flagged_fields(cand: dict[str, Any]) -> set[str]:
-    """The fields the entry flags for the owner to fill, as the page marks them."""
-    return {"due_date"} if cand["checks"].get("dates") == failed(NO_DUE_DATE) else set()
+# The confirm form's fields whose values come from the document as read; the rest (priority, how sure, the
+# account a bank email is matched to) are the app's own, so a refusal of them is the app's fault, not the model's.
+READ_FIELDS = frozenset({"party", "invoice_number", "invoice_date", "due_date", "amount",
+                         "direction", "txn_date", "counterparty", "reference"})
+
+
+def refusal_component(errors: dict[str, str], filled: set[str]) -> str | None:
+    """Which component a form refusal blames, or None for a crash: rule checks
+    ('entry') are validate; fields read from the document and left as read are
+    extract; a field the owner typed, or one the app fills, is not the model's."""
+    if set(errors) == {"entry"}:
+        return "validate"
+    if errors and all(k in READ_FIELDS and k not in filled for k in errors):
+        return "extract"
+    return None
 
 
 def _confirm_waiting(env: RunEnv, spec: Any) -> None:
     """The owner confirms each waiting entry as the page filled it, typing in
-    only what the entry flags (`fill`), as a real owner would."""
+    only what the page marks for them (`fill`), as a real owner would."""
     fill = spec.get("fill", {}) if isinstance(spec, dict) else {}
     for cand in repo.waiting_candidates(env.conn, OWNER.business_id):
         values = prefill(cand, repo.accounts(env.conn, 1))
-        values.update({k: v for k, v in fill.items() if k in flagged_fields(cand) and not values.get(k)})
+        typed = {k: v for k, v in fill.items() if k in flagged_fields(cand, values)}
+        values.update(typed)
         try:
             actions.confirm_candidate(env.conn, OWNER, cand["id"], values, clock=env.clock)
         except actions.FieldErrors as e:
-            raise OwnerFormRefused(f"the owner's form refused entry {cand['id']} as it was read: "
-                                   + "; ".join(f"{k}: {v}" for k, v in sorted(e.errors.items()))) from e
+            component = refusal_component(e.errors, set(typed))
+            if component is None:
+                raise
+            raise OwnerFormRefused(f"the owner's form refused entry {cand['id']}: "
+                                   + "; ".join(f"{k}: {v}" for k, v in sorted(e.errors.items())), component) from e
         env.conn.commit()
     drain(env)
 
 
-def _approve_bank_details(env: RunEnv, _: Any) -> None:
-    """The owner checks each waiting bank change by phone and approves it (D26: a vendor's first details too)."""
+def _approve_bank_details(env: RunEnv, spec: dict) -> None:
+    """The owner checks by phone the bank details one bill gave (`invoice`)
+    and approves them (D26: a vendor's first details too). Only that bill's:
+    a scenario never approves an attacker's account by accident."""
     for (choices,) in env.conn.execute("SELECT choices_json FROM owner_question WHERE kind = 'approve_bank_change' "
                                        "AND status = 'OPEN' ORDER BY id").fetchall():
         c = json.loads(choices)
+        record = json.loads(repo.candidate(env.conn, OWNER.business_id, c["candidate_id"])["payload_json"])["record"]
+        if (record or {}).get("invoice_number") != spec["invoice"]:
+            continue
         if repo.party(env.conn, OWNER.business_id, c["party_id"])["bank_status"] == "change_pending":
             actions.decide_bank_change(env.conn, OWNER, c["party_id"], c["candidate_id"], True, clock=env.clock)
             env.conn.commit()
@@ -333,8 +358,8 @@ def run_once(scenario: Scenario, backend: Backend, app_config: AppConfig, run: i
                 result.status, result.component = "FAILED", first_failed_component(result.checks)
         except StopRun as e:
             result.status, result.error = "ERRORED", str(e)
-        except OwnerFormRefused as e:  # what was read failed the form: an extraction failure
-            result.status, result.error, result.component = "FAILED", str(e), "extract"
+        except OwnerFormRefused as e:  # what was read, or the rule checks, failed the owner's form
+            result.status, result.error, result.component = "FAILED", str(e), e.component
             result.checks = [check(env.conn, e2) for e2 in scored_expectations(scenario, live=live)]
         except Exception as e:  # noqa: BLE001 - a crash is the system failing the scenario
             result.status, result.error, result.component = "FAILED", f"{type(e).__name__}: {e}", "crash"
@@ -361,7 +386,6 @@ def load_config(variant: Path | None = None) -> tuple[AppConfig, str]:
     the model and prompt settings live in config), and the merged result's hash,
     which covers the text of any prompt file the variant swaps in."""
     import hashlib
-    import json
 
     import yaml
 

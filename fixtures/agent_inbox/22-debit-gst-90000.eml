@@ -1,4 +1,4 @@
-X-Fixture-Note: fictional data; format modelled on HDFC InstaAlerts. Run A: GST paid on Mon 19 Oct; the golden table's 5,03,000 (Nandi paid on Fri 16). Its description names no tax office (no statutory payee word, CHG-028), so the owner links it
+X-Fixture-Note: fictional data; format modelled on HDFC InstaAlerts. Run A: GST paid on Mon 19 Oct; the golden table's 5,03,000 (Nandi paid on Fri 16). The description was chosen to name no tax office (no statutory payee word, CHG-028), so the owner links it
 From: HDFC Bank InstaAlerts <alerts@hdfcbank.example>
 To: owner@example.test
 Subject: Debit alert: Rs.90,000.00 debited from your account ending 4821

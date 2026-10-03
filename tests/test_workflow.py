@@ -34,11 +34,13 @@ def test_the_runs_cover_what_the_po_asked_for():
 
     a, b = inspect.getsource(workflow_runs.run_a), inspect.getsource(workflow_runs.run_b)
     for text in ("1,83,000", "early_receipt", "handwritten-bill-ganesh.png", "voice-note-sharma.wav",
-                 '"/entries"', "3,83,000", "explain-plan-note", "audit-trail-email-to-bill-to-plan"):
+                 '"/entries"', "3,83,000", "explain-plan-note", "audit-trail-email-to-bill-to-plan",
+                 "pf-esi-paid-by-its-payee-words", "gst-debit-needs-the-owner", "first-bank-details-asked",
+                 "due-date-flagged-not-guessed", "due-date-marked-on-the-form"):
         assert text in a, text
     for text in ("one-bill-not-two", "password-never-stored", "payment-returned", "recovered-from-mail",
                  "checking-then-ok", "RAMESH K", "refused-without-the-tick", "injection-changed-nothing",
-                 "d18-floor", "split-in-two"):
+                 "d18-floor", "split-in-two", "first-details-wait-for-the-owner"):
         assert text in b, text
 
 

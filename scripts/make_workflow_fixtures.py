@@ -35,8 +35,8 @@ ALERTS = [
      "Run A: electricity paid on Thu 15 Oct; the golden table's 3,93,000"),
     ("22-debit-gst-90000.eml", "Mon, 19 Oct 2026 10:10:05 +0530", "debit", "90,000", "NETBANKING TAX PAYMENT",
      "N293261000902", "5,03,000",
-     "Run A: GST paid on Mon 19 Oct; the golden table's 5,03,000 (Nandi paid on Fri 16). Its description names "
-     "no tax office (no statutory payee word, CHG-028), so the owner links it"),
+     "Run A: GST paid on Mon 19 Oct; the golden table's 5,03,000 (Nandi paid on Fri 16). The description was "
+     "chosen to name no tax office (no statutory payee word, CHG-028), so the owner links it"),
     ("23-debit-prime-chem-120000.eml", "Thu, 22 Oct 2026 10:15:27 +0530", "debit", "1,20,000",
      "PRIME CHEM INDUSTRIES", "N296261001203", "3,83,000",
      "Run A: Prime Chem paid on Thu 22 Oct; the golden table's 3,83,000"),

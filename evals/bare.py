@@ -218,7 +218,7 @@ def _events(env: BareEnv, scenario: Scenario) -> list[str]:
             for field, value in (arg.get("fill", {}) if isinstance(arg, dict) else {}).items():
                 out.append(f"Where an entry has no {field.replace('_', ' ')}, the owner fills in {value}.")
         elif kind == "approve_bank_details":
-            out.append("The owner has checked by phone and approves the vendor bank details waiting for approval.")
+            out.append(f"The owner has checked by phone and approves the bank details on invoice {arg['invoice']}.")
         elif kind == "unlock":
             out.append(f"The owner gives the statement PDF's password: {arg['password']}")
         elif kind == "confirm_balance":
