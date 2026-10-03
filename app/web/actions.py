@@ -852,6 +852,12 @@ def confirm_balance(conn: sqlite3.Connection, user: User, account_id: int, amoun
             (json.dumps({"account_id": account_id, "balance_paise": real}), user.id, clock.now().isoformat(),
              user.business_id, account_id, account_id),
         )
+        for (case_id,) in conn.execute(
+            "SELECT id FROM agent_case WHERE business_id = ? AND kind = 'drift' AND subject_ref = ? "
+            "AND status IN ('OPEN', 'ASK_OWNER')", (user.business_id, f"bank_account:{account_id}"),
+        ).fetchall():
+            writer.close_case(case_id, user.actor, "Owner confirmed the real balance",
+                              f"bank_account:{account_id}", conn=conn, clock=clock)
         return _replan(conn, user, clock)
 
 

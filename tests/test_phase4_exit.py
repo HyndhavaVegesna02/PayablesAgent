@@ -163,7 +163,7 @@ def test_scenario_3_a_missing_alert_puts_the_account_into_checking(env):
     assert len(drift) == 1 and drift[0]["stake_paise"] == 2_000_000
     # the replan after CHECKING plans from the lower balance
     assert current_plan(env)["opening_cash_paise"] == 56_500_000
-    # the agent's cases wait for CHG-008
+    # the agent's run_case jobs are queued (this test's fake AI has no agent replies: tests/test_agent_scenarios.py)
     waiting = sorted(r[0] for r in env.conn.execute("SELECT kind FROM job WHERE status = 'queued'"))
     assert waiting == ["run_case", "run_case"]
 

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from pydantic import ValidationError
@@ -19,7 +20,7 @@ from pydantic import ValidationError
 from app.agent import cases, escalation
 from app.agent.case_file import finding
 from app.agent.cases import Case
-from app.agent.tools import TOOLS, AskArgs, ToolContext, ask_owner
+from app.agent.tools import TOOLS, ToolContext, open_question
 from app.ai.agent_step import FinalAnswer, next_step
 from app.ai.client import Backend
 from app.clock import Clock
@@ -47,6 +48,16 @@ class Deps:
     clock: Clock
     db_path: str
     store: DocumentStore | None = None
+    # Hands a case that ends without an answer to the owner. The default asks an
+    # agent_question; the run_case job passes one that, for a drift case, asks
+    # confirm_balance instead (TDD "Drift check", step 5), which needs the writer.
+    to_owner: Callable[[sqlite3.Connection, Case, str], None] | None = None
+
+
+def ask_agent_question(conn: sqlite3.Connection, case: Case, question: str, d: Deps) -> None:
+    open_question(ToolContext(conn, d.db_path, case, d.mail, d.clock, case.state.get("steps_total", 0), d.store),
+                  question[:300], [])
+    case.status = "ASK_OWNER"
 
 
 def _canonical(name: str, args: dict) -> str:
@@ -132,9 +143,11 @@ def run_case(conn: sqlite3.Connection, case_id: int, d: Deps) -> Outcome:
             case.add_note(f"the medium run ended ({rule}); rerunning at high thinking")
             _save(conn, case, d.clock)
             continue
-        ctx = ToolContext(conn, d.db_path, case, d.mail, d.clock, case.state["steps_total"], d.store)
-        ask_owner(ctx, AskArgs(question=FALLBACK_QUESTION.format(goal=case.state.get("goal", ""))[:300]))
-        case.status = "ASK_OWNER"
+        question = FALLBACK_QUESTION.format(goal=case.state.get("goal", ""))
+        if d.to_owner is None:
+            ask_agent_question(conn, case, question, d)
+        else:
+            d.to_owner(conn, case, question)
         case.add_note(f"the high run ended ({rule}); the owner is asked")
         _save(conn, case, d.clock)
         return Outcome(case, None)

@@ -1,0 +1,19 @@
+X-Fixture-Note: fictional data; format modelled on HDFC InstaAlerts. The debit alert the poll missed: dated Tue 13 Oct, before the window of a poll that ran on Thu 15 Oct, so only a search finds it (batch 6, CHG-008, drift scenario).
+From: HDFC Bank InstaAlerts <alerts@hdfcbank.example>
+To: owner@example.test
+Subject: Debit alert: Rs.20,000.00 debited from your account ending 4821
+Date: Tue, 13 Oct 2026 16:05:12 +0530
+Message-ID: <instaalert-20261013-160512-4821-11@hdfcbank.example>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+
+Dear Customer,
+
+Rs.20,000.00 has been debited from account **4821 towards UPI to SHREE TRANSPORT on 13-10-26.
+
+UPI Reference Number: 628716051234
+Available balance: Rs.6,00,000.00
+
+Warm Regards,
+HDFC Bank
+(This is a fictional fixture. No real bank, account or person is described.)

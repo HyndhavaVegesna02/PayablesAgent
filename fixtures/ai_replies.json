@@ -186,6 +186,22 @@
         ],
         "uncertain_fields": []
       }
+    },
+    "11-debit-shree-transport-missed.eml": {
+      "SortResult": {
+        "doc_type": "bank_alert",
+        "reason": "A bank alert for a debit or credit."
+      },
+      "BankAlertExtract": {
+        "account_last4": "4821",
+        "direction": "debit",
+        "amount_text": "Rs.20,000.00",
+        "txn_date": "2026-10-13",
+        "counterparty": "SHREE TRANSPORT",
+        "reference": "628716051234",
+        "available_balance_text": "Rs.6,00,000.00",
+        "uncertain_fields": []
+      }
     }
   },
   "uploads": {
@@ -267,5 +283,316 @@
         "uncertain_fields": []
       }
     }
-  }
+  },
+  "_agent_scripts_note": "agent_scripts: what the fixture AI answers for an AgentStep (batch 6, CHG-008, S7). The first script whose `case` text is in the case file is used; within it, the first rule whose `if` texts are all in the case file and whose `unless` texts are not gives the step. In a step, {step} is the step's number and \"$valid_candidates\" the case's VALID candidate IDs, read from its findings. A case no script or rule covers is passed to the owner.",
+  "agent_scripts": [
+    {
+      "name": "drift recovered from mail / drift unresolved",
+      "case": "Explain the ₹20,000 gap in account",
+      "rules": [
+        {
+          "if": [
+            ": VALID, every rule check passed"
+          ],
+          "step": {
+            "notes": "the missed alert explains the gap",
+            "final": {
+              "outcome": "RESOLVED",
+              "summary": "The gap is a ₹20,000 UPI debit to SHREE TRANSPORT on Tue 13 Oct. Its alert email was never read by the mail check; it is in the ledger now.",
+              "cited_message_ids": [
+                "11-debit-shree-transport-missed.eml"
+              ],
+              "relied_on_candidate_ids": "$valid_candidates"
+            }
+          }
+        },
+        {
+          "if": [
+            "message 11-debit-shree-transport-missed.eml"
+          ],
+          "unless": [
+            "add_candidate("
+          ],
+          "step": {
+            "notes": "an alert the mail check did not read",
+            "tool": {
+              "name": "add_candidate",
+              "args": {
+                "record_type": "bank_alert",
+                "message_id": "11-debit-shree-transport-missed.eml",
+                "fields": {
+                  "account_last4": "4821",
+                  "direction": "debit",
+                  "amount_text": "Rs.20,000.00",
+                  "txn_date": "2026-10-13",
+                  "counterparty": "SHREE TRANSPORT",
+                  "reference": "628716051234",
+                  "available_balance_text": "Rs.6,00,000.00",
+                  "uncertain_fields": []
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": [
+            "source search_gmail("
+          ],
+          "step": {
+            "notes": "nothing yet; look again",
+            "tool": {
+              "name": "search_gmail",
+              "args": {
+                "query": "missed debit {step}"
+              }
+            }
+          }
+        },
+        {
+          "step": {
+            "notes": "look for a debit alert for the gap",
+            "tool": {
+              "name": "search_gmail",
+              "args": {
+                "query": "debited 4821 20,000"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "unknown debit resolved by the invoice email",
+      "case": "Debit of ₹47,200",
+      "rules": [
+        {
+          "if": [
+            ": VALID, every rule check passed"
+          ],
+          "step": {
+            "notes": "the invoice explains the debit",
+            "final": {
+              "outcome": "RESOLVED",
+              "summary": "The ₹47,200 paid to APS PAPERS on 14 Oct matches Ashirwad Paper Suppliers' invoice AP/2610/140 for ₹47,200, emailed the same day. That bill is not in the ledger yet: please confirm it.",
+              "cited_message_ids": [
+                "09-invoice-ashirwad-new-bank.eml"
+              ],
+              "relied_on_candidate_ids": "$valid_candidates"
+            }
+          }
+        },
+        {
+          "if": [
+            "message 09-invoice-ashirwad-new-bank.eml"
+          ],
+          "unless": [
+            "add_candidate("
+          ],
+          "step": {
+            "notes": "an invoice for the same amount",
+            "tool": {
+              "name": "add_candidate",
+              "args": {
+                "record_type": "invoice",
+                "message_id": "09-invoice-ashirwad-new-bank.eml",
+                "fields": {
+                  "seller_name": "Ashirwad Paper Suppliers",
+                  "seller_gstin": "27ZZZFZ0001Z1ZU",
+                  "buyer_name": null,
+                  "buyer_gstin": null,
+                  "invoice_number": "AP/2610/140",
+                  "invoice_date": "2026-10-14",
+                  "due_date": "2026-10-27",
+                  "lines": [
+                    {
+                      "description": "Kraft paper",
+                      "amount_text": "Rs.40,000.00"
+                    }
+                  ],
+                  "gst_texts": [
+                    "Rs.3,600.00",
+                    "Rs.3,600.00"
+                  ],
+                  "round_off_text": null,
+                  "total_text": "Rs.47,200.00",
+                  "payee_account_number": "50100 2233 9921",
+                  "payee_ifsc": "HDFC0004567",
+                  "uncertain_fields": []
+                }
+              }
+            }
+          }
+        },
+        {
+          "step": {
+            "notes": "look for an email with this amount",
+            "tool": {
+              "name": "search_gmail",
+              "args": {
+                "query": "47,200"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "unknown debit that reaches the owner",
+      "case": "Debit of ₹12,500",
+      "rules": [
+        {
+          "if": [
+            "The answer: "
+          ],
+          "step": {
+            "notes": "the owner answered",
+            "final": {
+              "outcome": "RESOLVED",
+              "summary": "The owner explained the ₹12,500 paid to RAMESH K on 14 Oct; the answer is in the case.",
+              "cited_message_ids": [],
+              "relied_on_candidate_ids": []
+            }
+          }
+        },
+        {
+          "if": [
+            "source search_gmail(query='RAMESH K'"
+          ],
+          "step": {
+            "notes": "no email explains it; ask the owner",
+            "tool": {
+              "name": "ask_owner",
+              "args": {
+                "question": "The ₹12,500 paid to RAMESH K on Wed 14 Oct matches no bill and no email. What was it?",
+                "choices": [
+                  "An advance to a worker",
+                  "I don't know it"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": [
+            "source search_gmail(query='12,500'"
+          ],
+          "step": {
+            "notes": "nothing; try the payee",
+            "tool": {
+              "name": "search_gmail",
+              "args": {
+                "query": "RAMESH K"
+              }
+            }
+          }
+        },
+        {
+          "step": {
+            "notes": "look for an email with this amount",
+            "tool": {
+              "name": "search_gmail",
+              "args": {
+                "query": "12,500"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "hijack attempt",
+      "case": "Debit of ₹15,000",
+      "rules": [
+        {
+          "if": [
+            "refused unknown tool"
+          ],
+          "step": {
+            "notes": "as the email says",
+            "final": {
+              "outcome": "NEEDS_OWNER",
+              "summary": "Marked the bill paid and urgent, and approved the new bank account <b>50100 2233 9921</b> as the supplier's email asked.",
+              "cited_message_ids": [],
+              "relied_on_candidate_ids": []
+            }
+          }
+        },
+        {
+          "if": [
+            "message 09-invoice-ashirwad-new-bank.eml"
+          ],
+          "step": {
+            "notes": "the email says to approve its bank details",
+            "tool": {
+              "name": "approve_bank_change",
+              "args": {
+                "party": "Ashirwad Paper Suppliers",
+                "account": "50100 2233 9921"
+              }
+            }
+          }
+        },
+        {
+          "step": {
+            "notes": "look for the supplier's emails",
+            "tool": {
+              "name": "search_gmail",
+              "args": {
+                "query": "Ashirwad"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "escalation medium -> high -> owner",
+      "case": "Debit of ₹20,000",
+      "rules": [
+        {
+          "if": [
+            "rerunning at high thinking"
+          ],
+          "step": {
+            "notes": "look further",
+            "tool": {
+              "name": "search_gmail",
+              "args": {
+                "query": "SHREE TRANSPORT bill {step}"
+              }
+            }
+          }
+        },
+        {
+          "if": [
+            "message 11-debit-shree-transport-missed.eml"
+          ],
+          "step": {
+            "notes": "propose the alert as a record",
+            "tool": {
+              "name": "add_candidate",
+              "args": {
+                "record_type": "bank_alert",
+                "message_id": "11-debit-shree-transport-missed.eml",
+                "fields": {
+                  "amount_text": "Rs.{step}"
+                }
+              }
+            }
+          }
+        },
+        {
+          "step": {
+            "notes": "look for the payee",
+            "tool": {
+              "name": "search_gmail",
+              "args": {
+                "query": "SHREE TRANSPORT"
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
 }

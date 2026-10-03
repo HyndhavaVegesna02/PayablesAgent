@@ -143,3 +143,11 @@ def test_ask_owner_limits_one_open_question_and_ends_the_run(env):
                          ).fetchone()
     assert (q[0], q[1]) == ("agent_question", ctx.case.id) and '"choices": ["Yes", "No"]' in q[2]
     assert TOOLS["ask_owner"].annotations == frozenset({"asks_owner", "ends_run"})
+
+
+def test_ask_owner_asks_once_a_resumed_case_must_answer(env):
+    ctx = tool_context(env, open_unknown_debit_case(env))
+    ctx.case.state["resumed"] = True
+    assert ask_owner(ctx, AskArgs(question="Again?", choices=["Yes"])) == (
+        "refused: the owner has answered this case once; give a final answer")
+    assert ctx.case.status == "OPEN"

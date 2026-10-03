@@ -275,9 +275,18 @@ class AskArgs(_Args):
 
 
 def ask_owner(ctx: ToolContext, args: AskArgs) -> str:
-    """One open question per case; shown as plain text; it ends the run."""
+    """One open question per case; shown as plain text; it ends the run. The
+    owner is asked once: a case resumed by an answer ends with a final answer,
+    which code takes to the owner if it must (app/jobs/run_case.py)."""
     if any(len(c) > 60 or not c.strip() for c in args.choices):
         return "refused: each choice is 1 to 60 characters"
+    if ctx.case.state.get("resumed"):
+        return "refused: the owner has answered this case once; give a final answer"
+    return open_question(ctx, args.question, args.choices)
+
+
+def open_question(ctx: ToolContext, question: str, choices: list[str]) -> str:
+    """Opens the case's agent_question, unless one is open already."""
     open_q = ctx.conn.execute("SELECT id FROM owner_question WHERE case_id = ? AND status = 'OPEN' "
                               "AND kind = 'agent_question'", (ctx.case.id,)).fetchone()
     if open_q is not None:
@@ -285,8 +294,8 @@ def ask_owner(ctx: ToolContext, args: AskArgs) -> str:
     qid = ctx.conn.execute(
         "INSERT INTO owner_question (business_id, case_id, kind, body_text, choices_json, status) "
         "VALUES (?, ?, 'agent_question', ?, ?, 'OPEN')",
-        (ctx.case.business_id, ctx.case.id, args.question.strip(),
-         json.dumps({"case_id": ctx.case.id, "choices": [c.strip() for c in args.choices]})),
+        (ctx.case.business_id, ctx.case.id, question.strip(),
+         json.dumps({"case_id": ctx.case.id, "choices": [c.strip() for c in choices]})),
     ).lastrowid
     ctx.case.status = "ASK_OWNER"
     return f"question {qid} asked; this run ends until the owner answers"

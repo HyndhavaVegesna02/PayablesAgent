@@ -155,3 +155,22 @@ def test_the_owners_answer_resumes_the_case_once_then_closes_it(env):
     assert cases.load(env.conn, cid).status == "CLOSED_BY_OWNER"
     ev = env.conn.execute("SELECT actor FROM event WHERE entity = 'agent_case' AND entity_id = ?", (cid,)).fetchone()
     assert ev[0] == "owner:1"
+
+
+def test_a_drift_case_resolved_without_closing_the_gap_goes_to_confirm_balance(env):
+    from app.ledger import writer
+    from app.ledger.reconcile import open_case
+
+    deliver(env, "01-debit-ashirwad-paper.eml")
+    writer.set_drift_status(1, "CHECKING", "reconciler", "test gap", "test", conn=env.conn, clock=env.clock)
+    cid = open_case(env.conn, 1, "drift", "bank_account:1", 2_000_000, goal="Explain the gap.", facts=["a gap"],
+                    unknowns=["what is missing"], clock=env.clock)
+    env.conn.commit()
+    msg = "01-debit-ashirwad-paper.eml"
+    case = run(env, cid, step("look", "search_gmail", {"query": "ASHIRWAD"}),
+               step("done", final=final(summary="It must be the paper payment.", cited=[msg])))
+    assert case.status == "ASK_OWNER"
+    assert any(n.startswith("drift check after the findings:") for n in case.state["notes"])
+    assert env.conn.execute("SELECT drift_status FROM bank_account WHERE id = 1").fetchone()[0] == "ASK_OWNER"
+    q = env.conn.execute("SELECT kind, choices_json FROM owner_question WHERE case_id = ?", (cid,)).fetchone()
+    assert (q[0], json.loads(q[1])) == ("confirm_balance", {"account_id": 1, "case_id": cid})
