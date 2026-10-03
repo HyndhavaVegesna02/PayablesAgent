@@ -48,8 +48,8 @@ changes:
   - id: CHG-027
     lane: planned
     board: in_progress
-    start_commit: null
+    start_commit: e5a292b
     blocked_question: null
     gate_evidence: []
-    prepatch: null
+    prepatch: "PASS at e5a292b: tests/test_workflow.py fails to import evals.workflow (collection error stops the replay); the two new explain_debit tests were run against the unfixed actions.py by hand and failed (agent question left OPEN; 409 after the case was closed)"
     notes_resolved: false
