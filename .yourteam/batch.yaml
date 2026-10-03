@@ -1,6 +1,6 @@
 # Active batch. status: none means no batch is running.
 batch: 7
-status: active      # none | active | review | closed | aborted
+status: review      # none | active | review | closed | aborted
 goal: "TDD Phase 9 plus the non-Gmail half of Phase 8: owner alerts by fixed-template email the AI cannot reach (CHG-010b); an eval runner scoring the 11 scenarios at three levels with the harness ablation and one regression caught (CHG-010a); the evidence documents someone else can run and judge (CHG-010c). D22-D25."
 branch: batch-7
 start_tag: null
