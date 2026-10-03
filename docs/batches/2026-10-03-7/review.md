@@ -201,3 +201,18 @@ Minors:
 Every fixture-mode report was regenerated at 10177af from a clean tree. The folders are named 2026-10-04
 because the date changed. The 5f3c463 reports are kept, marked, in
 `docs/evals/superseded/before-review-round-2/`.
+
+## Round 3, evals and workflow runs: APPROVE
+
+Re-review of 10177af and 2bbeb80 only. The reviewer regenerated all five reports in scratch, and they match
+the committed 2026-10-04 reports line for line apart from commit and date. A setup-failure probe gives one
+failed setup step and no cleanup error. Both whys now describe their own checks. The retry-wait test would
+fail without the wait.
+
+Minors, not fixed:
+- the reviewer agrees the exit code stays 0 on path failures; a `--fail-on-path` flag would be the place if
+  CI ever needs one;
+- a seeding failure inside `fresh_world` itself leaves its connection open. That matters only on Windows,
+  if seeding ever fails.
+
+All three subsystems approve. Batch 7 is ready for the PO's verdict.
