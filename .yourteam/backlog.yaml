@@ -183,7 +183,7 @@ changes:
     lane: null
     expected_paths: []
     depends_on: CHG-004
-    batch: null
+    batch: 5
   - id: CHG-008
     title: Exception agent — loop, tools, case file, escalation
     file: docs/changes/CHG-008-exception-agent.md
@@ -340,33 +340,33 @@ changes:
   - id: CHG-021
     title: Planner honours the owner's authorise_breach and delay_flexible choices
     file: docs/changes/CHG-021-planner-owner-overrides.md
-    status: draft
+    status: ready
     priority: 21
     type: feature
-    lane: null
+    lane: planned
     expected_paths: []
     depends_on: CHG-006
-    batch: null
+    batch: 4
   - id: CHG-022
     title: The owner says which bill a debit paid (clears KL-1)
     file: docs/changes/CHG-022-owner-links-a-debit.md
-    status: draft
+    status: ready
     priority: 22
     type: feature
-    lane: null
+    lane: planned
     expected_paths: []
     depends_on: CHG-006
-    batch: null
+    batch: 4
   - id: CHG-023
     title: A chosen early_receipt still pending shows as chosen, not as a fresh option
     file: docs/changes/CHG-023-pending-choice-shown.md
-    status: draft
+    status: ready
     priority: 23
     type: chore
-    lane: null
+    lane: direct
     expected_paths: []
     depends_on: CHG-006
-    batch: null
+    batch: 4
 
 # Shape of an entry:
 #   - id: CHG-001

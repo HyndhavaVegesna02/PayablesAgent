@@ -161,3 +161,17 @@ In its place the page shows "Chosen on Mon 12 Oct: waiting for Nandi Foods' ₹2
 | Q6 | What authorise_breach covers | Each ESCALATE bill in the run it was chosen from, one override per bill. While every breach is covered, options() offers nothing. A new escalation later needs a new choice. |
 | Q7 | How long an override lasts | Until its bill is PAID, SPLIT or REOPENED, or the owner undoes it. It doesn't expire on Monday. |
 | Q8 | Size | Three changes, about 6 steps each. CHG-007 goes to batch 5 on its own, as you offered. |
+
+## PO decisions (2026-10-03; plan ae0169a approved by payablesagent-ac)
+- **Order and scope:** CHG-022, then CHG-021, then CHG-023. CHG-007 is cut into batch 5 on its own.
+- **Q1–Q8:** all defaults accepted, with the one change below. Q5 (the plan_override table) is **D17**, an approved TDD addition with its own numbered migration.
+- **D18: an authorisation is bounded.**
+  - **What is recorded:** an authorise_breach override records what the owner saw: the bill, the breach day, and the authorised floor (the lowest projected balance shown, e.g. ₹1,83,000).
+  - **What it covers:** that bill only, and only while the replanned lowest balance stays at or above that floor.
+  - **When the breach gets deeper** (a new bill, a failed receipt, drift):
+    - the override stops covering;
+    - the bill goes back to ESCALATE, and the options are offered again;
+    - the reason says "your authorisation covered a low of ₹1,83,000; the plan now goes to ₹X";
+    - the override row stays but is inactive (LAPSED), with an event.
+  - **Tests:** a deeper breach re-escalates; an equal or shallower breach stays covered; the Hypothesis property that no overrides means the results are unchanged.
+- **Housekeeping:** batch branches are not pushed; only main is.

@@ -1,30 +1,34 @@
 # Active batch. status: none means no batch is running.
-batch: 3
-status: closed      # none | active | review | closed | aborted
-goal: "TDD Phase 5: the owner plays through the worked example in the web app (login, This week, Needs attention, confirm, approve, mark paid, options), plus CHG-020 (the SDK's error message, redacted)."
-branch: batch-3
+batch: 4
+status: active      # none | active | review | closed | aborted
+goal: "The owner closes the loops batch 3 left open: says which bill a debit paid (CHG-022, clears KL-1), has the planner honour authorise and delay choices within bounds (CHG-021, D17, D18), and sees a pending early-payment request as chosen (CHG-023)."
+branch: batch-4
 start_tag: null
-started: "2026-10-03T05:00:00+05:30"
+started: "2026-10-03T10:30:00+05:30"
 changes:
-  - id: CHG-020
+  - id: CHG-022
+    lane: planned
+    board: in-progress
+    start_commit: ae0169a
+    blocked_question: null
+    gate_evidence: []
+    prepatch: null
+    notes_resolved: false
+  - id: CHG-021
+    lane: planned
+    board: todo
+    start_commit: null
+    blocked_question: null
+    gate_evidence: []
+    prepatch: null
+    notes_resolved: false
+  - id: CHG-023
     lane: direct
-    board: done
-    start_commit: 4988a00
+    board: todo
+    start_commit: null
     blocked_question: null
-    gate_evidence:
-      - {command: "make test", exit_code: 0, output_tail: "ports | --------- | Contracts | --------- | Analyzed 43 files, 82 dependencies. | ----------------------------------- | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | Contracts: 4 kept, 0 broken.", commit: 66be9f0, at: 2026-10-02T22:56:39+00:00}
-    prepatch: {exit_code: 0, tests: 5, note: "replayed at 4988a00 against tests/test_ai_client.py and tests/test_pipeline.py: the 5 new tests fail (AttributeError: detail; key in message), 57 pass; no collection errors"}
-    notes_resolved: true
-  - id: CHG-006
-    lane: sliced
-    board: done
-    start_commit: 8242311
-    blocked_question: null
-    gate_evidence:
-      - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 60 files, 162 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 5 kept, 0 broken. | Building cashflow-agent @ file:///C:/Hyn/PayablesAgent | Built cashflow-agent @ file:///C:/Hyn/PayablesAgent | Uninstalled 1 package in 4ms | Installed 1 package in 10ms", commit: d4140a0, at: 2026-10-02T23:40:54+00:00}
-      - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 60 files, 164 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 5 kept, 0 broken. | Building cashflow-agent @ file:///C:/Hyn/PayablesAgent | Built cashflow-agent @ file:///C:/Hyn/PayablesAgent | Uninstalled 1 package in 3ms | Installed 1 package in 6ms", commit: 353ac62, at: 2026-10-03T03:43:02+00:00}
-      - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 60 files, 164 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 5 kept, 0 broken.", commit: acc177c, at: 2026-10-03T03:55:12+00:00}
-    prepatch: {exit_code: 2, tests: 22, note: "yt_prepatch --since 8242311: PASS (new files fail to collect at the start tree). Edits to existing files replayed one by one at 8242311: test_snapshot_builder 2 fail, test_reconcile_match 2 fail, test_ledger_writer 1, test_states 1, test_seed 5, test_eml_folder 2 fail. Passing there by design: test_health and test_health_read_only (only pass session_secret now), and the D13 guard that an unchosen option does not widen the window"}
-    notes_resolved: true
+    gate_evidence: []
+    prepatch: null
+    notes_resolved: false
 interrupts: []
 hotfixes: []      # {branch, reason, merged_sha, caused_by}
