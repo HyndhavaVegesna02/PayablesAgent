@@ -96,3 +96,44 @@ Minors:
 
 Every fixture report regenerated at 7c80499 into scratch matches the committed 2142c95 reports below their
 headers, so no evidence changed and none was regenerated.
+
+## Round 2, app code: APPROVE
+
+Re-review of 778e75e only. M1 to M4 and the minors are resolved. On M3, the reviewer accepted the two-way
+test as meeting AC1. They noted four minors:
+- the no-due-date rule ignored skipped checks;
+- the lines hint missed a line that isn't a record;
+- AC1's wording against the build;
+- "different" where "new" fits.
+
+**Fixes (7ad9d92):**
+- the rule now requires that every other check ran;
+- the hint covers non-record lines;
+- CHG-031's History records the AC1 decision;
+- the question says "new bank details" when nothing contradicts.
+
+Each has a test.
+
+## Round 2, evals and workflow runs: FIX_REQUIRED
+
+Re-review of 7c80499 only. M1 to M3 and the minors are resolved, and the reviewer's unmocked probes agree
+with the tests.
+
+Major:
+- **M4.** The committed ablation report.json still held the old refusal message. Round 1 said every report
+  matched, but I had compared the .md files only.
+
+Minors:
+- the fill-guard test didn't drive an empty field the page doesn't mark;
+- READ_FIELDS left out account_id;
+- no mechanical check keeps the reports reproducible.
+
+**Fixes (7ad9d92, ae03282):**
+- the ablation is regenerated at 7ad9d92, and the 2142c95 copy is kept, marked, in
+  `docs/evals/superseded/before-batch-8-review-round-1/`;
+- all ten fixture report files, md and json, were regenerated into scratch at 7ad9d92 and compared below
+  their commit and date fields. All match;
+- the fill-guard test kills the reviewer's mutant;
+- account_id is a read field.
+- Not done: the reproducibility test would rerun the whole suite and the ablation inside make test. It
+  goes to the PO as a backlog proposal.
