@@ -138,3 +138,16 @@ Minors:
 - account_id is a read field.
 - Not done: the reproducibility test would rerun the whole suite and the ablation inside make test. It
   goes to the PO as a backlog proposal.
+
+## Round 3: both subsystems APPROVE
+
+- **App code** (7ad9d92's app parts): every round-2 minor is resolved, each with a test. A probe confirmed
+  that the skipped-check test reaches the new guard. No findings.
+- **Evals** (7ad9d92's evals parts and ae03282): M4 is resolved. The reviewer regenerated all ten fixture
+  report files at 6588e1e: md and json both match, with zero diff lines. The superseded ablation is
+  byte-identical to the 2142c95 one. A guard-dropping mutant now fails the fill-guard test.
+- **Left to the backlog:** a mechanical reproducibility check for the fixture reports, proposed to the PO
+  as CHG-032. Until it exists, a fix that changes the runner's emitted output needs a manual
+  regenerate-and-diff over every file.
+
+Batch 8 is ready for the PO's verdict.

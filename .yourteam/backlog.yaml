@@ -1,6 +1,6 @@
 # Every change, ever. Entries are never deleted -- done and rejected are history.
 # Status is a field, never a folder.
-next_id: 32
+next_id: 33
 changes:
   - id: CHG-001
     title: Repo skeleton — layout, config, schema, Clock, tracer, job table, CI
@@ -477,6 +477,16 @@ changes:
     expected_paths: ['app/agent/', 'app/ai/prompts/exception_agent.v1.md', 'app/jobs/run_case.py', 'app/ingest/pipeline.py', 'app/ledger/reconcile.py', 'fixtures/', 'tests/']
     depends_on: null
     batch: 8
+  - id: CHG-032
+    title: A check that the committed fixture-mode reports reproduce (md and json, below their commit and date)
+    file: docs/changes/CHG-032-report-reproducibility-check.md
+    status: draft
+    priority: 32
+    type: chore
+    lane: null
+    expected_paths: []
+    depends_on: null
+    batch: null
 
 # Shape of an entry:
 #   - id: CHG-001
