@@ -89,6 +89,8 @@ PAYABLE_TRANSITIONS: dict[tuple[str, str], frozenset[Role]] = {
     ("PAYMENT_EXPECTED", "REOPENED"): frozenset({"reconciler"}),
     ("REVIEW", "PAID"): frozenset({"owner"}),
     ("REVIEW", "REOPENED"): frozenset({"owner"}),
+    # The owner linked the debit to a different bill: this one is still expected (CHG-022, Q4).
+    ("REVIEW", "PAYMENT_EXPECTED"): frozenset({"owner"}),
     ("PAID", "REOPENED"): frozenset({"reconciler"}),
     # Reached only through ledger.writer.split_payable, which also creates the children.
     ("CONFIRMED", "SPLIT"): frozenset({"owner"}),
@@ -96,7 +98,9 @@ PAYABLE_TRANSITIONS: dict[tuple[str, str], frozenset[Role]] = {
 }
 
 BANK_TXN_TRANSITIONS: dict[tuple[str, str], frozenset[Role]] = {
-    ("UNMATCHED", "MATCHED"): frozenset({"reconciler"}),
+    # The owner too: "this debit paid that bill" on a debit the reconciler could
+    # not match by name, amount or date (batch 4 plan, CHG-022, Q2).
+    ("UNMATCHED", "MATCHED"): frozenset({"reconciler", "owner"}),
     ("MATCHED", "REVERSED"): frozenset({"reconciler"}),
     # A failure or return email whose debit was never matched (batch 2 plan, Q7;
     # TDD "Failures and reversals": "any original debit is marked REVERSED").

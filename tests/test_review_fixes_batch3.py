@@ -258,7 +258,8 @@ def test_a_reversed_debit_is_never_linked_when_the_owner_marks_paid(web):
 def test_kl1_a_debit_that_does_not_name_match_an_owner_paid_bill_is_counted_twice(env):
     # D16: no auto-link on a name mismatch (the name rule is a security control).
     # The debit stays UNMATCHED with a case for the owner, and the bill still
-    # counts: cash is understated, never overstated, until CHG-022's owner link.
+    # counts: cash is understated, never overstated, until the owner links it
+    # (CHG-022; cleared in tests/test_owner_explains_debit.py::test_kl1_cleared_...).
     from app.jobs.replan import replan
 
     plan_and_approve(env, PAPER)

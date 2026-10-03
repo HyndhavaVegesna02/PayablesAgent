@@ -2,7 +2,7 @@
 id: CHG-022
 title: The owner says which bill a debit paid (clears KL-1)
 type: feature
-lane:
+lane: planned
 ---
 
 ## Context
@@ -29,4 +29,28 @@ The PO rejected auto-linking on a name mismatch. The name rule (TDD Part 2, "A n
 - **Afterwards:** the case is closed by the owner, and the plan is replanned inline.
 
 ## Acceptance Criteria
-<!-- to be written when planned -->
+Batch 4 plan, docs/batches/2026-10-03-4/plan.md (PO approved; Q1-Q4 defaults).
+- [ ] **AC1:** For a debit that did not auto-match, the owner picks the bill on Needs attention. The debit becomes MATCHED and the bill PAID and linked, with owner:1 events, and the plan subtracts the money once. The KL-1 test now passes in its "cleared" form.
+- [ ] **AC2:** An amount difference (for example, TDS) is linked, and the difference is recorded in the event reason. The bill keeps its own amount.
+- [ ] **AC3:** "Add as a name" is owner-only and off by default. With it ticked, the next debit with that payee name auto-matches. Without it, nothing about the vendor changes.
+- [ ] **AC4:** The other REVIEW bills held for that debit return to PAYMENT_EXPECTED, and the case closes as CLOSED_BY_OWNER.
+- [ ] **AC5:** "Not a bill payment" closes the case and leaves the debit UNMATCHED and counted.
+- [ ] **AC6:** Every action goes through the writer, in one transaction with the replan. A refusal writes nothing.
+
+## Expected paths
+- `app/domain/states.py`
+- `app/ledger/writer.py`
+- `app/ledger/reconcile.py`
+- `app/web/actions.py`
+- `app/web/repo.py`
+- `app/web/routes/attention.py`
+- `app/web/templates/attention.html`
+- `tests/test_owner_explains_debit.py`
+- `tests/test_states.py`
+- `tests/test_ledger_transitions.py`
+- `tests/test_reconcile_owner_paid.py`
+- `tests/test_web_attention.py`
+- `tests/test_review_fixes_batch3.py`
+
+## Notes
+- The plan gave `link_payment` an optional `difference_paise`. Instead, the caller writes the difference into the event reason, which is the same record with less plumbing.

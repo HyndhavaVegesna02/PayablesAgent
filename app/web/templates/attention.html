@@ -62,6 +62,26 @@
     <label>Actual balance (₹) <input name="amount" required></label>
     <button type="submit">Confirm balance</button>
   </form>
+  {% elif q.kind == "explain_txn" and q.get("debit") and q.debit.status == "UNMATCHED" %}
+  <form method="post" action="/questions/{{ q.id }}/answer" hx-post="/questions/{{ q.id }}/answer" hx-target="#main">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <fieldset>
+      <legend>This debit paid</legend>
+      {% for b in q.bills %}
+      <label>
+        <input type="radio" name="payable_id" value="{{ b.id }}"{% if loop.first %} checked{% endif %}>
+        {{ b.name }} {{ b.amount_paise | inr }}
+        <small class="muted">({{ b.status | replace("_", " ") | lower }}{% if b.planned_date %}, planned {{ b.planned_date }}{% endif %}{% if b.difference_paise %}; differs by {{ (b.difference_paise if b.difference_paise > 0 else -b.difference_paise) | inr }}{% endif %})</small>
+        <input type="hidden" name="version_{{ b.id }}" value="{{ b.version }}">
+      </label>
+      {% else %}<p class="muted">No open bill is waiting for a payment.</p>{% endfor %}
+    </fieldset>
+    {% if q.debit.counterparty %}
+    <label><input type="checkbox" name="alias" value="1"> Also treat "{{ q.debit.counterparty }}" as this vendor's name in future alerts</label>
+    {% endif %}
+    {% if q.bills %}<button type="submit" name="decision" value="paid">This paid the chosen bill</button>{% endif %}
+    <button type="submit" name="decision" value="not_a_bill" class="secondary outline">Not a bill payment</button>
+  </form>
   {% else %}<p class="muted">Answering this comes with a later change.</p>{% endif %}
 </article>
 {% endfor %}

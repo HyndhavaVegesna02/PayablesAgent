@@ -62,7 +62,7 @@ def name_matches(counterparty: str | None, names: list[str]) -> bool:
     return False
 
 
-def _party_names(conn: sqlite3.Connection, party_id: int | None) -> list[str]:
+def party_names(conn: sqlite3.Connection, party_id: int | None) -> list[str]:
     if party_id is None:
         return []
     row = conn.execute("SELECT name, aliases_json FROM party WHERE id = ?", (party_id,)).fetchone()
@@ -131,6 +131,28 @@ def open_case(
     return cur.lastrowid
 
 
+def ask_about_debit(conn: sqlite3.Connection, t: dict[str, Any], case_id: int) -> int:
+    """Asks the owner what a debit the reconciler could not match was for
+    (batch 4 plan, CHG-022, Q1): an explain_txn question linked to its case,
+    answered on Needs attention. One question per case, so a job that runs
+    twice asks once. The text is built by code from the alert's fields."""
+    existing = conn.execute(
+        "SELECT id FROM owner_question WHERE business_id = ? AND kind = 'explain_txn' "
+        "AND json_extract(choices_json, '$.case_id') = ?", (t["business_id"], case_id),
+    ).fetchone()
+    if existing is not None:
+        return existing[0]
+    payee = t["counterparty"] or "an unnamed payee"
+    body = (f"A {format_inr(t['amount_paise'])} debit on {t['txn_date']} to {payee}"
+            f"{' (reference ' + t['reference'] + ')' if t['reference'] else ''} was not matched to a bill. "
+            "Which bill did it pay, if any?")
+    return conn.execute(
+        "INSERT INTO owner_question (business_id, case_id, kind, body_text, choices_json, status) "
+        "VALUES (?, ?, 'explain_txn', ?, ?, 'OPEN')",
+        (t["business_id"], case_id, body, json.dumps({"case_id": case_id, "bank_txn_id": t["id"]})),
+    ).lastrowid
+
+
 # --- matching -----------------------------------------------------------------------
 
 
@@ -173,7 +195,7 @@ def match_debit(conn: sqlite3.Connection, txn_id: int, *, window_days: int, cloc
         )
         if _within(r["planned_date"], txn_day, window_days)
     ]
-    named = [c for c in cands if name_matches(t["counterparty"], _party_names(conn, c["party_id"]))]
+    named = [c for c in cands if name_matches(t["counterparty"], party_names(conn, c["party_id"]))]
     kw = dict(conn=conn, clock=clock, trace_run_id=trace_run_id)
     ref = f"bank_txn:{txn_id}"
 
@@ -205,10 +227,11 @@ def match_debit(conn: sqlite3.Connection, txn_id: int, *, window_days: int, cloc
             goal=f"Decide which bill, if any, debit {ref} paid.",
             facts=_txn_facts(t) + [
                 f"Candidate bill {b['id']} ({b['status']}): {format_inr(b['amount_paise'])}, "
-                f"planned {b['planned_date']}, payee names {_party_names(conn, b['party_id'])}" for b in review
+                f"planned {b['planned_date']}, payee names {party_names(conn, b['party_id'])}" for b in review
             ],
             unknowns=["Which bill this debit paid"], clock=clock,
         )
+        ask_about_debit(conn, t, case)
         return Result(f"ambiguous ({why}): bills {[b['id'] for b in review]} to REVIEW", replan=True,
                       case_ids=[case])
 
@@ -217,6 +240,7 @@ def match_debit(conn: sqlite3.Connection, txn_id: int, *, window_days: int, cloc
         goal=f"Find out what debit {ref} was.", facts=_txn_facts(t) + ["No approved payment matches it"],
         unknowns=["What this payment was for"], clock=clock,
     )
+    ask_about_debit(conn, t, case)
     # The debit already lowers the balance the next plan starts from.
     return Result("no bill matches: debit stays UNMATCHED", replan=True, case_ids=[case])
 
@@ -251,7 +275,7 @@ def match_credit(conn: sqlite3.Connection, txn_id: int, *, window_days: int, clo
         "SELECT * FROM receivable WHERE business_id = ? AND confidence IN ('COMMITTED', 'EXPECTED', 'UNKNOWN') "
         "ORDER BY id", (t["business_id"],),
     )]
-    named = [r for r in open_rx if name_matches(t["counterparty"], _party_names(conn, r["party_id"]))]
+    named = [r for r in open_rx if name_matches(t["counterparty"], party_names(conn, r["party_id"]))]
     asked = _asked_dates(conn, t["business_id"])
     exact = [r for r in named if r["amount_paise"] == t["amount_paise"]
              and (r["expected_date"] is None or _within(r["expected_date"], txn_day, window_days)

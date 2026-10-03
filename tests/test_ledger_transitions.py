@@ -292,7 +292,7 @@ def test_a_never_matched_debit_can_be_reversed_by_the_reconciler(conn):
     "to, actor",
     [
         ("EXPLAINED", "owner:1"),    # Q5(a): deferred to CHG-005
-        ("MATCHED", "owner:1"),      # Q5(b)
+        ("MATCHED", "owner:3"),      # the owner may match (batch 4, CHG-022 Q2), but not another business's txn
         ("REVERSED", "pipeline"),    # UNMATCHED -> REVERSED is the reconciler's (batch 2, Q7)
         ("REVERSED", "owner:1"),
         ("MATCHED", "pipeline"),
@@ -304,6 +304,13 @@ def test_bank_txn_uncited_moves_are_refused(conn, to, actor):
     with pytest.raises(TransitionRefused):
         writer.transition(ref, to, actor, "x", None, conn=conn, expected_version=1)
     assert _row(conn, ref)["status"] == "UNMATCHED"
+
+
+def test_the_owner_matches_a_debit_the_reconciler_could_not(conn):
+    # Batch 4 plan, CHG-022 Q2: "this debit paid that bill" moves the txn as the owner.
+    ref = _txn(conn)
+    writer.transition(ref, "MATCHED", "owner:1", "owner: this paid bill 1", None, conn=conn)
+    assert _row(conn, ref)["status"] == "MATCHED"
 
 
 def test_agent_refused_for_bank_txn_and_receivable(conn):

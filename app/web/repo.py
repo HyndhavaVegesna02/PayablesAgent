@@ -292,6 +292,31 @@ def options(conn: sqlite3.Connection, business_id: int, run_id: int) -> list[Opt
 # --- Needs attention ----------------------------------------------------------------
 
 
+def debit(conn: sqlite3.Connection, business_id: int, txn_id: int) -> dict[str, Any]:
+    return _one(
+        conn,
+        "SELECT t.* FROM bank_txn t JOIN bank_account a ON a.id = t.account_id "
+        "WHERE t.id = ? AND a.business_id = ? AND t.direction = 'debit'",
+        (txn_id, business_id), f"debit {txn_id}",
+    )
+
+
+def bills_a_debit_could_pay(conn: sqlite3.Connection, business_id: int, amount_paise: int) -> list[dict[str, Any]]:
+    """Open bills a debit could have paid (CHG-022): approved or under review,
+    or marked PAID with no debit linked yet. Closest amount first."""
+    names = bill_names(conn, business_id)
+    rows = _rows(
+        conn,
+        "SELECT id, party_id, amount_paise, planned_date, status, version FROM payable WHERE business_id = ? "
+        "AND (status IN ('PAYMENT_EXPECTED', 'REVIEW') OR (status = 'PAID' AND matched_txn_id IS NULL))",
+        (business_id,),
+    )
+    for r in rows:
+        r["name"] = names.get(r["id"], f"Bill {r['id']}")
+        r["difference_paise"] = r["amount_paise"] - amount_paise
+    return sorted(rows, key=lambda r: (abs(r["difference_paise"]), r["planned_date"] or "", r["id"]))
+
+
 def open_questions(conn: sqlite3.Connection, business_id: int) -> list[dict[str, Any]]:
     rows = _rows(conn, "SELECT * FROM owner_question WHERE business_id = ? AND status = 'OPEN' ORDER BY id",
                  (business_id,))

@@ -27,8 +27,16 @@ def attention_page(request: Request, conn: sqlite3.Connection, user: User, *, me
     all_accounts = repo.accounts(conn, user.business_id)
     candidates = repo.waiting_candidates(conn, user.business_id)
     shown = {c["id"]: (values or {}).get(c["id"]) or prefill(c, all_accounts) for c in candidates}
+    questions = repo.open_questions(conn, user.business_id)
+    for q in questions:
+        if q["kind"] == "explain_txn" and isinstance(q["choices"], dict) and type(q["choices"].get("bank_txn_id")) is int:
+            try:
+                q["debit"] = repo.debit(conn, user.business_id, q["choices"]["bank_txn_id"])
+            except repo.NotFound:
+                continue
+            q["bills"] = repo.bills_a_debit_could_pay(conn, user.business_id, q["debit"]["amount_paise"])
     return render(request, "attention.html", {
-        "questions": repo.open_questions(conn, user.business_id),
+        "questions": questions,
         "candidates": candidates, "shown": shown,
         "accounts": [a for a in all_accounts if a["drift_status"] != "OK"],
         "all_accounts": all_accounts,
@@ -126,5 +134,11 @@ async def answer(question_id: int, request: Request, user: User = Depends(owner_
                 raise actions.Refused("Confirm the balance on the Accounts page.")
             account_id = accounts[0]["id"]
         actions.confirm_balance(conn, user, account_id, str(values.get("amount", "")), clock=clock)
+        return done(request, "/attention")
+    if q["kind"] == "explain_txn":
+        try:
+            actions.explain_debit(conn, user, q, values, clock=clock)
+        except actions.FieldErrors as e:
+            return attention_page(request, conn, user, message=" ".join(e.errors.values()), status=422)
         return done(request, "/attention")
     raise actions.Refused("Answers to this kind of question come with the agent (a later change).")

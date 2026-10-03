@@ -198,7 +198,7 @@ def test_a_question_without_its_entry_link_is_refused(web):
 def test_an_agent_question_waits_for_the_agent(web):
     env, client, csrf = web
     qid = env.conn.execute("INSERT INTO owner_question (business_id, kind, body_text, status) "
-                           "VALUES (1, 'explain_txn', 'What was this ₹32,000 debit for?', 'OPEN')").lastrowid
+                           "VALUES (1, 'reconnect_gmail', 'Gmail needs reconnecting.', 'OPEN')").lastrowid
     env.conn.commit()
     r = post(client, f"/questions/{qid}/answer", csrf, {"answer": "rent"})
     assert r.status_code == 409 and "later change" in r.text

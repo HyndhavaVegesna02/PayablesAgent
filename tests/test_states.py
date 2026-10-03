@@ -24,6 +24,7 @@ PART2_TABLE = {
     ("PAYMENT_EXPECTED", "REOPENED"): {"reconciler"},
     ("REVIEW", "PAID"): {"owner"},
     ("REVIEW", "REOPENED"): {"owner"},
+    ("REVIEW", "PAYMENT_EXPECTED"): {"owner"},
     ("PAID", "REOPENED"): {"reconciler"},
     ("CONFIRMED", "SPLIT"): {"owner"},
     ("PLANNED", "SPLIT"): {"owner"},
@@ -36,7 +37,7 @@ def test_payable_table_is_exactly_part2():
 
 def test_bank_txn_table_has_only_the_cited_rows():
     assert {k: set(v) for k, v in BANK_TXN_TRANSITIONS.items()} == {
-        ("UNMATCHED", "MATCHED"): {"reconciler"},
+        ("UNMATCHED", "MATCHED"): {"reconciler", "owner"},
         ("MATCHED", "REVERSED"): {"reconciler"},
         ("UNMATCHED", "REVERSED"): {"reconciler"},  # batch 2, Q7
     }

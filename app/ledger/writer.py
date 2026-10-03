@@ -556,13 +556,15 @@ def link_payment(
     """The bank debit for a bill the owner already marked PAID has arrived
     (batch 3 plan, PO decision D12): matched_txn_id is set, the version bumps,
     and a PAYABLE_PAYMENT_LINKED event is written. The bill stays PAID; from
-    now on the debit, not the bill, carries the outflow."""
+    now on the debit, not the bill, carries the outflow. The reconciler links
+    a debit that matches; the owner links one that did not (CHG-022)."""
     who = parse_actor(actor)
-    _check_role(who, frozenset({"reconciler"}), "link a payment to a bill")
+    _check_role(who, frozenset({"reconciler", "owner"}), "link a payment to a bill")
     _require_fk(conn)
     clock = clock or SystemClock()
     with atomic(conn):
         before = _get(conn, "payable", payable_id)
+        _check_owner(conn, who, before["business_id"])
         txn = _get(conn, "bank_txn", txn_id)
         if before["status"] != "PAID":
             raise IllegalTransition(f"payable {payable_id} is {before['status']}, not PAID")
@@ -938,6 +940,82 @@ def decide_candidate(
         _insert_event(
             conn, business_id=business_id, event_type=f"CANDIDATE_{to_status}", entity="candidate",
             entity_id=candidate_id, actor=actor, before=before, after=after, reason=reason,
+            source_ref=source_ref, trace_run_id=trace_run_id, clock=clock,
+        )
+    return after
+
+
+# --- the owner explains a debit (batch 4 plan, CHG-022) -----------------------------
+
+
+def add_party_alias(
+    party_id: int,
+    alias: str,
+    actor: str,
+    reason: str,
+    source_ref: str | None,
+    *,
+    conn: sqlite3.Connection,
+    clock: Clock | None = None,
+    trace_run_id: str | None = None,
+) -> dict[str, Any]:
+    """The owner confirms that a name seen in a bank alert is this vendor
+    (TDD: aliases are "added only after owner confirms"). Owner only; a
+    PARTY_ALIAS_ADDED event. Adding a name already there changes nothing."""
+    who = parse_actor(actor)
+    _check_role(who, frozenset({"owner"}), "add a vendor name")
+    alias = " ".join(alias.split())
+    if not alias:
+        raise ValueError("an alias needs some text")
+    _require_fk(conn)
+    clock = clock or SystemClock()
+    with atomic(conn):
+        before = _get(conn, "party", party_id)
+        _check_owner(conn, who, before["business_id"])
+        try:
+            aliases = json.loads(before["aliases_json"] or "[]")
+        except json.JSONDecodeError:
+            raise IllegalTransition(f"party {party_id} has an unreadable alias list") from None
+        if not isinstance(aliases, list):
+            raise IllegalTransition(f"party {party_id} has an unreadable alias list")
+        if alias in aliases:
+            return before
+        conn.execute("UPDATE party SET aliases_json = ? WHERE id = ?", (json.dumps([*aliases, alias]), party_id))
+        after = _get(conn, "party", party_id)
+        _insert_event(
+            conn, business_id=before["business_id"], event_type="PARTY_ALIAS_ADDED", entity="party",
+            entity_id=party_id, actor=actor, before=before, after=after, reason=reason,
+            source_ref=source_ref, trace_run_id=trace_run_id, clock=clock,
+        )
+    return after
+
+
+def close_case(
+    case_id: int,
+    actor: str,
+    reason: str,
+    source_ref: str | None,
+    *,
+    conn: sqlite3.Connection,
+    clock: Clock | None = None,
+    trace_run_id: str | None = None,
+) -> dict[str, Any]:
+    """The owner settles an exception case (CLOSED_BY_OWNER), with an event."""
+    who = parse_actor(actor)
+    _check_role(who, frozenset({"owner"}), "close a case")
+    _require_fk(conn)
+    clock = clock or SystemClock()
+    with atomic(conn):
+        before = _get(conn, "agent_case", case_id)
+        _check_owner(conn, who, before["business_id"])
+        if before["status"] not in ("OPEN", "ASK_OWNER"):
+            raise IllegalTransition(f"case {case_id} is {before['status']}")
+        conn.execute("UPDATE agent_case SET status = 'CLOSED_BY_OWNER', updated_at = ? WHERE id = ?",
+                     (clock.now().isoformat(), case_id))
+        after = _get(conn, "agent_case", case_id)
+        _insert_event(
+            conn, business_id=before["business_id"], event_type="AGENT_CASE_CLOSED_BY_OWNER", entity="agent_case",
+            entity_id=case_id, actor=actor, before=before, after=after, reason=reason,
             source_ref=source_ref, trace_run_id=trace_run_id, clock=clock,
         )
     return after

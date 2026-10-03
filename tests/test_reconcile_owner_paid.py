@@ -85,10 +85,14 @@ def test_a_second_debit_of_the_same_amount_does_not_relink(env):
         writer.link_payment(PAPER, second, "reconciler", "again", None, conn=env.conn, clock=env.clock)
 
 
-def test_only_the_reconciler_links_a_payment_and_only_to_a_paid_bill(env):
+def test_only_the_reconciler_or_the_owner_links_a_payment_and_only_to_a_paid_bill(env):
+    # The owner may link too since batch 4 (CHG-022: "this debit paid that bill").
     plan_and_approve(env, PAPER)
     t = txn(env, "debit", 18_000_000, OCT(12), "ASHIRWAD PAPER SUPPLIERS")
-    with pytest.raises(ActorNotAllowed):
+    for actor in ("planner", "pipeline"):
+        with pytest.raises(ActorNotAllowed):
+            writer.link_payment(PAPER, t, actor, "x", None, conn=env.conn, clock=env.clock)
+    with pytest.raises(IllegalTransition, match="not PAID"):
         writer.link_payment(PAPER, t, "owner:1", "x", None, conn=env.conn, clock=env.clock)
     with pytest.raises(IllegalTransition, match="not PAID"):
         writer.link_payment(PAPER, t, "reconciler", "x", None, conn=env.conn, clock=env.clock)

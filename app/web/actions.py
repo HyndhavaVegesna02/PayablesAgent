@@ -28,7 +28,7 @@ from app.domain.money import format_inr, parse_inr
 from app.jobs import queue
 from app.jobs.replan import inputs_sha256, replan
 from app.ledger import writer
-from app.ledger.reconcile import normalise_name
+from app.ledger.reconcile import name_matches, normalise_name, party_names
 from app.ledger.writer import EntityRef
 from app.planner.options import options
 from app.planner.plan import InflowIn, canonical_json, format_day, plan
@@ -36,6 +36,7 @@ from app.validate import CHECK_NAMES, NOT_APPLICABLE, PASSED, failed, failures
 from app.validate.duplicates import bank_txn_with_key, txn_dedup_key
 from app.web import repo
 from app.web.auth import User
+from app.web.routes._common import int_or_none
 
 STALE = "The plan changed since you opened it. Here is the current plan."
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
@@ -484,6 +485,88 @@ def reject_candidate(conn: sqlite3.Connection, user: User, candidate_id: int, *,
         writer.decide_candidate(candidate_id, "REJECTED", user.actor, "Owner rejected the entry",
                                 f"candidate:{candidate_id}", conn=conn, clock=clock)
         _close_questions(conn, user, candidate_id, "rejected", clock)
+
+
+# --- the owner explains a debit (batch 4 plan, CHG-022) -------------------------------
+
+
+def _held_for(conn: sqlite3.Connection, payable_id: int) -> str | None:
+    row = conn.execute(
+        "SELECT source_ref FROM event WHERE entity = 'payable' AND entity_id = ? AND event_type = 'PAYABLE_REVIEW' "
+        "ORDER BY id DESC LIMIT 1", (payable_id,),
+    ).fetchone()
+    return None if row is None else row[0]
+
+
+def explain_debit(conn: sqlite3.Connection, user: User, question: dict, values: dict[str, Any], *,
+                  clock: Clock) -> int | None:
+    """The owner answers an explain_txn question: the debit paid one bill, or
+    it was not a bill payment. Linking matches the debit and links or pays the
+    bill as the owner, returns the debit's other REVIEW bills to expected,
+    optionally adds the payee as a vendor name, closes the case, and replans."""
+    choices = json.loads(question["choices_json"] or "{}")
+    case_id, txn_id = choices.get("case_id"), choices.get("bank_txn_id")
+    if type(case_id) is not int or type(txn_id) is not int:
+        raise Refused("This question has no debit to explain.")
+    source = f"owner_question:{question['id']}"
+    with writer.atomic(conn):
+        txn = repo.debit(conn, user.business_id, txn_id)
+        if txn["status"] != "UNMATCHED":
+            raise Refused(f"This debit is already {txn['status'].lower()}.")
+        if values.get("decision") == "not_a_bill":
+            writer.close_case(case_id, user.actor, "Owner: this debit was not a bill payment", source,
+                              conn=conn, clock=clock)
+            _answer(conn, user, question["id"], {"decision": "not_a_bill"}, clock)
+            return None
+        bill_id = int_or_none(values.get("payable_id"))
+        if bill_id is None:
+            raise FieldErrors({"payable_id": "Choose the bill this debit paid."}, values)
+        bill = repo.payable(conn, user.business_id, bill_id)
+        unlinked_paid = bill["status"] == "PAID" and bill["matched_txn_id"] is None
+        if not (unlinked_paid or bill["status"] in ("PAYMENT_EXPECTED", "REVIEW")):
+            raise Refused("That bill is not waiting for a payment.")
+        version = int_or_none(values.get(f"version_{bill_id}"))
+        if version != bill["version"]:
+            raise Stale("This bill changed since you opened the page. Reload it and try again.")
+        name = repo.bill_names(conn, user.business_id).get(bill_id, f"bill {bill_id}")
+        why = f"Owner: this {format_inr(txn['amount_paise'])} debit paid {name}"
+        difference = bill["amount_paise"] - txn["amount_paise"]
+        if difference:
+            why += (f"; debit {format_inr(txn['amount_paise'])} for a {format_inr(bill['amount_paise'])} bill: "
+                    f"difference {format_inr(abs(difference))}")
+        why += "."
+        ref = f"bank_txn:{txn_id}"
+        writer.transition(EntityRef("bank_txn", txn_id), "MATCHED", user.actor, why, f"payable:{bill_id}",
+                          conn=conn, fields={"party_id": bill["party_id"]}, clock=clock)
+        if unlinked_paid:
+            writer.link_payment(bill_id, txn_id, user.actor, why, ref, conn=conn, clock=clock)
+        else:
+            writer.transition(EntityRef("payable", bill_id), "PAID", user.actor, why, ref, conn=conn,
+                              expected_version=bill["version"], fields={"matched_txn_id": txn_id}, clock=clock)
+        for (twin_id, twin_version) in conn.execute(
+            "SELECT id, version FROM payable WHERE business_id = ? AND status = 'REVIEW' AND id <> ?",
+            (user.business_id, bill_id),
+        ).fetchall():
+            if _held_for(conn, twin_id) == ref:
+                writer.transition(EntityRef("payable", twin_id), "PAYMENT_EXPECTED", user.actor,
+                                  f"Owner: debit {txn_id} paid {name}, not this bill; still expected", ref,
+                                  conn=conn, expected_version=twin_version, clock=clock)
+        if values.get("alias") and txn["counterparty"] and bill["party_id"] is not None \
+                and not name_matches(txn["counterparty"], party_names(conn, bill["party_id"])):
+            writer.add_party_alias(bill["party_id"], txn["counterparty"], user.actor,
+                                   f"Owner: '{txn['counterparty']}' in a bank alert is {name}", source,
+                                   conn=conn, clock=clock)
+        writer.close_case(case_id, user.actor, why, source, conn=conn, clock=clock)
+        _answer(conn, user, question["id"], {"decision": "paid", "payable_id": bill_id}, clock)
+        return _replan(conn, user, clock)
+
+
+def _answer(conn: sqlite3.Connection, user: User, question_id: int, answer: dict, clock: Clock) -> None:
+    conn.execute(
+        "UPDATE owner_question SET status = 'ANSWERED', answer_json = ?, answered_by = ?, answered_at = ? "
+        "WHERE id = ? AND status = 'OPEN'",
+        (json.dumps(answer), user.id, clock.now().isoformat(), question_id),
+    )
 
 
 # --- accounts, questions, settings ---------------------------------------------------
