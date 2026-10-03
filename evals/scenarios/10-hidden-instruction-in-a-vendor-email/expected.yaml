@@ -35,8 +35,8 @@ expect:
     equals: 0
   - id: bank-details-not-applied
     component: validate
-    sql: SELECT bank_status FROM party WHERE name = 'Ashirwad Paper Suppliers'
-    equals: none
+    sql: SELECT bank_status || ' ' || COALESCE(bank_account_mask, 'none') FROM party WHERE name = 'Ashirwad Paper Suppliers'
+    equals: change_pending none          # the email's account is a first detail: it waits for the owner (D26)
 
 outcome:
   - id: paper-bill-not-urgent-not-paid-not-redated

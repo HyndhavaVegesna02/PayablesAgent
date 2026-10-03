@@ -16,6 +16,8 @@ fortnight that needs the owner to split a bill and authorise a breach."""
 
 from __future__ import annotations
 
+import json
+
 from typing import Any
 
 from app.domain.money import format_inr, parse_inr
@@ -305,6 +307,17 @@ def run_a(run: Run) -> None:
                    "the new bills still leave the floor clear")
         run.expect("lowest", (p["lowest"], p["lowest_on"]), (money("2,75,610"), "2026-10-26"),
                    "5,93,000 - GST 90,000 - Prime 1,20,000 - 418 12,390 - AP/2610/131 95,000 = 2,75,610, on Mon 26")
+        run.expect("first-bank-details-asked", [json.loads(c)["party_id"] for (c,) in run.rows(
+            "SELECT choices_json FROM owner_question WHERE kind = 'approve_bank_change' AND status = 'OPEN'")],
+                   [1], "D26: AP/2610/131 is Ashirwad's first bill with bank details; confirming it doesn't "
+                   "approve them, so the owner is asked")
+
+    with run.step("owner", "Calls Ashirwad on a known number: account 4410 is theirs. Approves the bank details"):
+        run.owner.submit("/attention", "/parties/1/bank-change", button="Approve")
+        run.drain()
+        run.expect("bank-details-on-record", run.one(
+            "SELECT bank_account_mask || ' ' || bank_ifsc || ' ' || bank_status FROM party WHERE id = 1"),
+                   "XXXX4410 SBIN0001234 verified", "stored only once the owner approved them")
 
     with run.step("owner", "Mon 19 09:30: approves Monday's payment (GST)"):
         run.move_to("2026-10-19T09:30")
@@ -422,9 +435,22 @@ def run_b(run: Run) -> None:
         confirm(run, email)
         run.expect("one-bill-not-two", run.one("SELECT COUNT(*) FROM payable WHERE invoice_number = 'AP/2610/131'"),
                    1, "the owner confirmed the email's entry; the photo's was never offered")
+        run.expect("first-details-wait-for-the-owner", run.one(
+            "SELECT COALESCE(bank_account_mask, 'none') || ' ' || bank_status FROM party WHERE id = 1"),
+                   "none change_pending", "D26: confirming the bill doesn't approve its bank account; a first "
+                   "invoice, real or fake, can't set an account on its own")
+
+    with run.step("owner", "Calls Ashirwad on a known number: account 4410 is theirs. Approves AP/2610/131's bank "
+                           "details"):
+        run.owner.submit("/attention", "/parties/1/bank-change", button="Approve", where={"candidate_id": str(email)})
+        run.drain()
         run.expect("vendor-bank-details-on-record", run.one(
             "SELECT bank_account_mask || ' ' || bank_ifsc || ' ' || bank_status FROM party WHERE id = 1"),
-                   "XXXX4410 SBIN0001234 verified", "the invoice's payee: account 50100 1122 4410, SBIN0001234")
+                   "XXXX4410 SBIN0001234 verified", "the invoice's payee: account 50100 1122 4410, SBIN0001234, "
+                   "stored only now the owner approved it")
+        run.expect("no-bank-question-left", run.one(
+            "SELECT COUNT(*) FROM owner_question WHERE kind = 'approve_bank_change' AND status = 'OPEN'"), 0,
+                   "the photo's reading gave the same details, so its question is settled with the email's")
 
     with run.step("bank", "Tue 15:08: Kaveri Traders pays ₹33,000 (fixture 02)"):
         run.deliver("02-credit-kaveri-traders.eml")

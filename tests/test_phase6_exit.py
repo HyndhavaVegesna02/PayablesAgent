@@ -83,7 +83,17 @@ def test_ac4_and_ac5_one_invoice_by_email_and_photo_then_a_bank_change(web):
     assert [b[0] for b in bills] == [9_500_000]  # AC4: one payable
     vendor = env.conn.execute("SELECT * FROM party WHERE name = 'Ashirwad Paper Suppliers'").fetchone()
     assert (vendor["bank_account_mask"], vendor["bank_ifsc"], vendor["bank_status"]) == (
-        "XXXX4410", "SBIN0001234", "verified")  # first details, from the bill the owner checked
+        None, None, "change_pending")  # first details wait for the owner's own decision (D26)
+    asked = [json.loads(c)["candidate_id"] for (c,) in env.conn.execute(
+        "SELECT choices_json FROM owner_question WHERE kind = 'approve_bank_change' AND status = 'OPEN'")]
+    assert emailed["id"] in asked  # and the photo's reading, a duplicate, is asked about too
+    assert post(client, f"/parties/{vendor['id']}/bank-change", csrf,
+                {"decision": "approve", "candidate_id": emailed["id"]}).status_code == 303
+    assert not env.conn.execute("SELECT 1 FROM owner_question WHERE kind = 'approve_bank_change' "
+                                "AND status = 'OPEN'").fetchone()  # the same details on the photo: settled
+    vendor = env.conn.execute("SELECT * FROM party WHERE name = 'Ashirwad Paper Suppliers'").fetchone()
+    assert (vendor["bank_account_mask"], vendor["bank_ifsc"], vendor["bank_status"]) == (
+        "XXXX4410", "SBIN0001234", "verified")
 
     at(env, 14, 11)
     poll(env, "09-invoice-ashirwad-new-bank.eml")

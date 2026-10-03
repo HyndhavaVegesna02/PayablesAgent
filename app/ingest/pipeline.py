@@ -374,9 +374,10 @@ def _ask_owner(ctx: JobContext, doc: sqlite3.Row, candidate_id: int, body: str) 
 
 
 def _check_bank_details(ctx: JobContext, doc: sqlite3.Row, outcome: Outcome, candidate_id: int) -> None:
-    """Bank details on a vendor's bill that differ from the ones on record mark
-    the vendor change_pending and ask the owner (approve_bank_change); they
-    are never updated automatically (TDD pipeline step 6; batch 5, S4). Run
+    """Bank details on a vendor's bill that differ from the ones on record, or
+    are the vendor's first (D26), mark the vendor change_pending and ask the
+    owner (approve_bank_change); they are never stored automatically (TDD
+    pipeline step 6; batch 5, S4). Run
     on every reading, a duplicate included: "same invoice, new account" is
     the classic fraud."""
     x = outcome.attempts[-1].result.parsed
@@ -387,8 +388,8 @@ def _check_bank_details(ctx: JobContext, doc: sqlite3.Row, outcome: Outcome, can
     if last4 is None and ifsc is None:
         return
     party = vendor_party(ctx.conn, doc["business_id"], reading.get("party"), normalise_gstin(x.seller_gstin))
-    if party is None or party["bank_status"] == "none":
-        return  # a vendor's first details are recorded when the owner confirms the bill
+    if party is None:
+        return  # a new vendor: compared when the owner confirms the bill for a vendor on record
     input_ref = f"source_document:{doc['id']}"
     if writer.flag_bank_change(party["id"], candidate_id, last4, ifsc, "pipeline",
                                f"candidate {candidate_id} gives different bank details", input_ref,

@@ -14,6 +14,7 @@ guard of evals/budget.py)."""
 
 from __future__ import annotations
 
+import json
 import contextlib
 import shutil
 import tempfile
@@ -195,6 +196,17 @@ def _confirm_waiting(env: RunEnv, _: Any) -> None:
     drain(env)
 
 
+def _approve_bank_details(env: RunEnv, _: Any) -> None:
+    """The owner checks each waiting bank change by phone and approves it (D26: a vendor's first details too)."""
+    for (choices,) in env.conn.execute("SELECT choices_json FROM owner_question WHERE kind = 'approve_bank_change' "
+                                       "AND status = 'OPEN' ORDER BY id").fetchall():
+        c = json.loads(choices)
+        if repo.party(env.conn, OWNER.business_id, c["party_id"])["bank_status"] == "change_pending":
+            actions.decide_bank_change(env.conn, OWNER, c["party_id"], c["candidate_id"], True, clock=env.clock)
+            env.conn.commit()
+    drain(env)
+
+
 def _unlock(env: RunEnv, spec: dict) -> None:
     (doc_id,) = env.conn.execute("SELECT id FROM source_document WHERE status = 'LOCKED' ORDER BY id").fetchone()
     actions.unlock_document(env.conn, OWNER, doc_id, spec["password"], env.store, clock=env.clock)
@@ -229,6 +241,7 @@ STEPS: dict[str, Callable[[RunEnv, Any], None]] = {
     "unlock": _unlock,
     "confirm_balance": _confirm_balance,
     "choose_option": _choose_option,
+    "approve_bank_details": _approve_bank_details,
 }
 
 

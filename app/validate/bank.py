@@ -39,6 +39,8 @@ def describe(mask_or_account: str | None, ifsc: str | None) -> str:
 
 def change_question(party_name: str, on_record_mask: str | None, on_record_ifsc: str | None,
                     last4: str | None, ifsc: str | None) -> str:
-    return (f"A bill from {party_name} gives different bank details: {describe(last4, ifsc)} "
-            f"(on record: {describe(on_record_mask, on_record_ifsc)}). Vendor bank details change pending: "
-            "verify before paying. Check with the vendor by phone, on a number you already have, before approving.")
+    on_record = describe(on_record_mask, on_record_ifsc)
+    what = (f"different bank details: {describe(last4, ifsc)} (on record: {on_record})" if on_record else
+            f"bank details for a vendor with none on record: {describe(last4, ifsc)}")
+    return (f"A bill from {party_name} gives {what}. Vendor bank details change pending: verify before paying. "
+            "Check with the vendor by phone, on a number you already have, before approving.")

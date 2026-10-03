@@ -1084,7 +1084,8 @@ def flag_bank_change(
     trace_run_id: str | None = None,
 ) -> bool:
     """A bill gives a vendor bank details (`last4`, `ifsc`) that differ from
-    the ones on record (TDD pipeline step 6): the vendor is marked
+    the ones on record, or that are its first (D26: a vendor's first details
+    from a document are a banking change too; TDD pipeline step 6): the vendor is marked
     change_pending (a PARTY_BANK_CHANGE_PENDING event) and the owner is asked
     (approve_bank_change, one question per bill). The stored details are
     never touched here; the proposal stays in the candidate. Called by the
@@ -1097,7 +1098,8 @@ def flag_bank_change(
     with atomic(conn):
         party = _get(conn, "party", party_id)
         _check_owner(conn, who, party["business_id"])
-        if not differs(party["bank_account_mask"], party["bank_ifsc"], last4, ifsc):
+        first = not (party["bank_account_mask"] or party["bank_ifsc"])
+        if not (first and (last4 or ifsc)) and not differs(party["bank_account_mask"], party["bank_ifsc"], last4, ifsc):
             return False
         if party["bank_status"] != "change_pending":
             _set_bank(conn, party_id, {"bank_status": "change_pending"}, "PARTY_BANK_CHANGE_PENDING", actor,
@@ -1152,35 +1154,6 @@ def decide_bank_change(
         status = "verified" if before["bank_account_mask"] or before["bank_ifsc"] else "none"
         return _set_bank(conn, party_id, {"bank_status": status}, "PARTY_BANK_CHANGE_REJECTED", actor, reason,
                          source_ref, clock, trace_run_id)
-
-
-def record_bank_details(
-    party_id: int,
-    account_mask: str | None,
-    ifsc: str | None,
-    actor: str,
-    reason: str,
-    source_ref: str | None,
-    *,
-    conn: sqlite3.Connection,
-    clock: Clock | None = None,
-    trace_run_id: str | None = None,
-) -> dict[str, Any] | None:
-    """A vendor's first bank details, from a bill the owner confirmed: owner
-    only, and only while none are on record (batch 5 plan, S4). Any later
-    difference goes through flag_bank_change and the owner's approval."""
-    who = parse_actor(actor)
-    _check_role(who, frozenset({"owner"}), "record vendor bank details")
-    _require_fk(conn)
-    clock = clock or SystemClock()
-    with atomic(conn):
-        before = _get(conn, "party", party_id)
-        _check_owner(conn, who, before["business_id"])
-        if before["bank_status"] != "none" or not (account_mask or ifsc):
-            return None
-        return _set_bank(conn, party_id, {"bank_account_mask": account_mask, "bank_ifsc": ifsc,
-                                          "bank_status": "verified"},
-                         "PARTY_BANK_DETAILS_RECORDED", actor, reason, source_ref, clock, trace_run_id)
 
 
 def close_case(

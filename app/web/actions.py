@@ -678,16 +678,12 @@ def _create_record(conn, user: User, cand, entry: Entry, source: str, clock: Clo
         payee = json.loads(cand["payload_json"]).get("payee") or {}
         # the bill may have been read as another vendor: its question about that one goes, whatever this one holds
         _withdraw_proposals_for_others(conn, user, cand["id"], party_id, source, clock)
-        if repo.party(conn, user.business_id, party_id)["bank_status"] == "none":
-            writer.record_bank_details(  # a vendor's first details, shown on the bill the owner checked (S4)
-                party_id, account_mask(payee.get("account")), normalise_ifsc(payee.get("ifsc")), user.actor,
-                "Bank details from a bill the owner confirmed", source, conn=conn, clock=clock,
-            )
-        else:  # the vendor the owner chose may not be the one the bill was read as: compare again
-            writer.flag_bank_change(
-                party_id, cand["id"], account_last4(payee.get("account")), normalise_ifsc(payee.get("ifsc")),
-                user.actor, f"candidate {cand['id']} gives different bank details", source, conn=conn, clock=clock,
-            )
+        # The vendor the owner chose may not be the one the bill was read as: compare again. First details
+        # are a change too (D26): confirming the bill doesn't approve its bank account.
+        writer.flag_bank_change(
+            party_id, cand["id"], account_last4(payee.get("account")), normalise_ifsc(payee.get("ifsc")),
+            user.actor, f"candidate {cand['id']} gives different bank details", source, conn=conn, clock=clock,
+        )
         bill = writer.create_payable(
             PayableNew(party_id=party_id,
                        due_date=date.fromisoformat(r["due_date"]), priority=r["priority"], **common),

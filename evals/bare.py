@@ -215,6 +215,8 @@ def _events(env: BareEnv, scenario: Scenario) -> list[str]:
             out.append("The owner approves the payments planned for today.")
         elif kind == "confirm_waiting":
             out.append("The owner confirms every new bill and transaction waiting for confirmation.")
+        elif kind == "approve_bank_details":
+            out.append("The owner has checked by phone and approves the vendor bank details waiting for approval.")
         elif kind == "unlock":
             out.append(f"The owner gives the statement PDF's password: {arg['password']}")
         elif kind == "confirm_balance":

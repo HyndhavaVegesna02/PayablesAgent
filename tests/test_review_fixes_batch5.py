@@ -261,11 +261,12 @@ def test_r3_a_bill_confirmed_for_a_vendor_with_no_details_still_withdraws_the_ot
     actions.confirm_candidate(env.conn, OWNER, cid, values, clock=env.clock)
     a = ashirwad(env)
     assert (a["bank_account_mask"], a["bank_ifsc"], a["bank_status"]) == (*ON_RECORD, "verified")
-    assert env.conn.execute("SELECT COUNT(*) FROM owner_question WHERE kind = 'approve_bank_change' "
-                            "AND status = 'OPEN'").fetchone()[0] == 0
-    new = env.conn.execute("SELECT bank_account_mask, bank_status FROM party WHERE name = 'Brand New Paper Mart'"
+    new = env.conn.execute("SELECT id, bank_account_mask, bank_status FROM party WHERE name = 'Brand New Paper Mart'"
                            ).fetchone()
-    assert tuple(new) == ("XXXX9921", "verified")  # its first details, shown on the card the owner confirmed
+    open_for = [json.loads(c)["party_id"] for (c,) in env.conn.execute(
+        "SELECT choices_json FROM owner_question WHERE kind = 'approve_bank_change' AND status = 'OPEN'")]
+    assert open_for == [new["id"]]  # Ashirwad's question is withdrawn; the new vendor's first details are asked (D26)
+    assert (new["bank_account_mask"], new["bank_status"]) == (None, "change_pending")
 
 
 def test_r3_a_part_of_a_spoken_figure_is_not_the_amount_said():

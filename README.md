@@ -90,7 +90,10 @@ Works from Monday 12 October 2026, with no Gemini and no network.
 3. **`make demo-time T=2026-10-13T23:00:00+05:30`.** On Tuesday, Kaveri
    Traders' payment arrives and matches what they owed. Ashirwad emails invoice
    AP/2610/131, which waits on *Needs attention*: confirm it. Its bank details
-   (the account ending 4410) become Ashirwad's details on record. The
+   (the account ending 4410) are Ashirwad's first, so they wait for your own
+   decision: confirming a bill never approves its bank account. Approve them
+   (in real life, after checking with Ashirwad on a number you already have),
+   and they become Ashirwad's details on record. The
    bank's statement arrives locked. *Needs attention* asks for its password,
    which is `SPW-4821-oct` for this fictional statement. It's used once and
    never stored. After that, the statement's rows are read and checked against
@@ -223,10 +226,6 @@ More detail on each module is in [app/validate/README.md](app/validate/README.md
   paths, not the model. In the ablation, the bare harness and the no-planner
   knock-out need a live model to mean anything, so their fixture rows are
   marked *mechanics only*.
-- **A vendor's first bank details are recorded without a flag (CHG-029).**
-  Only a change from details on record is flagged. A fake invoice confirmed
-  before any real one from that vendor would set its account; see
-  [docs/threat-model.md](docs/threat-model.md).
 - **A statutory payment always needs the owner to link it (CHG-028).** A PF,
   ESI or GST bill has no vendor name for its challan debit to match, so each
   one goes to *Needs attention* as "which bill did this debit pay?". The

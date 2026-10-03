@@ -21,7 +21,7 @@ SCENARIOS = Path(__file__).resolve().parent / "scenarios"
 COMPONENTS = ("sort", "extract", "validate", "reconcile", "planner", "agent")
 Component = Literal["sort", "extract", "validate", "reconcile", "planner", "agent"]
 STEP_KINDS = {"at", "deliver", "poll", "drain", "monday_plan", "approve", "upload", "confirm_waiting", "unlock",
-              "confirm_balance", "choose_option"}
+              "confirm_balance", "choose_option", "approve_bank_details"}
 
 
 class Expectation(BaseModel):
