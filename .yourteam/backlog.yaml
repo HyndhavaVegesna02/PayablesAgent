@@ -387,6 +387,16 @@ changes:
     expected_paths: []
     depends_on: null
     batch: null
+  - id: CHG-026
+    title: Batch 6 review notes not fixed in the batch
+    file: docs/changes/CHG-026-batch6-review-notes.md
+    status: draft
+    priority: 26
+    type: chore
+    lane: null
+    expected_paths: []
+    depends_on: null
+    batch: null
 
 # Shape of an entry:
 #   - id: CHG-001
