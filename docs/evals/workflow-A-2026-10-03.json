@@ -1,0 +1,821 @@
+{
+  "meta": {
+    "run": "A",
+    "mode": "fixtures",
+    "model": "gemini-3.8-flash",
+    "prompt_version": "2026-10-02.1",
+    "config_sha256": "9c5503258079dd1e1450fbec816294660bf6150a1a22bbf5d8727612905b18b3",
+    "commit": "5f3c463",
+    "date": "2026-10-03T23:02:24+05:30",
+    "budget": null
+  },
+  "repeats": [
+    {
+      "ok": true,
+      "stopped": null,
+      "metrics": {
+        "ai_calls": 38,
+        "ai_calls_by_job": {
+          "explain": 15,
+          "sort": 10,
+          "extract:bank_alert": 8,
+          "extract:invoice": 2,
+          "extract:voice_note": 1,
+          "exception": 2
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [
+          "stake_above_escalation_amount"
+        ],
+        "tokens": {
+          "input": 0,
+          "output": 0,
+          "thoughts": 0
+        },
+        "cost_micro_usd": 0
+      },
+      "alerts": [
+        {
+          "to": "owner@example.test",
+          "subject": "Cash-flow assistant: 1 thing needs you",
+          "body": "- ₹33,000 received from Kaveri Traders. Lowest projected balance is now ₹1,83,000. Plan updated.\n\nOpen the app to see and answer them: http://localhost:8000/attention\n\nThis email was written by code from your records. The assistant cannot send email.\n"
+        },
+        {
+          "to": "owner@example.test",
+          "subject": "Cash-flow assistant: 1 thing needs you",
+          "body": "- A ₹45,000 debit from HDFC Bank wasn't in the plan. What was it for?\n\nOpen the app to see and answer them: http://localhost:8000/attention\n\nThis email was written by code from your records. The assistant cannot send email.\n"
+        },
+        {
+          "to": "owner@example.test",
+          "subject": "Cash-flow assistant: 1 thing needs you",
+          "body": "- ₹2,00,000 received from Nandi Foods. Lowest projected balance is now ₹3,83,000. Plan updated.\n\nOpen the app to see and answer them: http://localhost:8000/attention\n\nThis email was written by code from your records. The assistant cannot send email.\n"
+        },
+        {
+          "to": "owner@example.test",
+          "subject": "Cash-flow assistant: 1 thing needs you",
+          "body": "- A ₹90,000 debit from HDFC Bank wasn't in the plan. What was it for?\n\nOpen the app to see and answer them: http://localhost:8000/attention\n\nThis email was written by code from your records. The assistant cannot send email.\n"
+        }
+      ],
+      "steps": [
+        {
+          "n": 1,
+          "at": "Mon 12 Oct 09:00",
+          "actor": "owner",
+          "action": "Opens the week page: Monday's 14-day plan",
+          "error": null,
+          "checks": [
+            {
+              "id": "lowest-balance",
+              "expected": 18300000,
+              "actual": 18300000,
+              "ok": true,
+              "why": "TDD worked example: ₹6,20,000 less the five bills, plus Kaveri's ₹33,000, falls to ₹1,83,000 when Prime Chem is paid on Thu 22 Oct"
+            },
+            {
+              "id": "lowest-on",
+              "expected": "2026-10-22",
+              "actual": "2026-10-22",
+              "ok": true,
+              "why": "TDD: Thu 22 Oct, the Prime Chem payment day"
+            },
+            {
+              "id": "plan-flags-the-shortfall",
+              "expected": false,
+              "actual": false,
+              "ok": true,
+              "why": "₹1,83,000 is ₹67,000 below the ₹2,50,000 safety amount"
+            },
+            {
+              "id": "decisions",
+              "expected": {
+                "PAPER-001": "PAY 2026-10-12",
+                "PFESI-OCT26": "PAY 2026-10-15",
+                "ELEC-OCT26": "PAY 2026-10-15",
+                "GST-OCT26": "PAY 2026-10-19",
+                "PRIME-001": "ESCALATE"
+              },
+              "actual": {
+                "PAPER-001": "PAY 2026-10-12",
+                "PFESI-OCT26": "PAY 2026-10-15",
+                "ELEC-OCT26": "PAY 2026-10-15",
+                "GST-OCT26": "PAY 2026-10-19",
+                "PRIME-001": "ESCALATE"
+              },
+              "ok": true,
+              "why": "TDD: the four earlier payments PAY on the payment day before each is due; Prime Chem ESCALATE"
+            },
+            {
+              "id": "golden-balances-on-the-page",
+              "expected": [
+                true,
+                true,
+                true,
+                true,
+                true
+              ],
+              "actual": [
+                true,
+                true,
+                true,
+                true,
+                true
+              ],
+              "ok": true,
+              "why": "TDD golden table, original plan: Mon 4,40,000, Tue 4,73,000, Thu 3,93,000, Mon 3,03,000, Thu 1,83,000"
+            },
+            {
+              "id": "options",
+              "expected": [
+                [
+                  "early_receipt",
+                  38300000,
+                  1
+                ],
+                [
+                  "split",
+                  25000000,
+                  1
+                ],
+                [
+                  "authorise_breach",
+                  18300000,
+                  0
+                ]
+              ],
+              "actual": [
+                [
+                  "early_receipt",
+                  38300000,
+                  1
+                ],
+                [
+                  "split",
+                  25000000,
+                  1
+                ],
+                [
+                  "authorise_breach",
+                  18300000,
+                  0
+                ]
+              ],
+              "ok": true,
+              "why": "TDD options table: Nandi early ₹3,83,000 (meets); split Prime Chem ₹2,50,000 (meets, exactly); authorise the breach ₹1,83,000 (does not)"
+            }
+          ]
+        },
+        {
+          "n": 2,
+          "at": "Mon 12 Oct 09:00",
+          "actor": "owner",
+          "action": "Chooses 'Ask Nandi Foods to pay ₹2,00,000 by Fri 16 Oct'",
+          "error": null,
+          "checks": [
+            {
+              "id": "chosen",
+              "expected": 1,
+              "actual": 1,
+              "ok": true,
+              "why": "the owner's choice is recorded on the option"
+            },
+            {
+              "id": "nothing-counted-yet",
+              "expected": "EXPECTED",
+              "actual": "EXPECTED",
+              "ok": true,
+              "why": "TDD: the owner asks Nandi; the money counts when it arrives, not when asked"
+            }
+          ]
+        },
+        {
+          "n": 3,
+          "at": "Mon 12 Oct 09:00",
+          "actor": "owner",
+          "action": "Approves Monday's payment: the ₹1,80,000 to Ashirwad Paper",
+          "error": null,
+          "checks": [
+            {
+              "id": "approved",
+              "expected": "PAYMENT_EXPECTED",
+              "actual": "PAYMENT_EXPECTED",
+              "ok": true,
+              "why": "approving tells the plan to expect it"
+            },
+            {
+              "id": "approved-by-the-owner",
+              "expected": 1,
+              "actual": 1,
+              "ok": true,
+              "why": "app_user 1 is the owner"
+            },
+            {
+              "id": "first-approval-not-stale",
+              "expected": false,
+              "actual": false,
+              "ok": true,
+              "why": "Monday's plan is today's plan"
+            }
+          ]
+        },
+        {
+          "n": 4,
+          "at": "Mon 12 Oct 12:00",
+          "actor": "bank",
+          "action": "Mon 11:42: HDFC's debit alert for the paper payment (fixture 01)",
+          "error": null,
+          "checks": [
+            {
+              "id": "bill-paid",
+              "expected": "PAID",
+              "actual": "PAID",
+              "ok": true,
+              "why": "the alert's ₹1,80,000 to ASHIRWAD PAPER SUPPLIERS matches the approved bill by amount, date and name"
+            },
+            {
+              "id": "balances-agree",
+              "expected": [
+                44000000,
+                "OK"
+              ],
+              "actual": [
+                44000000,
+                "OK"
+              ],
+              "ok": true,
+              "why": "6,20,000 - 1,80,000; the alert shows Rs.4,40,000.00"
+            }
+          ]
+        },
+        {
+          "n": 5,
+          "at": "Tue 13 Oct 12:00",
+          "actor": "vendor",
+          "action": "Tue 11:05: Ashirwad emails invoice AP/2610/131 with its PDF (fixture 08)",
+          "error": null,
+          "checks": [
+            {
+              "id": "waits-for-the-owner",
+              "expected": "VALID",
+              "actual": "VALID",
+              "ok": true,
+              "why": "read and every check passed (GSTIN, arithmetic, dates); a bill waits for the owner"
+            },
+            {
+              "id": "not-in-the-plan-yet",
+              "expected": false,
+              "actual": false,
+              "ok": true,
+              "why": "an unconfirmed bill is not planned"
+            }
+          ]
+        },
+        {
+          "n": 6,
+          "at": "Tue 13 Oct 18:00",
+          "actor": "bank",
+          "action": "Tue 15:08: Kaveri Traders pays ₹33,000 (fixture 02)",
+          "error": null,
+          "checks": [
+            {
+              "id": "receipt-confirmed",
+              "expected": "CONFIRMED",
+              "actual": "CONFIRMED",
+              "ok": true,
+              "why": "TDD: matched and CONFIRMED"
+            },
+            {
+              "id": "balance",
+              "expected": 47300000,
+              "actual": 47300000,
+              "ok": true,
+              "why": "golden table, Tue 13 Oct"
+            }
+          ]
+        },
+        {
+          "n": 7,
+          "at": "Wed 14 Oct 11:00",
+          "actor": "helper",
+          "action": "Wed: uploads Shree Ganesh's handwritten bill (photo)",
+          "error": null,
+          "checks": [
+            {
+              "id": "read",
+              "expected": 1239000,
+              "actual": 1239000,
+              "ok": true,
+              "why": "the bill's total: 10,000 + 500 + CGST 945 + SGST 945"
+            }
+          ]
+        },
+        {
+          "n": 8,
+          "at": "Wed 14 Oct 11:00",
+          "actor": "helper",
+          "action": "Uploads a voice note: 'Sharma Packaging ka bill, dedh lakh rupaye, paanch November'",
+          "error": null,
+          "checks": [
+            {
+              "id": "dedh-lakh-read-by-code",
+              "expected": 15000000,
+              "actual": 15000000,
+              "ok": true,
+              "why": "'dedh lakh' is 1.5 lakh; code reads the spoken words, not a model's figure"
+            }
+          ]
+        },
+        {
+          "n": 9,
+          "at": "Wed 14 Oct 11:00",
+          "actor": "helper",
+          "action": "Types a bill: Laxmi Transport LT/2610/88, ₹18,000, due Mon 2 Nov",
+          "error": null,
+          "checks": [
+            {
+              "id": "four-channels-waiting",
+              "expected": [
+                "email",
+                "photo",
+                "voice",
+                "typed"
+              ],
+              "actual": [
+                "email",
+                "photo",
+                "voice",
+                "typed"
+              ],
+              "ok": true,
+              "why": "one bill from each channel, all waiting for the owner"
+            },
+            {
+              "id": "helper-cannot-confirm",
+              "expected": [
+                403,
+                true
+              ],
+              "actual": [
+                403,
+                true
+              ],
+              "ok": true,
+              "why": "confirming is owner-only: the role check refuses a logged-in helper with a valid token"
+            }
+          ]
+        },
+        {
+          "n": 10,
+          "at": "Thu 15 Oct 09:30",
+          "actor": "owner",
+          "action": "Thu 09:30: approves Thursday's payments (PF and ESI, electricity)",
+          "error": null,
+          "checks": [
+            {
+              "id": "stale-plan-refused-first",
+              "expected": true,
+              "actual": true,
+              "ok": true,
+              "why": "the plan on screen was made on Wednesday; approving it on Thursday is refused and the page shows today's plan"
+            },
+            {
+              "id": "approved",
+              "expected": [
+                "PAYMENT_EXPECTED",
+                "PAYMENT_EXPECTED"
+              ],
+              "actual": [
+                "PAYMENT_EXPECTED",
+                "PAYMENT_EXPECTED"
+              ],
+              "ok": true,
+              "why": "both approved for Thu 15 Oct"
+            }
+          ]
+        },
+        {
+          "n": 11,
+          "at": "Thu 15 Oct 12:00",
+          "actor": "bank",
+          "action": "Thu 10:05 and 10:20: debits of ₹45,000 (EPFO ESIC CHALLAN) and ₹35,000 (electricity)",
+          "error": null,
+          "checks": [
+            {
+              "id": "electricity-paid",
+              "expected": "PAID",
+              "actual": "PAID",
+              "ok": true,
+              "why": "amount, date and name match"
+            },
+            {
+              "id": "statutory-debit-needs-the-owner",
+              "expected": "REVIEW",
+              "actual": "REVIEW",
+              "ok": true,
+              "why": "a statutory bill has no vendor name for 'EPFO ESIC CHALLAN' to match, so code asks the owner"
+            },
+            {
+              "id": "balance",
+              "expected": 39300000,
+              "actual": 39300000,
+              "ok": true,
+              "why": "golden table, Thu 15 Oct; the alert shows Rs.3,93,000.00"
+            }
+          ]
+        },
+        {
+          "n": 12,
+          "at": "Thu 15 Oct 12:00",
+          "actor": "owner",
+          "action": "Answers 'which bill did the ₹45,000 debit pay?': PF and ESI",
+          "error": null,
+          "checks": [
+            {
+              "id": "pf-esi-paid",
+              "expected": "PAID",
+              "actual": "PAID",
+              "ok": true,
+              "why": "linked by the owner"
+            },
+            {
+              "id": "no-question-left-for-the-debit",
+              "expected": 0,
+              "actual": 0,
+              "ok": true,
+              "why": "the case is settled, so neither of its questions still waits (CHG-027 fix)"
+            }
+          ]
+        },
+        {
+          "n": 13,
+          "at": "Fri 16 Oct 12:00",
+          "actor": "bank",
+          "action": "Fri 10:12: Nandi Foods pays ₹2,00,000 early (fixture 07)",
+          "error": null,
+          "checks": [
+            {
+              "id": "receipt-confirmed",
+              "expected": "CONFIRMED",
+              "actual": "CONFIRMED",
+              "ok": true,
+              "why": "TDD: matched and CONFIRMED"
+            },
+            {
+              "id": "lowest-balance-now",
+              "expected": 38300000,
+              "actual": 38300000,
+              "ok": true,
+              "why": "TDD: the planner reruns and the lowest balance becomes ₹3,83,000 (golden table, Thu 22 Oct)"
+            },
+            {
+              "id": "prime-chem-pay-thursday",
+              "expected": "PAY 2026-10-22",
+              "actual": "PAY 2026-10-22",
+              "ok": true,
+              "why": "TDD: Prime Chem moves to PAY on Thu 22 Oct"
+            },
+            {
+              "id": "plan-valid",
+              "expected": true,
+              "actual": true,
+              "ok": true,
+              "why": "₹3,83,000 is above the ₹2,50,000 safety amount"
+            },
+            {
+              "id": "explain-plan-note",
+              "expected": [
+                true,
+                true
+              ],
+              "actual": [
+                true,
+                true
+              ],
+              "ok": true,
+              "why": "a 'what changed' note is on the plan; offline it is code's template (the fixture AI has no canned note); live, Gemini's, or the template when Gemini's fails its check"
+            }
+          ]
+        },
+        {
+          "n": 14,
+          "at": "Sat 17 Oct 10:00",
+          "actor": "owner",
+          "action": "Sat: confirms the four new bills on Needs attention",
+          "error": null,
+          "checks": [
+            {
+              "id": "bills-in-the-ledger",
+              "expected": [
+                "",
+                "418",
+                "AP/2610/131",
+                "LT/2610/88"
+              ],
+              "actual": [
+                "",
+                "418",
+                "AP/2610/131",
+                "LT/2610/88"
+              ],
+              "ok": true,
+              "why": "AP/2610/131 (email), 418 (photo), the voice note's bill (no number said), LT/2610/88 (typed)"
+            },
+            {
+              "id": "new-decisions",
+              "expected": {
+                "418": "PAY 2026-10-22",
+                "AP/2610/131": "PAY 2026-10-26",
+                "LT/2610/88": "WAIT",
+                "Sharma Packaging": "WAIT"
+              },
+              "actual": {
+                "418": "PAY 2026-10-22",
+                "AP/2610/131": "PAY 2026-10-26",
+                "LT/2610/88": "WAIT",
+                "Sharma Packaging": "WAIT"
+              },
+              "ok": true,
+              "why": "418 due Sat 24 Oct: paid Thu 22; AP/2610/131 due Wed 28: paid Mon 26; LT/2610/88 (due 2 Nov) and Sharma (due 5 Nov) are after the horizon, Sat 17 to Fri 30 Oct"
+            },
+            {
+              "id": "prime-chem-still-thursday",
+              "expected": "PAY 2026-10-22",
+              "actual": "PAY 2026-10-22",
+              "ok": true,
+              "why": "the new bills still leave the floor clear"
+            },
+            {
+              "id": "lowest",
+              "expected": [
+                27561000,
+                "2026-10-26"
+              ],
+              "actual": [
+                27561000,
+                "2026-10-26"
+              ],
+              "ok": true,
+              "why": "5,93,000 - GST 90,000 - Prime 1,20,000 - 418 12,390 - AP/2610/131 95,000 = 2,75,610, on Mon 26"
+            }
+          ]
+        },
+        {
+          "n": 15,
+          "at": "Mon 19 Oct 09:30",
+          "actor": "owner",
+          "action": "Mon 19 09:30: approves Monday's payment (GST)",
+          "error": null,
+          "checks": [
+            {
+              "id": "approved",
+              "expected": "PAYMENT_EXPECTED",
+              "actual": "PAYMENT_EXPECTED",
+              "ok": true,
+              "why": "approving moves the bill PLANNED -> PAYMENT_EXPECTED (the state the owner's approval means)"
+            }
+          ]
+        },
+        {
+          "n": 16,
+          "at": "Mon 19 Oct 12:00",
+          "actor": "bank",
+          "action": "Mon 10:10: ₹90,000 to GST CHALLAN CBIC; the owner links it to the GST bill",
+          "error": null,
+          "checks": [
+            {
+              "id": "gst-paid",
+              "expected": "PAID",
+              "actual": "PAID",
+              "ok": true,
+              "why": "the owner linked the challan debit to the GST bill: PAID"
+            },
+            {
+              "id": "balance",
+              "expected": 50300000,
+              "actual": 50300000,
+              "ok": true,
+              "why": "golden table (Nandi paid), Mon 19 Oct"
+            }
+          ]
+        },
+        {
+          "n": 17,
+          "at": "Thu 22 Oct 09:30",
+          "actor": "owner",
+          "action": "Thu 22 09:30: approves Thursday's payments (Prime Chem, Shree Ganesh)",
+          "error": null,
+          "checks": [
+            {
+              "id": "approved",
+              "expected": [
+                "PAYMENT_EXPECTED",
+                "PAYMENT_EXPECTED"
+              ],
+              "actual": [
+                "PAYMENT_EXPECTED",
+                "PAYMENT_EXPECTED"
+              ],
+              "ok": true,
+              "why": "both are the plan's PAY lines for Thu 22 Oct; approving moves each to PAYMENT_EXPECTED"
+            }
+          ]
+        },
+        {
+          "n": 18,
+          "at": "Thu 22 Oct 12:00",
+          "actor": "bank",
+          "action": "Thu 10:15 and 10:31: ₹1,20,000 to Prime Chem, ₹12,390 to Shree Ganesh",
+          "error": null,
+          "checks": [
+            {
+              "id": "paid",
+              "expected": [
+                "PAID",
+                "PAID"
+              ],
+              "actual": [
+                "PAID",
+                "PAID"
+              ],
+              "ok": true,
+              "why": "each debit's amount, date and payee name match its approved bill"
+            },
+            {
+              "id": "balance-after-prime-chem",
+              "expected": 38300000,
+              "actual": 38300000,
+              "ok": true,
+              "why": "the TDD's ₹3,83,000 on Thu 22 Oct, now the bank's own figure"
+            },
+            {
+              "id": "balance",
+              "expected": 37061000,
+              "actual": 37061000,
+              "ok": true,
+              "why": "3,83,000 - 12,390"
+            }
+          ]
+        },
+        {
+          "n": 19,
+          "at": "Sun 25 Oct 18:00",
+          "actor": "owner",
+          "action": "Sun 25 18:00: the end of the fortnight",
+          "error": null,
+          "checks": [
+            {
+              "id": "every-due-bill-paid",
+              "expected": {
+                "PAPER-001": "PAID",
+                "PFESI-OCT26": "PAID",
+                "ELEC-OCT26": "PAID",
+                "GST-OCT26": "PAID",
+                "PRIME-001": "PAID",
+                "418": "PAID"
+              },
+              "actual": {
+                "PAPER-001": "PAID",
+                "PFESI-OCT26": "PAID",
+                "ELEC-OCT26": "PAID",
+                "GST-OCT26": "PAID",
+                "PRIME-001": "PAID",
+                "418": "PAID"
+              },
+              "ok": true,
+              "why": "each was approved and its debit matched or linked during the fortnight"
+            },
+            {
+              "id": "receipts",
+              "expected": [
+                "CONFIRMED",
+                "CONFIRMED"
+              ],
+              "actual": [
+                "CONFIRMED",
+                "CONFIRMED"
+              ],
+              "ok": true,
+              "why": "Kaveri's ₹33,000 on Tue 13 and Nandi's ₹2,00,000 on Fri 16 both arrived and matched"
+            },
+            {
+              "id": "ledger-matches-the-bank",
+              "expected": [
+                37061000,
+                37061000,
+                "OK"
+              ],
+              "actual": [
+                37061000,
+                37061000,
+                "OK"
+              ],
+              "ok": true,
+              "why": "the last alert's balance"
+            },
+            {
+              "id": "no-unmatched-money",
+              "expected": 0,
+              "actual": 0,
+              "ok": true,
+              "why": "every debit and credit was matched to a bill or a receipt, by code or by the owner"
+            },
+            {
+              "id": "owner-alerts-sent",
+              "expected": [
+                [
+                  "money_received",
+                  "receivable:1"
+                ],
+                [
+                  "money_received",
+                  "receivable:2"
+                ],
+                [
+                  "unexpected_debit",
+                  "bank_txn:3"
+                ],
+                [
+                  "unexpected_debit",
+                  "bank_txn:6"
+                ]
+              ],
+              "actual": [
+                [
+                  "money_received",
+                  "receivable:1"
+                ],
+                [
+                  "money_received",
+                  "receivable:2"
+                ],
+                [
+                  "unexpected_debit",
+                  "bank_txn:3"
+                ],
+                [
+                  "unexpected_debit",
+                  "bank_txn:6"
+                ]
+              ],
+              "ok": true,
+              "why": "Kaveri's and Nandi's money arriving; the two challan debits code could not place"
+            },
+            {
+              "id": "tdd-money-received-message",
+              "expected": true,
+              "actual": true,
+              "ok": true,
+              "why": "TDD Messages table: '₹2,00,000 received from Nandi Foods. Lowest projected balance is now ₹3.83L. Plan updated.'"
+            },
+            {
+              "id": "alerts-go-to-the-owner-only",
+              "expected": [
+                "owner@example.test"
+              ],
+              "actual": [
+                "owner@example.test"
+              ],
+              "ok": true,
+              "why": "the recipient comes from the database: the owner's login"
+            },
+            {
+              "id": "audit-trail-email-to-bill-to-plan",
+              "expected": {
+                "email": "email invoice PROCESSED",
+                "candidate": "ACCEPTED",
+                "bill-from-that-email": true,
+                "bill-events": [
+                  "PAYABLE_CREATED by owner",
+                  "PAYABLE_CONFIRMED by owner",
+                  "PAYABLE_PLANNED by planner"
+                ],
+                "in-the-plan": "PAY 2026-10-26"
+              },
+              "actual": {
+                "email": "email invoice PROCESSED",
+                "candidate": "ACCEPTED",
+                "bill-from-that-email": true,
+                "bill-events": [
+                  "PAYABLE_CREATED by owner",
+                  "PAYABLE_CONFIRMED by owner",
+                  "PAYABLE_PLANNED by planner"
+                ],
+                "in-the-plan": "PAY 2026-10-26"
+              },
+              "ok": true,
+              "why": "the stored email, the entry read from it, the bill the owner confirmed from that entry, each change as an event, the plan line"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
