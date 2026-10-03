@@ -1,0 +1,34 @@
+name: 01-debit-alert-for-a-planned-payment
+title: Bank debit alert for a planned payment
+passes_when: Transaction extracted and matched; payment moves to PAID
+steps:
+  - monday_plan: true            # Mon 12 Oct 09:00: the worked example's plan pays the paper supplier today
+  - approve: next_pay_day        # the owner approves today's payments
+  - at: "2026-10-12T12:00"
+  - deliver: [01-debit-ashirwad-paper.eml]
+  - poll: true
+expect:
+  - id: sorted-as-alert
+    component: sort
+    sql: SELECT doc_type FROM source_document ORDER BY id LIMIT 1
+    equals: bank_alert
+  - id: amount-and-date-read
+    component: extract
+    sql: SELECT amount_paise || ' ' || txn_date FROM bank_txn ORDER BY id LIMIT 1
+    equals: "18000000 2026-10-12"
+  - id: alert-passed-its-checks
+    component: validate
+    sql: SELECT COUNT(*) FROM candidate WHERE record_type = 'txn' AND status IN ('VALID', 'ACCEPTED')
+    equals: 1
+  - id: debit-matched
+    component: reconcile
+    sql: SELECT status FROM bank_txn ORDER BY id LIMIT 1
+    equals: MATCHED
+  - id: bill-paid
+    component: reconcile
+    sql: SELECT status FROM payable WHERE invoice_number = 'PAPER-001'
+    equals: PAID
+  - id: plan-rebuilt-without-the-paid-bill
+    component: planner
+    sql: SELECT COUNT(*) FROM plan_line l JOIN plan_run r ON r.id = l.plan_run_id WHERE r.is_current = 1 AND l.payable_id = 1
+    equals: 0
