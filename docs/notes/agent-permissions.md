@@ -52,11 +52,16 @@ Refusals still count as steps.
   for good (a permanent error, or its last retry) hands the case to the owner.
 - A drift case is settled by the balance, not by the agent's word. If the gap is still open after
   the findings are written, or the case ends at the owner any other way, the account moves to
-  ASK_OWNER and the owner is asked `confirm_balance`.
+  ASK_OWNER and the owner is asked `confirm_balance`, with a `balance_mismatch` owner alert queued
+  (a fixed template sent by code, CHG-010b).
 - **NEEDS_OWNER**, and a high run that reaches its limits, go to the owner. The agent asks the owner
   once per case, with 1 to 4 choices; the answer resumes the case one more time. An answer about a
   drift case always resumes it, so the case ends at confirm_balance, never at a close that would
   leave the account CHECKING.
+- A debit's case can hold two questions: the reconciler's "which bill did this debit pay?" and the
+  agent's own. When the owner settles the debit through the first, the agent's question goes too,
+  and a case the owner already closed through the agent's question doesn't stop the debit being
+  explained (`app/web/actions.py::explain_debit`, CHG-027).
 
 ## The attack, run and recorded (TDD Part 1, "Attack to run and document"; AC4)
 
