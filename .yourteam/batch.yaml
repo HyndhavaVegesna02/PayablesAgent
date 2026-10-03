@@ -47,9 +47,10 @@ changes:
     notes_resolved: false
   - id: CHG-027
     lane: planned
-    board: in_progress
+    board: done
     start_commit: e5a292b
     blocked_question: null
-    gate_evidence: []
+    gate_evidence:
+      - {command: "make test", exit_code: 0, output_tail: "es, 282 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | agent never imports the ledger writer, web or the pipeline KEPT | the AI and the agent never reach owner email KEPT | notify is pure text and sending: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 9 kept, 0 broken. | Uninstalled 1 package in 1ms | Installed 1 package in 8ms", commit: d1ac7f6, at: 2026-10-03T17:02:51+00:00}
     prepatch: "PASS at e5a292b: tests/test_workflow.py fails to import evals.workflow (collection error stops the replay); the two new explain_debit tests were run against the unfixed actions.py by hand and failed (agent question left OPEN; 409 after the case was closed)"
     notes_resolved: false
