@@ -133,6 +133,9 @@ class MatchingConfig(BaseModel):
 
 class MailConfig(BaseModel):
     poll_minutes: int = Field(gt=0)
+    # Vendors whose invoices arrive by email: fetched with the banks' alert
+    # senders (TDD "Gmail rules": known bank and vendor senders; batch 5, S3).
+    vendor_senders: list[str] = []
 
 
 class AlertsConfig(BaseModel):

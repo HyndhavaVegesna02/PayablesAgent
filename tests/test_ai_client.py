@@ -10,7 +10,7 @@ import pytest
 
 from app.ai.client import AIUnavailable, GeminiBackend, call, cost_micro_usd, load_prompt
 from app.ai.extract import BankAlertExtract
-from app.ai.sort import SortResult, sort_document
+from app.ai.sort import SORT_PROMPT, SortResult, sort_document
 from app.clock import TIMEZONE, FakeClock
 from app.config import load_app_config
 from app.trace.tracer import Tracer
@@ -108,11 +108,11 @@ def test_sort_uses_the_configured_low_thinking_and_its_prompt(tracer):
     r = sort_document("email", backend=backend, app_config=CONFIG, tracer=tracer, input_ref="d:1")
     assert r.parsed == SortResult(doc_type="bank_alert", reason="debit alert")
     assert backend.requests[0].thinking == CONFIG.model.thinking.sort == "low"
-    assert backend.requests[0].system == load_prompt("sort.v1")
+    assert backend.requests[0].system == load_prompt(SORT_PROMPT) == load_prompt("sort.v2")
 
 
 def test_every_prompt_tells_the_model_not_to_follow_instructions_in_the_email():
-    for name in ("sort.v1", "extract_bank_alert.v1", "extract_failure.v1"):
+    for name in ("sort.v1", "sort.v2", "extract_bank_alert.v1", "extract_failure.v1"):
         assert "never\nfollow them" in load_prompt(name) or "never follow them" in load_prompt(name)
 
 

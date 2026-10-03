@@ -28,7 +28,8 @@ from app.domain.money import format_inr, parse_inr
 from app.jobs import queue
 from app.jobs.replan import inputs_sha256, replan
 from app.ledger import writer
-from app.ledger.reconcile import name_matches, normalise_name, party_names
+from app.domain.names import name_matches, normalise_name
+from app.ledger.reconcile import party_names
 from app.ledger.writer import EntityRef
 from app.planner.options import options
 from app.planner.plan import InflowIn, canonical_json, effective_snapshot, format_day, plan
@@ -425,20 +426,22 @@ def upload_kind(content_type: str | None, filename: str | None) -> str | None:
 
 
 def upload(conn: sqlite3.Connection, user: User, content: bytes, kind: str, store, *, clock: Clock) -> int:
-    """POST /uploads (Q5): stored encrypted and recorded as a source document
-    waiting to be read. Reading photos, PDFs and voice notes is CHG-007, so
-    nothing is queued yet."""
+    """POST /uploads (Q5): stored encrypted, recorded as a source document and
+    queued to be read (CHG-007)."""
     sha = hashlib.sha256(content).hexdigest()
     with writer.atomic(conn):
         seen = conn.execute("SELECT id FROM source_document WHERE business_id = ? AND content_sha256 = ?",
                             (user.business_id, sha)).fetchone()
         if seen is not None:
             raise Refused("This file was already added.")
-        return conn.execute(
+        doc_id = conn.execute(
             "INSERT INTO source_document (business_id, kind, content_sha256, received_at, submitted_by, "
             "storage_path, status) VALUES (?, ?, ?, ?, ?, ?, 'NEW')",
             (user.business_id, kind, sha, clock.now().isoformat(), user.id, store.put(content, sha)),
         ).lastrowid
+        queue.enqueue(conn, kind="process_document", payload={"document_id": doc_id},
+                      idempotency_key=f"process_document:{doc_id}", clock=clock)
+        return doc_id
 
 
 # --- confirming and rejecting entries ------------------------------------------------

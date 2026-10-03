@@ -7,11 +7,11 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from app.ai.client import AIResult, Backend, call, load_prompt
+from app.ai.client import AIResult, Backend, Contents, call, load_prompt
 from app.config import AppConfig
 from app.trace.tracer import Tracer
 
-SORT_PROMPT = "sort.v1"
+SORT_PROMPT = "sort.v2"  # v2: uploads and attachments too (batch 5, S3)
 DocType = Literal[
     "bank_alert", "failure_notice", "statement", "invoice", "challan", "payment_confirmation",
     "irrelevant",
@@ -25,7 +25,7 @@ class SortResult(BaseModel):
     reason: str
 
 
-def sort_document(text: str, *, backend: Backend, app_config: AppConfig, tracer: Tracer,
+def sort_document(text: Contents, *, backend: Backend, app_config: AppConfig, tracer: Tracer,
                   input_ref: str) -> AIResult:
     return call(
         job="sort", thinking=app_config.model.thinking.sort, system=load_prompt(SORT_PROMPT),

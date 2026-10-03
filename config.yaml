@@ -15,5 +15,8 @@ matching:
   window_days: 3
 mail:
   poll_minutes: 5
+  vendor_senders:
+    - accounts@ashirwadpaper.example
+    - billing@primechem.example
 alerts:
   min_minutes_between_emails: 30

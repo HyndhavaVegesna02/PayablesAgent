@@ -5,7 +5,8 @@ from datetime import date
 
 import pytest
 
-from app.ledger.reconcile import match_credit, match_debit, name_matches, normalise_name
+from app.domain.names import name_matches, normalise_name
+from app.ledger.reconcile import match_credit, match_debit
 from tests.reconcile_helpers import (
     ELEC,
     KAVERI,

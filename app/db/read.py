@@ -4,11 +4,16 @@ write to the ledger even if the rest of the agent code is wrong (TDD Part 2,
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from datetime import date, timedelta
 from pathlib import Path
 
+from app.domain.names import normalise_name
 from app.planner.plan import AccountCash, InflowIn, OverrideIn, PayableIn, PlanSnapshot
+from app.validate.duplicates import normalise_reference
+from app.validate.gstin import normalise_gstin
+from app.validate.invoice import InvoiceKey
 
 
 def read_only_connection(db_path: str | Path) -> sqlite3.Connection:
@@ -186,3 +191,58 @@ def failure_candidate_with_key(conn: sqlite3.Connection, key: str) -> int | None
         "AND json_extract(payload_json, '$.dedup_key') = ?", (key,)
     ).fetchone()
     return None if row is None else row[0]
+
+
+# --- invoices: the cross-source duplicate lookup (batch 5 plan, S3) ---------------------
+
+
+def business_name(conn: sqlite3.Connection, business_id: int) -> str:
+    row = conn.execute("SELECT name FROM business WHERE id = ?", (business_id,)).fetchone()
+    return row[0] if row else ""
+
+
+def same_party(a_name: str | None, a_gstin: str | None, b_name: str | None, b_gstin: str | None) -> bool:
+    """One GSTIN on each side decides; otherwise the names, as the reconciler
+    compares them, either way round (a handwritten bill may drop "Suppliers")."""
+    if a_gstin and b_gstin:
+        return a_gstin == b_gstin
+    a, b = normalise_name(a_name), normalise_name(b_name)
+    return bool(a and b) and (a == b or f" {a} " in f" {b} " or f" {b} " in f" {a} ")
+
+
+def _same_invoice(key: InvoiceKey, name, gstin, number, amount, invoice_date) -> bool:
+    if not same_party(key.party, key.party_gstin, name, normalise_gstin(gstin)):
+        return False
+    n = normalise_reference(number)
+    if key.invoice_number and n:
+        return key.invoice_number == n
+    return (amount == key.amount_paise and key.invoice_date is not None
+            and invoice_date == key.invoice_date.isoformat())
+
+
+def invoice_on_record(conn: sqlite3.Connection, business_id: int, key: InvoiceKey) -> str | None:
+    """The same invoice already in the ledger (a bill or a receivable), or
+    already waiting for the owner from another source, so an invoice that
+    arrives by email and by photo becomes one payable, whichever comes first."""
+    for name, gstin, number, amount, day in conn.execute(
+        "SELECT pt.name, pt.gstin, t.invoice_number, t.amount_paise, t.invoice_date FROM payable t "
+        "JOIN party pt ON pt.id = t.party_id WHERE t.business_id = ? UNION ALL "
+        "SELECT pt.name, pt.gstin, t.invoice_number, t.amount_paise, t.invoice_date FROM receivable t "
+        "JOIN party pt ON pt.id = t.party_id WHERE t.business_id = ?",
+        (business_id, business_id),
+    ).fetchall():
+        if _same_invoice(key, name, gstin, number, amount, day):
+            return f"{name} invoice {number or 'of ' + str(day)} is already recorded"
+    for cid, payload_json in conn.execute(
+        "SELECT c.id, c.payload_json FROM candidate c JOIN source_document d ON d.id = c.source_document_id "
+        "WHERE d.business_id = ? AND c.status IN ('VALID', 'AWAITING_OWNER') "
+        "AND c.record_type IN ('payable', 'receivable') ORDER BY c.id",
+        (business_id,),
+    ).fetchall():
+        payload = json.loads(payload_json)
+        r = payload.get("record") or {}
+        if _same_invoice(key, r.get("party"), payload.get("party_gstin"), r.get("invoice_number"),
+                         r.get("amount_paise"), r.get("invoice_date")):
+            return f"{r.get('party')} invoice {r.get('invoice_number') or 'of ' + str(r.get('invoice_date'))} " \
+                   f"is already waiting for the owner (entry {cid})"
+    return None

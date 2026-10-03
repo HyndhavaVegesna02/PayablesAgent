@@ -117,7 +117,8 @@ def test_an_upload_is_stored_encrypted_and_waits_for_reading(web):
     stored = Path(env.settings.data_dir) / doc["storage_path"]
     assert content not in stored.read_bytes()
     assert DocumentStore(env.settings.data_dir, env.settings.fernet_key).get(doc["storage_path"]) == content
-    assert env.conn.execute("SELECT COUNT(*) FROM job").fetchone()[0] == 0  # reading it is CHG-007
+    job = env.conn.execute("SELECT kind, payload_json FROM job").fetchall()  # CHG-007: queued to be read
+    assert [(j[0], json.loads(j[1])) for j in job] == [("process_document", {"document_id": doc["id"]})]
     assert "Waiting to be read" in client.get("/add").text
 
 

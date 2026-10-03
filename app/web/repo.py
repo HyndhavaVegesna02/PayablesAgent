@@ -378,13 +378,15 @@ def _with_payload(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 def waiting_candidates(conn: sqlite3.Connection, business_id: int) -> list[dict[str, Any]]:
     """Entries waiting for the owner: typed entries that passed their checks
-    (VALID, from a person), and mail candidates the checks could not settle
-    (AWAITING_OWNER)."""
+    (VALID, from a person), bills and invoices read from documents (VALID:
+    the owner confirms every one, CHG-007), and candidates the checks could
+    not settle (AWAITING_OWNER)."""
     return _with_payload(_rows(
         conn,
         "SELECT c.*, d.kind AS document_kind FROM candidate c JOIN source_document d ON d.id = c.source_document_id "
         "WHERE d.business_id = ? AND (c.status = 'AWAITING_OWNER' "
-        "OR (c.status = 'VALID' AND c.created_by LIKE 'user:%')) ORDER BY c.id",
+        "OR (c.status = 'VALID' AND (c.created_by LIKE 'user:%' OR c.record_type IN ('payable', 'receivable')))) "
+        "ORDER BY c.id",
         (business_id,),
     ))
 
