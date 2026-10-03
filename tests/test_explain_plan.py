@@ -47,6 +47,12 @@ def test_a_summary_using_only_the_diffs_numbers_passes(text):
     ("Lowest balance now ₹1,83,000 after 2 bills.", "number '2'"),
     ("Lowest balance now -₹1,83,000.", "amount '-₹1,83,000'"),  # the diff has +₹1,83,000
     ("Lowest balance now ₹20,000 on Thu 15 Oct.", "amount '₹20,000'"),  # the diff has -₹20,000: an overdraft
+    ("Lowest balance now –₹1,83,000.", "amount '–₹1,83,000'"),  # en dash
+    ("Lowest balance now —₹1,83,000.", "amount '—₹1,83,000'"),  # em dash
+    ("Lowest balance now －₹1,83,000.", "amount '－₹1,83,000'"),  # full-width minus
+    ("Lowest balance now ‐1,83,000.", "amount '‐1,83,000'"),  # a bare amount after U+2010
+    ("Lowest balance now minus ₹1,83,000.", "number in words 'minus'"),
+    ("Lowest balance now (₹1,83,000).", "brackets"),
     ("Lowest is one lakh eighty-three thousand.", "number in words 'one'"),
     ("Down five percent.", "number in words 'five'"),
     ("Due on the sixteenth.", "number in words 'sixteenth'"),

@@ -78,3 +78,15 @@ Nits:
   - a trace test checks that the full tool result is traced while the case file holds 20 lines;
   - fixture 11 moved to fixtures/agent_inbox (out of the inbox the demo polls);
   - read.py import order is fixed in the CHG-018 round.
+
+## Re-review of the fix round, CHG-018: FIX_REQUIRED
+
+Every finding except one was verified fixed. B1 was still open for the other minus characters: the en dash, em dash, hyphen U+2010, full-width minus, "minus", and an amount in brackets. That is the same defect concept as B1 (an incomplete sweep), so it does not count toward the cap.
+
+Minor: migration 0004 was edited in place; recorded in the plan notes (`make reseed`).
+
+**Fix:**
+- the sign class now holds every hyphen, dash and minus (U+002D, U+2010-2015, U+2212, U+FE63, U+FF0D);
+- "minus" and "negative" fail as number words;
+- an amount in brackets fails;
+- six reject cases were added.

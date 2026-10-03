@@ -29,8 +29,11 @@ _WEEKDAY = r"(?:(?P<weekday>mon|tue|wed|thu|fri|sat|sun)[a-z]*,?\s+)?"
 _DAY = r"(?P<day>\d{1,2})(?:st|nd|rd|th)?"
 _YEAR = r"(?:,?\s+(?P<year>\d{4}))?"
 
-_CURRENCY = re.compile(r"(?P<sign>[-−]\s?)?(?:₹|\brs\.?|\binr)\s?(?P<amount>\d+(?:,\d+)*(?:\.\d{1,2})?)", re.I)  # commas only between digits
-_GROUPED = re.compile(r"(?P<sign>[-−]\s?)?\b(?P<amount>\d{1,3}(?:,\d{2})*,\d{3}(?:\.\d{1,2})?)\b")
+# Every dash or minus a writer might put before an amount (ASCII hyphen-minus,
+# U+2010-U+2015 hyphens and dashes, U+2212 minus, small and full-width minus).
+_MINUS = "-\u2010\u2011\u2012\u2013\u2014\u2015\u2212\ufe63\uff0d"
+_CURRENCY = re.compile(r"(?P<sign>[" + _MINUS + r"]\s?)?(?:₹|\brs\.?|\binr)\s?(?P<amount>\d+(?:,\d+)*(?:\.\d{1,2})?)", re.I)  # commas only between digits
+_GROUPED = re.compile(r"(?P<sign>[" + _MINUS + r"]\s?)?\b(?P<amount>\d{1,3}(?:,\d{2})*,\d{3}(?:\.\d{1,2})?)\b")
 _DATES = (
     re.compile(r"\b(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})\b"),
     re.compile(r"\b(?P<day>\d{1,2})/(?P<month>\d{1,2})(?:/(?P<year>\d{4}|\d{2}))?\b"),
@@ -45,7 +48,9 @@ _NUMBER_WORDS = re.compile(
     r"|thousands?|lakhs?|lacs?|crores?|millions?|billions?|half|halves|quarters?|dozens?|twice|double|triple"
     r"|percent|per\s+cent|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth"
     r"|thirteenth|fourteenth|fifteenth|sixteenth|seventeenth|eighteenth|nineteenth|twentieth|thirtieth"
-    r"|tomorrow|yesterday)\b", re.I)
+    r"|tomorrow|yesterday|minus|negative)\b", re.I)
+# Accountants' brackets mean a negative amount: "(₹1,83,000)".
+_BRACKETED = re.compile(r"\(\s*(?:₹|rs\.?|inr|\d)", re.I)
 
 
 def _month(text: str) -> int:
@@ -88,6 +93,8 @@ def check_summary(text: str, amounts_paise: frozenset[int], dates: frozenset[dat
         return failed(f"longer than {MAX_CHARS} characters")
     if "<" in text or ">" in text or "](" in text:
         return failed("markup")
+    if _BRACKETED.search(text):
+        return failed("an amount in brackets")
     word = _NUMBER_WORDS.search(text)
     if word:
         return failed(f"number in words {word.group(0)!r}")
