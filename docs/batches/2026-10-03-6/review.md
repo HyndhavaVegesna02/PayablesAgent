@@ -90,3 +90,14 @@ Minor: migration 0004 was edited in place; recorded in the plan notes (`make res
 - "minus" and "negative" fail as number words;
 - an amount in brackets fails;
 - six reject cases were added.
+
+## Re-review of the fix round, CHG-008: APPROVE
+
+Every finding was verified fixed with the reviewer's probes, including commit-then-raise in process_one and CaseChanged with no false triggers.
+
+Follow-ups taken in d-round 2 (not blocking):
+- **Should-fix:** a run stopped by CaseChanged now hands on what its earlier steps stored (tested).
+- **Nit:** `_settle_drift` takes over only a RESOLVED status.
+- **Nit:** `mail_source()` is built inside the guarded block, so its failure reaches the owner too.
+
+Left open, to the backlog: a worker crash on a run's last attempt is dead-lettered by the stale-lock reclaim without the handler running, so a drift case could stay CHECKING. Covering it needs a reaper or the 23:00 recheck escalating a CHECKING account with no live run.

@@ -289,3 +289,30 @@ def test_an_answer_to_a_drift_cases_question_always_resumes_it(env):
     q["choices"] = json.loads(q["choices_json"])
     actions.answer_agent_question(env.conn, OWNER, q, "No", clock=env.clock)
     assert cases.load(env.conn, cid).status == "OPEN" and queued(env) == ["run_case"]
+
+
+def test_a_run_the_owner_stops_still_hands_on_the_mail_it_stored(env):
+    from app.db.connection import write_connection
+
+    deliver(env, "09-invoice-ashirwad-new-bank.eml")
+    cid = open_unknown_debit_case(env)
+    msg = "09-invoice-ashirwad-new-bank.eml"
+
+    class OwnerClosesAtStep3(FakeBackend):
+        def generate(self, **kw):
+            if len(self.requests) == 2:  # steps 1 and 2 are saved; the owner closes before step 3's reply
+                other = write_connection(env.settings.database_path)
+                other.execute("UPDATE agent_case SET status = 'CLOSED_BY_OWNER' WHERE id = ?", (cid,))
+                other.commit()
+                other.close()
+            return super().generate(**kw)
+
+    backend = OwnerClosesAtStep3().queue(
+        "AgentStep", step("look", "search_gmail", {"query": "AP/2610/140"}),
+        step("propose", "add_candidate", {"record_type": "invoice", "message_id": msg, "fields": BILL_09}),
+        step("more", "search_gmail", {"query": "Ashirwad"}))
+    status, _ = _run_job(env, cid, backend, "stopped")
+    assert status == "done" and cases.load(env.conn, cid).status == "CLOSED_BY_OWNER"
+    (doc_id,) = env.conn.execute("SELECT id FROM source_document").fetchone()
+    job = env.conn.execute("SELECT payload_json FROM job WHERE kind = 'process_document'").fetchone()
+    assert json.loads(job[0]) == {"document_id": doc_id}

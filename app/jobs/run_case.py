@@ -151,7 +151,9 @@ def _settle_drift(conn: sqlite3.Connection, case: Case, d: Deps, ctx: JobContext
     status = conn.execute("SELECT drift_status FROM bank_account WHERE id = ?", (account_id,)).fetchone()[0]
     # A closed gap resolves the account's drift cases, this one too, in this same
     # transaction: that move is this job's own, so the save writes over it.
-    (case.loaded_status,) = conn.execute("SELECT status FROM agent_case WHERE id = ?", (case.id,)).fetchone()
+    (now,) = conn.execute("SELECT status FROM agent_case WHERE id = ?", (case.id,)).fetchone()
+    if now == "RESOLVED":  # only that move; anything else stays someone else's (CaseChanged on save)
+        case.loaded_status = now
     case.add_note(f"drift check after the findings: {result.outcome}")
     if result.replan:
         enqueue_replan(conn, case.business_id, f"agent_case:{case.id}", clock=ctx.clock)
@@ -213,11 +215,11 @@ def handle_run_case(ctx: JobContext, *, backend: Backend) -> None:
         store: DocumentStore | None = document_store(ctx.settings)
     except PermanentJobError:
         store = None
-    d = Deps(backend, ctx.app_config, ctx.tracer, mail_source(ctx.settings, ctx.clock), ctx.clock,
-             ctx.settings.database_path, store)
+    d = Deps(backend, ctx.app_config, ctx.tracer, None, ctx.clock, ctx.settings.database_path, store)
     d.to_owner = lambda conn, case, question: to_owner(conn, case, question, d, ctx)
     conn = ctx.conn
     try:
+        d.mail = mail_source(ctx.settings, ctx.clock)  # inside: a failure here reaches the owner too
         while True:
             outcome = run_case(conn, case_id, d)
             if outcome.final is None or apply_final(conn, outcome.case, outcome.final, d, ctx):
@@ -227,6 +229,7 @@ def handle_run_case(ctx: JobContext, *, backend: Backend) -> None:
     except CaseChanged as e:
         conn.rollback()  # this step's writes: the case is someone else's now
         ctx.tracer.step(input_ref=f"agent_case:{case_id}", tool="run_case", result=f"stopped: {e}")
+        _hand_to_pipeline(conn, cases.load(conn, case_id), ctx)  # what earlier steps stored still goes on
     except CaseNotFound as e:
         raise PermanentJobError(str(e)) from None
     except Exception as e:
