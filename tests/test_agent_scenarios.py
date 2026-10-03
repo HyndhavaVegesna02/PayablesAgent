@@ -134,7 +134,8 @@ def _drift(env, *, missed_alert):
     deliver(env, SHORT, *([MISSED] if missed_alert else []))
     enqueue(env, "poll_mail")
     run_all(env, env.handlers)
-    assert env.conn.execute("SELECT COUNT(*) FROM source_document").fetchone()[0] == 1  # 11 is not polled
+    assert env.conn.execute("SELECT COUNT(*) FROM source_document WHERE external_ref = "
+                            "'<instaalert-20261013-160512-4821-11@hdfcbank.example>'").fetchone()[0] == 0  # not polled
     at(env, 15, 23)
     run_all(env, env.handlers)
     return case_of(env, "drift")
