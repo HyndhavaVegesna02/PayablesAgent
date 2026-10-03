@@ -1,6 +1,6 @@
 # Active batch. status: none means no batch is running.
 batch: 4
-status: active      # none | active | review | closed | aborted
+status: review      # none | active | review | closed | aborted
 goal: "The owner closes the loops batch 3 left open: says which bill a debit paid (CHG-022, clears KL-1), has the planner honour authorise and delay choices within bounds (CHG-021, D17, D18), and sees a pending early-payment request as chosen (CHG-023)."
 branch: batch-4
 start_tag: null
@@ -17,20 +17,21 @@ changes:
     notes_resolved: true
   - id: CHG-021
     lane: planned
-    board: in-progress
+    board: done
     start_commit: 45018f5
     blocked_question: null
     gate_evidence:
       - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 60 files, 165 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 5 kept, 0 broken.", commit: 57d0be0, at: 2026-10-03T04:22:30+00:00}
-    prepatch: null
-    notes_resolved: false
+    prepatch: {note: "yt_prepatch --since e8d0ace: PASS (test_planner_overrides fails to import OverrideIn at the start tree). Masked edits: the authorise test in test_web_attention fails at the start tree (Prime stays CONFIRMED); the write-guard extension passes before and after by design (it only adds plan_override to the guarded tables)"}
+    notes_resolved: true
   - id: CHG-023
     lane: direct
-    board: in-progress
+    board: done
     start_commit: 57d0be0
     blocked_question: null
-    gate_evidence: []
-    prepatch: null
-    notes_resolved: false
+    gate_evidence:
+      - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 60 files, 166 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 5 kept, 0 broken.", commit: 90953f8, at: 2026-10-03T04:26:18+00:00}
+    prepatch: {note: "yt_prepatch --since 57d0be0: PASS, all 3 new tests fail at the start tree"}
+    notes_resolved: true
 interrupts: []
 hotfixes: []      # {branch, reason, merged_sha, caused_by}
