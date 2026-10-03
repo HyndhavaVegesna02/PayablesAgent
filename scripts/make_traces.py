@@ -34,7 +34,12 @@ def build() -> dict[str, str]:
         config, _ = runner.load_config(variant)
         with tempfile.TemporaryDirectory(prefix="make-traces-") as tmp_name:
             keep = Path(tmp_name)
-            runner.run_once(scenario.load(SCENARIO), FixtureBackend(), config, keep=keep)
+            r = runner.run_once(scenario.load(SCENARIO), FixtureBackend(), config, keep=keep)
+            failed = [c.id for c in r.checks if not c.ok]
+            want = [] if variant is None else ["drift-resolved-in-its-first-run"]
+            if r.status != "PASSED" or failed != want:
+                raise SystemExit(f"{name}: scenario {SCENARIO} gave {r.status} with failed checks {failed}, "
+                                 f"not the {'success' if variant is None else 'path failure'} this trace stands for")
             steps = [json.loads(line) for f in sorted(keep.rglob("*.jsonl"))
                      for line in f.read_text(encoding="utf-8").splitlines() if line.strip()]
         steps.sort(key=lambda s: (s["timestamp"], int(s["run_id"].split("-")[1]) if s["run_id"].startswith("job-")

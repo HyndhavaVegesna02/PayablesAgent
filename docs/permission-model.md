@@ -73,6 +73,7 @@ checks that a helper gets 403 on every owner-only route.
 | GET | `/attention` | owner |
 | POST | `/candidates/{candidate_id}/confirm` | owner |
 | POST | `/candidates/{candidate_id}/reject` | owner |
+| POST | `/demo/time` | owner (demo mode only: registered when DEMO_NOW is set) |
 | POST | `/documents/{document_id}/unlock` | owner |
 | POST | `/entries` | owner, helper |
 | GET | `/login` | anyone (no login) |
@@ -92,7 +93,7 @@ checks that a helper gets 403 on every owner-only route.
 
 | Rule | Enforced by | Tested by |
 | --- | --- | --- |
-| Only the writer writes ledger tables | an AST/regex scan of `app`, `fixtures` and `evals` | `tests/test_ledger_write_guard.py` |
+| Only the writer writes ledger tables | an AST/regex scan of `app`, `fixtures` and `evals`; one exemption, evals/bare.py, the ablation's harness without a writer, on its own scratch database | `tests/test_ledger_write_guard.py` |
 | The writer refuses `agent:*` actors | `app/ledger/writer.py`, before any SQL | `tests/test_ledger_writer.py` |
 | The agent can't import the writer, the web app or the pipeline | import-linter contract | `make test` (lint-imports) |
 | The AI and the agent never reach owner email | import-linter contract | `make test` (lint-imports) |

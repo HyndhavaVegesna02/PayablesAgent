@@ -34,16 +34,23 @@ def routes_table() -> str:
     from app.config import Settings
     from app.main import create_app
 
-    with tempfile.TemporaryDirectory(prefix="make-docs-") as tmp:
-        settings = Settings(_env_file=None, session_secret="docs-only", database_path=str(Path(tmp) / "x.db"),
-                            data_dir=tmp)
-        app = create_app(settings)
-    rows = []
-    for route in _api_routes(app.routes):
-        roles = [d.call.roles for d in route.dependant.dependencies if hasattr(d.call, "roles")]
-        who = ", ".join(roles[0]) if roles else "anyone (no login)"
-        for method in sorted(route.methods - {"HEAD"}):
-            rows.append((route.path, method, who))
+    def table(demo_now: str) -> dict[tuple[str, str], str]:
+        with tempfile.TemporaryDirectory(prefix="make-docs-") as tmp:
+            settings = Settings(_env_file=None, session_secret="docs-only", database_path=str(Path(tmp) / "x.db"),
+                                data_dir=tmp, demo_now=demo_now)
+            app = create_app(settings)
+        found = {}
+        for route in _api_routes(app.routes):
+            roles = [d.call.roles for d in route.dependant.dependencies if hasattr(d.call, "roles")]
+            for method in sorted(route.methods - {"HEAD"}):
+                found[(route.path, method)] = ", ".join(roles[0]) if roles else "anyone (no login)"
+        return found
+
+    always = table("")
+    in_demo = table("2026-10-12T09:00:00+05:30")
+    rows = [(p, m, w) for (p, m), w in always.items()]
+    rows += [(p, m, f"{w} (demo mode only: registered when DEMO_NOW is set)") for (p, m), w in in_demo.items()
+             if (p, m) not in always]
     lines = [ROUTES_BEGIN, "| Method | Route | Who may call it |", "| --- | --- | --- |"]
     lines += [f"| {m} | `{p}` | {w} |" for p, m, w in sorted(rows)]
     lines.append(ROUTES_END)

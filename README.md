@@ -89,7 +89,8 @@ Works from Monday 12 October 2026, with no Gemini and no network.
    recognised as a duplicate.
 3. **`make demo-time T=2026-10-13T23:00:00+05:30`.** On Tuesday, Kaveri
    Traders' payment arrives and matches what they owed. Ashirwad emails invoice
-   AP/2610/131, which waits on *Needs attention* for you to confirm. The
+   AP/2610/131, which waits on *Needs attention*: confirm it. Its bank details
+   (the account ending 4410) become Ashirwad's details on record. The
    bank's statement arrives locked. *Needs attention* asks for its password,
    which is `SPW-4821-oct` for this fictional statement. It's used once and
    never stored. After that, the statement's rows are read and checked against
@@ -98,8 +99,8 @@ Works from Monday 12 October 2026, with no Gemini and no network.
    returns Monday's ₹1,80,000 payment. The bill is reopened, the plan is
    updated, and an owner alert is queued. Ashirwad also emails invoice
    AP/2610/140, which gives new bank details and tells the reader to approve
-   them. The details on record don't change: the new ones are flagged, and
-   only you can accept them.
+   them. The details on record (from AP/2610/131) don't change: the new ones
+   are flagged as a change, and only you can accept them.
 5. **`make demo-time T=2026-10-15T23:00:00+05:30`.** On Thursday a debit alert
    shows an available balance below what the ledger calculates. The reconciler
    waits for the 23:00 recheck. When the gap is still there, the account is
@@ -161,7 +162,9 @@ backs off on rate limits. Reports go to `docs/evals/<date>-<mode>-<label>/`.
 `app/validate` holds the rule checks for Indian business finance. They are pure
 functions over integer paise: no I/O, no clock, no database, and nothing from
 this app except `app.domain` (an import-linter contract enforces that). Another
-project can lift the package with `app/domain/money.py` and use it as is.
+project can lift the package with `app/domain/money.py`, `time.py` and `names.py` (all three use the
+standard library only) and use it as is. `tests/test_evidence_docs.py` checks that list against the
+package's imports.
 
 - GSTIN format and its mod-36 check character
 - Invoice arithmetic (items + CGST/SGST/IGST + an explicit round-off of at most ₹1)
@@ -205,7 +208,7 @@ More detail on each module is in [app/validate/README.md](app/validate/README.md
   stay CHECKING. The planner keeps using the lower balance, so the plan stays
   safe, but nobody is asked. The fix (a reaper for dead agent jobs) is in the
   backlog.
-- **The voice-note fixture is synthetic speech.** `fixtures/uploads/voice-note-sharma.wav`
+- **The live voice-note fixture is synthetic speech.** `fixtures/uploads/voice-note-sharma.wav`
   was made with Windows' built-in English voice (`scripts/make_voice_fixture.ps1`),
   so the Hindi words have English phonetics. In fixture mode its reply is
   canned. Whether Gemini can transcribe it is shown only by a live run. **If
@@ -220,6 +223,10 @@ More detail on each module is in [app/validate/README.md](app/validate/README.md
   paths, not the model. In the ablation, the bare harness and the no-planner
   knock-out need a live model to mean anything, so their fixture rows are
   marked *mechanics only*.
+- **A vendor's first bank details are recorded without a flag (CHG-029).**
+  Only a change from details on record is flagged. A fake invoice confirmed
+  before any real one from that vendor would set its account; see
+  [docs/threat-model.md](docs/threat-model.md).
 - **A statutory payment always needs the owner to link it (CHG-028).** A PF,
   ESI or GST bill has no vendor name for its challan debit to match, so each
   one goes to *Needs attention* as "which bill did this debit pay?". The

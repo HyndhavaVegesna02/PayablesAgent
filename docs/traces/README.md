@@ -3,9 +3,12 @@
 Both traces are one run of eval scenario 7, *Missed alert causes drift*
 (`evals/scenarios/07-missed-alert-causes-drift/`), on the fixture AI.
 `scripts/make_traces.py` writes them, and `tests/test_evidence_docs.py`
-regenerates them at every commit and fails if they differ. So the line numbers
-below hold for the code they sit beside. On the fixture AI the token counts and
-costs are zero; a live run writes the same fields with real values.
+regenerates them at every commit and fails if they differ, so the files are
+always what the code writes today. The test also pins the control-point lines
+this walkthrough leans on (19, 32 and 45 in the success trace; 18, 19, 20 and
+36 in the failure trace). On the fixture AI the token counts and costs are zero,
+and the `model` field names the configured model, not one that was called; a
+live run writes the same fields with real values.
 
 | File | Config | What it shows |
 | --- | --- | --- |
@@ -107,6 +110,7 @@ Lines 1–17 are the same as in success.jsonl. Then:
 The end result is the same: the missed debit is in the ledger and the gap is
 closed. The path is worse: the drift case needed a second run at high thinking
 to finish work that medium thinking does in one. The eval suite scores the
-path as well as the result: scenario 7's check `drift-resolved-in-its-first-run`
-fails here. That makes this config the regression the suite catches
+path as well as the result: scenario 7's trajectory check
+`drift-resolved-in-its-first-run` fails here, in the report's Path column, while
+the end result still counts as a success. That makes this config the regression the suite catches
 ([docs/evals/README.md](../evals/README.md)).

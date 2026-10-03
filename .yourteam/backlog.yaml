@@ -1,6 +1,6 @@
 # Every change, ever. Entries are never deleted -- done and rejected are history.
 # Status is a field, never a folder.
-next_id: 29
+next_id: 30
 changes:
   - id: CHG-001
     title: Repo skeleton — layout, config, schema, Clock, tracer, job table, CI
@@ -442,6 +442,16 @@ changes:
     file: docs/changes/CHG-028-statutory-debit-matching.md
     status: draft
     priority: 28
+    type: defect
+    lane: null
+    expected_paths: []
+    depends_on: null
+    batch: null
+  - id: CHG-029
+    title: A vendor's first bank details are recorded without a flag (only a change from details on record is)
+    file: docs/changes/CHG-029-first-bank-details-unflagged.md
+    status: draft
+    priority: 29
     type: defect
     lane: null
     expected_paths: []

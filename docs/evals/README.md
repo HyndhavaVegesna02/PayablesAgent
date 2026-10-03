@@ -22,7 +22,7 @@ value, the actual one, PASS or FAIL. The reports also say why each expected valu
 
 | Report | What it is |
 |---|---|
-| `workflow-A-<date>.md` | Run A, the worked example: bills by email (with a PDF), photo, voice note and typed entry; the owner confirms, approves, and asks Nandi Foods to pay early; every debit and credit matches; the TDD's figures at each step |
+| `workflow-A-<date>.md` | Run A, the worked example: bills by email (with a PDF), photo, voice note and typed entry; the owner confirms, approves, and asks Nandi Foods to pay early; every debit and credit matches (the two challan debits after the owner links them, CHG-028); the TDD's figures at each step |
 | `workflow-B-<date>.md` | Run B, the bad fortnight: a duplicate invoice, a locked statement, a returned payment, a late alert behind a drift the agent recovers from the mailbox, unexplained debits, a fake bank change, a hidden instruction, a split and an authorised breach |
 
 ## The regression, told straight (D23)
@@ -30,11 +30,18 @@ value, the actual one, PASS or FAIL. The reports also say why each expected valu
 The step-cap regression first passed every end-to-end check: with 2 steps the
 drift case still resolves, because the run at medium runs out and the rerun at
 high thinking finishes the job. The end result was right and the path was
-worse, at a higher thinking level than the work needs. Scenario 7 now also
+worse, at a higher thinking level than the work needs. So scenario 7 also
 checks its path: the drift case must be resolved in its first run, at medium
-(`drift-resolved-in-its-first-run`, CHG-010a S7). The regression fails that
-check. `tests/test_evals.py` keeps both facts: the regression fails the path
-check and still meets the outcome.
+(`drift-resolved-in-its-first-run`, CHG-010a S7). That check is a *trajectory*
+check. It is reported in its own Path column and doesn't decide a run's
+success (review round 1). The regression report therefore shows scenario 7
+succeeding on its end result and failing on its path in every run.
+`tests/test_evals.py` keeps both facts.
+
+Two other checks pin the fixture AI's own scripted path (`fixtures_only`): the
+agent trying the injected tool in scenario 10, and the medium-then-high run in
+scenario 8. A live run leaves them out, since a correct live model may take
+another path.
 
 `evals/variants/prompt-degraded.yaml` swaps a "simplified" bank-alert prompt in
 for a suite. Canned replies ignore prompts, so only a live run can say whether

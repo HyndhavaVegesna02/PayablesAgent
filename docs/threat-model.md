@@ -29,7 +29,7 @@ visible.
 
 | Threat | Defence in code | Shown by |
 | --- | --- | --- |
-| A fake vendor email changes bank details | The new details are flagged `change_pending`; the details on record stay as they are; only the owner can accept the change; until then, approving a payment to that vendor needs the owner's tick that they checked it | eval scenario 9; `tests/test_bank_change.py` |
+| A fake vendor email changes bank details | Once a vendor has bank details on record (from the first bill the owner confirmed), new details are flagged `change_pending`; the details on record stay as they are; only the owner can accept the change; until then, approving a payment to that vendor needs the owner's tick that they checked it | eval scenario 9; `tests/test_bank_change.py` |
 | An email tells the AI to mark a bill urgent, pay it, or move its date | The planner and the owner set priority and dates. The AI has no tool that changes them, and the writer refuses every `agent:*` actor | eval scenario 10; `tests/test_phase7_exit.py::test_ac4_...` (below) |
 | Injected text tries to reach the owner's screen as markup | All AI text is shown as escaped plain text, under "What the assistant found" with the note "The assistant's own words. They change nothing" | `test_ac4_...`: `<b>urgent</b>` is shown as text |
 | A forged or duplicate invoice | Duplicate lookup, GSTIN check digit, invoice arithmetic (`app/validate`); the owner confirms every new bill | eval scenario 5; the ablation's no_rule_checks knock-out turns one invoice into two bills |
@@ -101,6 +101,11 @@ applied. For the run counts, see the report in
   a drift case can stay CHECKING. The owner still sees the account as being
   checked, and the planner keeps using the lower balance. Fix in the backlog: a
   reaper for dead run_case jobs.
+- **A vendor's first bank details are not flagged (CHG-029).** Details are
+  recorded from the first bill the owner confirms for a vendor, and only a
+  change from details on record is flagged. A fake invoice confirmed before any
+  real one would set the attacker's account as the vendor's first details. The
+  owner still confirms that bill, and its bank details are shown on the entry.
 - **The final answer's evidence rule checks provenance, not truth** (the
   attack above). A summary is the model's words, and the page says so.
 - **Gmail isn't connected.** Mail comes from a folder of `.eml` files. The
