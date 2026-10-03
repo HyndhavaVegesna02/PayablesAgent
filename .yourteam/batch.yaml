@@ -13,8 +13,8 @@ changes:
     blocked_question: null
     slices:
       - {id: S1, title: "pure validators, GSTIN, invoice and statement arithmetic", start_commit: 5e8b6ad, end_commit: 2804f3d, board: done, prepatch: "yt_prepatch --since 5e8b6ad --to 2804f3d: PASS (the new test modules fail to import at the start tree; the boundary scan would also fail there: validate imported sqlite3 and app.clock)"}
-      - {id: S2, title: "multimodal AI input", start_commit: 2804f3d, board: in_progress}
-      - {id: S3, title: "invoices by email and upload, cross-source duplicates", start_commit: null, board: todo}
+      - {id: S2, title: "multimodal AI input", start_commit: 6ca7fa3, end_commit: e8f47ed, board: done, prepatch: "yt_prepatch --since 6ca7fa3: PASS (test_ai_multimodal fails to import Part at the start tree). Masked edits, refactor only: fake_ai and test_demo_mode follow the replies file move and pass before and after"}
+      - {id: S3, title: "invoices by email and upload, cross-source duplicates", start_commit: e8f47ed, board: in_progress}
       - {id: S4, title: "vendor bank change (D20)", start_commit: null, board: todo}
       - {id: S5, title: "PDF unlock and statements", start_commit: null, board: todo}
       - {id: S6, title: "voice notes", start_commit: null, board: todo}
@@ -22,5 +22,6 @@ changes:
       - {id: S8, title: "fixtures and the Phase 6 exit test", start_commit: null, board: todo}
     gate_evidence:
       - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 63 files, 171 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 6 kept, 0 broken. | Building cashflow-agent @ file:///C:/Hyn/PayablesAgent | Built cashflow-agent @ file:///C:/Hyn/PayablesAgent | Uninstalled 1 package in 3ms | Installed 1 package in 6ms", commit: 2804f3d, at: 2026-10-03T08:31:12+00:00}
+      - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 63 files, 171 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 6 kept, 0 broken. | Uninstalled 1 package in 1ms | Installed 1 package in 32ms", commit: e8f47ed, at: 2026-10-03T08:37:48+00:00}
     prepatch: null
     notes_resolved: false
