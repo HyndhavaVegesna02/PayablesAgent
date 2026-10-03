@@ -177,11 +177,11 @@ changes:
   - id: CHG-007
     title: Bills and uploads — photos, PDF unlock, voice notes, duplicates
     file: docs/changes/CHG-007-bills-uploads.md
-    status: draft
+    status: ready
     priority: 7
     type: feature
-    lane: null
-    expected_paths: []
+    lane: sliced
+    expected_paths: [app/validate/, app/domain/, app/clock.py, app/ai/, app/ingest/pipeline.py, app/db/read.py, app/ledger/writer.py, app/web/, fixtures/, scripts/make_fixtures.py, pyproject.toml, tests/]
     depends_on: CHG-004
     batch: 5
   - id: CHG-008

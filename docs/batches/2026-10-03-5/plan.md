@@ -168,3 +168,15 @@ Each slice ends green, committed and demonstrable. They run in order: S2 depends
 **Risks:**
 - Multimodal prompts unproven on real Gemini (Q7).
 - Generated fixture images are clean, so a real handwritten photo is harder. The eval set in Phase 9 covers that.
+
+## PO decisions (2026-10-03; plan 85d7466 approved by payablesagent-ac)
+- **Q1–Q8:** all defaults accepted, with two refinements.
+- **D19 (refines Q3): the invoice round-off.**
+  - Invoice arithmetic stays exact to the paise, with one allowance: an explicit "Round off" line printed in the document, of at most ₹1.00 (100 paise) either way.
+  - That line counts as a line item, so the sum is still exact. Any other mismatch fails.
+  - Tests: a ±₹0.40 round-off passes; a ₹1.50 round-off fails; an implicit mismatch with no round-off line fails.
+- **D20 (refines Q4): a pending bank change can't be missed.**
+  - The planner doesn't change.
+  - Every bill to a vendor whose bank details change is pending shows "Vendor bank details change pending: verify before paying", on This week and on the approve form.
+  - The approve route requires an explicit acknowledgement checkbox for those bills. Without it, the approval is refused.
+  - This is the Part 1 threat-table defence, made concrete, and it is tested.
