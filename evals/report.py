@@ -30,7 +30,9 @@ def git_commit() -> str:
     try:
         head = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True, text=True,
                               check=True).stdout.strip()
-        dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=normal"], cwd=ROOT,
+        # Untracked files count (a new scenario or variant), except the reports this writes.
+        dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=normal", "--", ".",
+                                ":(exclude)docs/evals"], cwd=ROOT,
                                capture_output=True, text=True, check=True).stdout.strip()
         return head + ("+uncommitted" if dirty else "")
     except (OSError, subprocess.CalledProcessError):
