@@ -1,6 +1,6 @@
 # Active batch. status: none means no batch is running.
 batch: 5
-status: review      # none | active | review | closed | aborted
+status: closed      # none | active | review | closed | aborted
 goal: "TDD Phase 6: bills arrive by email, photo, password-locked PDF or Hinglish voice note; every rule check runs in pure code; the owner confirms each into one payable, even across sources (CHG-007, D19, D20)."
 branch: batch-5
 start_tag: null
@@ -8,7 +8,7 @@ started: "2026-10-03T14:10:00+05:30"
 changes:
   - id: CHG-007
     lane: sliced
-    board: review
+    board: done
     start_commit: 5e8b6ad
     blocked_question: null
     slices:

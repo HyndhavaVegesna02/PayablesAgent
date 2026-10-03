@@ -115,3 +115,9 @@ Every voice bill still waits for the owner, with the transcript beside it.
 
 - **856eb9f** and **a57ee6e:** gates recorded under CHG-007, green, 1040 passed.
 - **Prepatch:** passes for each fix commit; the new tests fail at the commit before.
+
+## PO verdict
+
+ACCEPT for CHG-007 (2026-10-03, payablesagent-ac). The PO verified 321f1cd independently: 1040 tests pass and all 6 contracts are kept.
+
+All seven deviations are accepted as written. On #4, recording a vendor's first bank details as verified is accepted only because the confirm card shows those details to the owner. The card test (`test_m3_the_confirm_card_shows_the_bank_details_the_bill_printed`) must stay.

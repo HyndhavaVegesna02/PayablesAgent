@@ -177,7 +177,7 @@ changes:
   - id: CHG-007
     title: Bills and uploads — photos, PDF unlock, voice notes, duplicates
     file: docs/changes/CHG-007-bills-uploads.md
-    status: ready
+    status: done
     priority: 7
     type: feature
     lane: sliced
