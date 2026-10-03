@@ -247,3 +247,33 @@ def test_r2_the_transcript_match_ignores_punctuation():
                                             "amount_spoken": "ek lakh pachaas hazaar"})
     checks, rec, _ = check_voice(note, None, lambda key: None)
     assert checks["amount"] == "passed" and rec.record["amount_paise"] == 15_000_000
+
+
+
+# --- round 3 ------------------------------------------------------------------------------
+
+
+def test_r3_a_bill_confirmed_for_a_vendor_with_no_details_still_withdraws_the_other_question(web):
+    env, _ = web
+    deliver_bill(env, BILL)  # read as Ashirwad, whose details differ: Ashirwad pending, asked
+    cid = json.loads(bank_question(env)["choices_json"])["candidate_id"]
+    values = {**prefill(candidate(env, cid), []), "party": "Brand New Paper Mart"}  # created on confirm
+    actions.confirm_candidate(env.conn, OWNER, cid, values, clock=env.clock)
+    a = ashirwad(env)
+    assert (a["bank_account_mask"], a["bank_ifsc"], a["bank_status"]) == (*ON_RECORD, "verified")
+    assert env.conn.execute("SELECT COUNT(*) FROM owner_question WHERE kind = 'approve_bank_change' "
+                            "AND status = 'OPEN'").fetchone()[0] == 0
+    new = env.conn.execute("SELECT bank_account_mask, bank_status FROM party WHERE name = 'Brand New Paper Mart'"
+                           ).fetchone()
+    assert tuple(new) == ("XXXX9921", "verified")  # its first details, shown on the card the owner confirmed
+
+
+def test_r3_a_part_of_a_spoken_figure_is_not_the_amount_said():
+    from app.ai.extract import VoiceBillExtract
+    from app.validate.voice import check_voice
+    from tests.test_voice import NOTE
+
+    note = VoiceBillExtract.model_validate({**NOTE, "transcript": "bill hai 1,50,000 ka",
+                                            "amount_spoken": "50,000"})
+    checks, rec, _ = check_voice(note, None, lambda key: None)
+    assert rec is None and checks["amount"].startswith("failed")

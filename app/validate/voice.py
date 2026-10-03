@@ -6,6 +6,7 @@ beside the form (Q8). Pure, like every check here."""
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from pydantic import BaseModel
@@ -17,8 +18,11 @@ from app.validate.invoice import ExistingInvoice, InvoiceKey, InvoiceRecord
 
 
 def _words(text: str) -> str:
-    """Lower case, punctuation and spacing ignored: "Rs. 1,50,000" and "rs 150000" hold the same words."""
-    return " ".join("".join(ch if ch.isalnum() else " " for ch in text.lower()).split()).replace(" ", "")
+    """The words, lower case, with digit groups joined and other punctuation
+    dropped, padded so a match falls on word boundaries: "Rs. 1,50,000" and
+    "rs 150000" hold the same words, and "50,000" is not inside "1,50,000"."""
+    joined = re.sub(r"(?<=\d)[,.](?=\d)", "", text.lower())
+    return " " + " ".join("".join(ch if ch.isalnum() else " " for ch in joined).split()) + " "
 
 
 def check_voice(
