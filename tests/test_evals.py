@@ -425,6 +425,7 @@ def test_the_baseline_and_the_regression_reports_are_kept_and_say_where_they_cam
         assert rep["meta"]["runs_per_scenario"] == 5 and rep["totals"]["scenarios"] == 11
     assert base["totals"]["passed"] == base["totals"]["runs"]
     assert bad["totals"]["passed"] == bad["totals"]["runs"]  # every end result held
+    assert bad["totals"]["path"] == [10, 15] and base["totals"]["path"] == [15, 15]  # scenarios 7, 8, 10 x 5
     path_failed = {r["scenario"]: r["path"] for r in bad["scenarios"] if r["path"][0] < r["path"][1]}
     assert path_failed == {"07-missed-alert-causes-drift": [0, 5]}  # the path check caught it, every run
     assert all(r["path"][0] == r["path"][1] for r in base["scenarios"])

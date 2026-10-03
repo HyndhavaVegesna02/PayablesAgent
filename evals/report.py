@@ -85,6 +85,7 @@ def build(meta: dict[str, Any], scenarios: list[Scenario], results: list[RunResu
             "passed": sum(r.status == "PASSED" for r in results), "errored": sum(r.status == "ERRORED" for r in results),
             "success_rate": round(sum(r.status == "PASSED" for r in scored) / len(scored), 3) if scored else None,
             "scenarios_all_runs_passed": sum(r["passed"] == r["runs"] for r in rows),
+            "path": [sum(r.path_ok is True for r in scored), sum(r.path_ok is not None for r in scored)],
             "ai_calls": sum(r.metrics.get("ai_calls", 0) for r in results),
             "cost_micro_usd": sum(r.metrics.get("cost_micro_usd", 0) for r in results),
         },
@@ -119,7 +120,8 @@ def markdown(report: dict[str, Any]) -> str:
     out += [
         f"**Totals:** {t['passed']} of {t['runs']} runs passed ({_pct(t['success_rate'])} of the runs that "
         f"finished), {t['errored']} errored; {t['scenarios_all_runs_passed']} of {t['scenarios']} scenarios passed "
-        f"every run; {t['ai_calls']} model calls; {t['cost_micro_usd']} micro-USD.",
+        f"every run; path checks held in {t['path'][0]} of the {t['path'][1]} runs that have them; "
+        f"{t['ai_calls']} model calls; {t['cost_micro_usd']} micro-USD.",
         "",
         "## Scenarios",
         "",
