@@ -139,7 +139,8 @@ def test_the_report_gives_rate_spread_worst_run_and_keeps_errored_runs_apart():
             "stopped_because": "budget: 600 calls used"}
     md = report.markdown(report.build(meta, [s], runs))
     assert md.startswith("# Eval report: t") and "**ABORTED**: budget: 600 calls used" in md
-    assert "| Bank debit alert for a planned payment | 2/3 (67%), 1 errored | 50% – 100% | run 2: reconcile, 1 failed |" in md
+    assert ("| Bank debit alert for a planned payment | 2/3 (67%), 1 errored | no path checks | 50% – 100% "
+            "| run 2: reconcile, 1 failed |") in md
 
 
 # --- S5: the live budget guard (with a fake backend: nothing here calls Gemini) ------------------
@@ -268,8 +269,22 @@ def outcome(r, oid):
 def test_without_rule_checks_the_same_invoice_becomes_two_bills():
     s = scenario.load("05-same-invoice-by-email-and-photo")
     r, seams = ablation.run_harness("no_rule_checks", s, FixtureBackend(), CONFIG, 1)
-    assert "app.ingest.pipeline.invoice_on_record" in seams
+    assert "app.ingest.pipeline.check_invoice" in seams
     assert not outcome(r, "one-payable-not-two") and not r.outcome_ok
+
+
+def test_no_rule_checks_leaves_the_dedup_key_lookup_alone_and_fails_loudly_on_a_renamed_seam(monkeypatch):
+    import app.ingest.pipeline as pipeline
+    import app.validate.statement as statement
+
+    real = pipeline.bank_txn_with_key
+    with knockouts.applied("no_rule_checks", knockouts.Binding()) as seams:
+        assert pipeline.bank_txn_with_key is real  # keeping keys unique is not a rule check
+        assert not any(seam.endswith("_with_key") or seam.endswith("invoice_on_record") for seam in seams)
+    monkeypatch.delattr(statement, "check_statement_arithmetic")
+    with pytest.raises(AttributeError, match="no longer exists"), knockouts.applied("no_rule_checks",
+                                                                                   knockouts.Binding()):
+        pass
 
 
 def test_without_the_drift_rule_the_plan_spends_money_that_may_not_be_there():
@@ -373,9 +388,13 @@ def test_the_suite_catches_the_max_steps_regression():
     config, digest = runner.load_config(VARIANTS / "regress-max-steps.yaml")
     assert config.escalation.max_steps == 2 and digest != runner.load_config()[1]
     r = runner.run_once(scenario.load("07-missed-alert-causes-drift"), FixtureBackend(), config)
-    assert r.status == "FAILED" and r.component == "agent"
-    assert [(c.id, c.got) for c in r.checks if not c.ok] == [("drift-resolved-in-its-first-run", "high max_steps")]
-    assert r.outcome_ok  # the end result still holds: the regression is in the path, a rerun at high thinking
+    assert r.status == "PASSED"  # the end result still holds: the regression is in the path
+    assert r.path_ok is False
+    assert [(c.id, c.level, c.got) for c in r.checks if not c.ok] == [
+        ("drift-resolved-in-its-first-run", "trajectory", "high max_steps")]  # a rerun at high thinking
+    assert r.outcome_ok
+    base = runner.run_once(scenario.load("07-missed-alert-causes-drift"), FixtureBackend(), runner.load_config()[0])
+    assert base.status == "PASSED" and base.path_ok is True
 
 
 def test_a_prompt_variant_swaps_its_file_for_the_suite_only():
@@ -405,8 +424,49 @@ def test_the_baseline_and_the_regression_reports_are_kept_and_say_where_they_cam
         assert rep["meta"]["commit"] != "unknown" and "+uncommitted" not in rep["meta"]["commit"]
         assert rep["meta"]["runs_per_scenario"] == 5 and rep["totals"]["scenarios"] == 11
     assert base["totals"]["passed"] == base["totals"]["runs"]
-    failed = {r["scenario"]: r["worst"]["component"] for r in bad["scenarios"] if r["passed"] < r["runs"]}
-    assert failed == {"07-missed-alert-causes-drift": "agent"}
+    assert bad["totals"]["passed"] == bad["totals"]["runs"]  # every end result held
+    path_failed = {r["scenario"]: r["path"] for r in bad["scenarios"] if r["path"][0] < r["path"][1]}
+    assert path_failed == {"07-missed-alert-causes-drift": [0, 5]}  # the path check caught it, every run
+    assert all(r["path"][0] == r["path"][1] for r in base["scenarios"])
     assert bad["meta"]["variant"] == "evals/variants/regress-max-steps.yaml"
     ablation_md = (folder / "2026-10-03-fixtures-ablation" / "report.md").read_text(encoding="utf-8")
     assert "(D24)" in ablation_md and "+uncommitted" not in ablation_md
+
+
+# --- review round 1: levels -------------------------------------------------------------------------
+
+
+def test_a_trajectory_check_is_reported_apart_and_does_not_decide_success():
+    s7 = scenario.load("07-missed-alert-causes-drift")
+    wrong = [e.model_copy(update={"equals": "high max_steps"}) if e.id == "drift-resolved-in-its-first-run" else e
+             for e in s7.expect]
+    r = run(s7.model_copy(update={"expect": wrong}))
+    assert r.status == "PASSED" and r.path_ok is False and r.met == 1.0
+    built = report.build({"label": "t", "mode": "fixtures", "model": "m", "prompt_version": "v",
+                          "config_sha256": "0" * 64, "commit": "c", "date": "d", "runs_per_scenario": 1,
+                          "status": "COMPLETE"}, [s7], [r])
+    assert built["scenarios"][0]["path"] == [0, 1] and built["scenarios"][0]["success_rate"] == 1.0
+    md = report.markdown(built)
+    assert "| Path |" in md and "## Path failures" in md and "`drift-resolved-in-its-first-run`" in md
+
+
+def test_a_live_run_leaves_out_the_checks_that_pin_the_fixture_ais_own_path():
+    pinned = {(name, e.id) for name in scenario.names() for e in scenario.load(name).expect if e.fixtures_only}
+    assert pinned == {("08-drift-with-no-explanation", "agent-tried-medium-then-high"),
+                      ("10-hidden-instruction-in-a-vendor-email", "agent-read-the-attack-and-was-refused")}
+    s10 = scenario.load("10-hidden-instruction-in-a-vendor-email")
+    assert "agent-read-the-attack-and-was-refused" in {e.id for e in runner.scored_expectations(s10, live=False)}
+    assert "agent-read-the-attack-and-was-refused" not in {e.id for e in runner.scored_expectations(s10, live=True)}
+    r = run(s10, live=True)
+    assert r.status == "PASSED" and "agent-read-the-attack-and-was-refused" not in {c.id for c in r.checks}
+
+
+def test_no_component_earned_the_most_when_no_knock_out_scored_below_the_full_system():
+    s = scenario.load("08-drift-with-no-explanation")
+    full, _ = ablation.run_harness("full", s, FixtureBackend(), CONFIG, 1)
+    worse = runner.RunResult(s.name, 1, "FAILED", outcomes=[("x", False, None)])
+    meta = {"label": "t", "mode": "fixtures", "model": "m", "prompt_version": "v", "config_sha256": "0" * 64,
+            "commit": "c", "date": "d", "runs_per_scenario": 1, "status": "COMPLETE"}
+    built = ablation.build(meta, ["full", "no_escalation"], [s], {"full": [worse], "no_escalation": [full]}, {})
+    assert built["drops"] == {"no_escalation": -1.0} and built["earned_most"] == []  # better, not worse
+    assert "No knock-out compared here lowered outcome success." in ablation.markdown(built, [s])

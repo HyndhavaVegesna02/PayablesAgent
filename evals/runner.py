@@ -19,7 +19,7 @@ import shutil
 import tempfile
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -77,6 +77,7 @@ class Check:
     ok: bool
     got: Any
     want: Any
+    level: str = "end_to_end"
 
 
 @dataclass
@@ -96,31 +97,46 @@ class RunResult:
 
     @property
     def met(self) -> float:
-        return sum(c.ok for c in self.checks) / len(self.checks) if self.checks else 0.0
+        """The share of end-to-end checks met (the spread column)."""
+        e2e = [c for c in self.checks if c.level == "end_to_end"]
+        return sum(c.ok for c in e2e) / len(e2e) if e2e else 0.0
+
+    @property
+    def path_ok(self) -> bool | None:
+        """Whether every trajectory check held; None for a scenario with none."""
+        path = [c for c in self.checks if c.level == "trajectory"]
+        return all(c.ok for c in path) if path else None
 
 
 # --- the worker -------------------------------------------------------------------------
 
 
-def drain(env: RunEnv) -> None:
+def drain_jobs(conn, handlers: dict, *, clock, settings: Settings, app_config: AppConfig,
+               should_stop: Callable[[], str | None], wait: Callable[[timedelta], None]) -> None:
     """Runs due jobs until none is due. A job waiting to retry (it failed, and
-    its retry is due within the hour) is waited for by moving the clock: the
-    run's fake time, never real time."""
+    its retry is due within the hour) is waited for by moving the run's own
+    clock with `wait`: fake time, never real time. Shared by the eval runner,
+    the bare harness's caller and the full-workflow runs."""
     for _ in range(MAX_JOBS):
-        reason = env.should_stop()
+        reason = should_stop()
         if reason:
             raise StopRun(reason)
-        if process_one(env.conn, env.handlers, clock=env.clock, settings=env.settings, app_config=env.app_config):
+        if process_one(conn, handlers, clock=clock, settings=settings, app_config=app_config):
             continue
-        row = env.conn.execute(
+        row = conn.execute(
             "SELECT MIN(run_after) FROM job WHERE status = 'queued' AND attempts > 0 AND kind IN (%s)"
-            % ",".join("?" * len(env.handlers)), sorted(env.handlers)).fetchone()
+            % ",".join("?" * len(handlers)), sorted(handlers)).fetchone()
         retry = datetime.fromisoformat(row[0]) if row[0] else None
-        if retry is None or (retry - env.clock.now()).total_seconds() > MAX_RETRY_WAIT_S:
+        if retry is None or (retry - clock.now()).total_seconds() > MAX_RETRY_WAIT_S:
             return
-        if retry > env.clock.now():
-            env.clock.advance(retry - env.clock.now())
-    raise RuntimeError(f"more than {MAX_JOBS} jobs in one drain: the scenario is looping")
+        if retry > clock.now():
+            wait(retry - clock.now())
+    raise RuntimeError(f"more than {MAX_JOBS} jobs in one drain: the run is looping")
+
+
+def drain(env: RunEnv) -> None:
+    drain_jobs(env.conn, env.handlers, clock=env.clock, settings=env.settings, app_config=env.app_config,
+               should_stop=env.should_stop, wait=env.clock.advance)
 
 
 def _enqueue(env: RunEnv, kind: str, payload: dict | None = None) -> None:
@@ -132,11 +148,16 @@ def _enqueue(env: RunEnv, kind: str, payload: dict | None = None) -> None:
 # --- steps ---------------------------------------------------------------------------------
 
 
-def _find(env: RunEnv, name: str, folders: tuple[Path, ...]) -> Path:
-    for folder in (env.scenario.folder, *folders):
+def find_fixture(name: str, folders: tuple[Path | None, ...]) -> Path:
+    """The first folder's file of that name; FileNotFoundError if none has it."""
+    for folder in folders:
         if folder is not None and (folder / name).is_file():
             return folder / name
-    raise FileNotFoundError(f"{env.scenario.name}: no fixture named {name}")
+    raise FileNotFoundError(f"no fixture named {name} in {[str(f) for f in folders if f is not None]}")
+
+
+def _find(env: RunEnv, name: str, folders: tuple[Path, ...]) -> Path:
+    return find_fixture(name, (env.scenario.folder, *folders))
 
 
 def _at(env: RunEnv, when: str) -> None:
@@ -217,26 +238,38 @@ STEPS: dict[str, Callable[[RunEnv, Any], None]] = {
 def check(conn, e: Expectation) -> Check:
     rows = [list(r) for r in conn.execute(e.sql).fetchall()]
     if e.rows is not None:
-        return Check(e.id, e.component, rows == e.rows, rows, e.rows)
+        return Check(e.id, e.component, rows == e.rows, rows, e.rows, e.level)
     got = rows[0][0] if rows else None
-    return Check(e.id, e.component, got == e.equals, got, e.equals)
+    return Check(e.id, e.component, got == e.equals, got, e.equals, e.level)
+
+
+def scored_expectations(scenario: Scenario, *, live: bool) -> list[Expectation]:
+    """A live run leaves out the checks that pin the canned model's own path."""
+    return [e for e in scenario.expect if not (live and e.fixtures_only)]
 
 
 def first_failed_component(checks: list[Check]) -> str | None:
-    failed = {c.component for c in checks if not c.ok}
+    failed = {c.component for c in checks if not c.ok and c.level == "end_to_end"}
     return next((c for c in COMPONENTS if c in failed), None)
 
 
 # --- one run -----------------------------------------------------------------------------------
 
 
-def make_env(tmp: Path, scenario: Scenario, backend: Backend, app_config: AppConfig) -> RunEnv:
-    db = tmp / "eval.db"
+def fresh_world(db: Path, clock) -> Any:
+    """A new database: migrated and seeded with the worked example (make reseed).
+    Returns its write connection."""
     apply_migrations(db)
     conn = write_connection(db)
-    clock = FakeClock(START)
     seed(conn, clock)
     conn.commit()
+    return conn
+
+
+def make_env(tmp: Path, scenario: Scenario, backend: Backend, app_config: AppConfig) -> RunEnv:
+    db = tmp / "eval.db"
+    clock = FakeClock(START)
+    conn = fresh_world(db, clock)
     (tmp / "inbox").mkdir()
     settings = Settings(_env_file=None, database_path=str(db), data_dir=str(tmp / "files"),
                         trace_dir=str(tmp / "traces"), fernet_key=Fernet.generate_key().decode(),
@@ -248,7 +281,7 @@ def make_env(tmp: Path, scenario: Scenario, backend: Backend, app_config: AppCon
 def run_once(scenario: Scenario, backend: Backend, app_config: AppConfig, run: int = 1, *,
              should_stop: Callable[[], str | None] = never,
              inspect: Callable[[RunEnv], dict[str, Any]] | None = None, keep: Path | None = None,
-             setup: Callable[[RunEnv], None] | None = None) -> RunResult:
+             setup: Callable[[RunEnv], None] | None = None, live: bool = False) -> RunResult:
     """Plays the scenario once and checks it. `inspect` reads the finished run
     (its traces and jobs) before the run's files are removed; `keep` copies
     the run's traces there."""
@@ -263,14 +296,14 @@ def run_once(scenario: Scenario, backend: Backend, app_config: AppConfig, run: i
             for step in scenario.steps:
                 ((kind, arg),) = step.items()
                 STEPS[kind](env, arg)
-            result.checks = [check(env.conn, e) for e in scenario.expect]
-            if not all(c.ok for c in result.checks):
+            result.checks = [check(env.conn, e) for e in scored_expectations(scenario, live=live)]
+            if not all(c.ok for c in result.checks if c.level == "end_to_end"):
                 result.status, result.component = "FAILED", first_failed_component(result.checks)
         except StopRun as e:
             result.status, result.error = "ERRORED", str(e)
         except Exception as e:  # noqa: BLE001 - a crash is the system failing the scenario
             result.status, result.error, result.component = "FAILED", f"{type(e).__name__}: {e}", "crash"
-            result.checks = [check(env.conn, e2) for e2 in scenario.expect]
+            result.checks = [check(env.conn, e2) for e2 in scored_expectations(scenario, live=live)]
         try:
             if result.status != "ERRORED":
                 from evals import outcomes
@@ -348,7 +381,8 @@ def swapped_prompts(overrides: dict[str, Path]) -> Iterator[None]:
 
 def run_suite(scenarios: list[Scenario], backend_factory: Callable[[], Backend], config: AppConfig, runs: int, *,
               should_stop: Callable[[], str | None] = never, keep: Path | None = None,
-              progress: Callable[[RunResult], None] = lambda r: None) -> tuple[list[RunResult], str | None]:
+              progress: Callable[[RunResult], None] = lambda r: None,
+              live: bool = False) -> tuple[list[RunResult], str | None]:
     """Every scenario, `runs` times, one after another. Returns the results and,
     if the stop hook ended the suite early, why."""
     from evals import metrics
@@ -359,7 +393,8 @@ def run_suite(scenarios: list[Scenario], backend_factory: Callable[[], Backend],
             reason = should_stop()
             if reason:
                 return results, reason
-            r = run_once(s, backend_factory(), config, i, should_stop=should_stop, inspect=metrics.inspect, keep=keep)
+            r = run_once(s, backend_factory(), config, i, should_stop=should_stop, inspect=metrics.inspect, keep=keep,
+                         live=live)
             results.append(r)
             progress(r)
     return results, None
@@ -411,7 +446,8 @@ def main(argv: list[str] | None = None) -> int:
             keep=out_dir / "traces" if args.keep_traces else None,
             progress=lambda r: print(f"{r.status:8} {r.scenario} run {r.run}"
                                      + (f"  [{r.component}] {r.error or ''}" if r.component or r.error else ""),
-                                     flush=True))
+                                     flush=True),
+            live=args.ai == "live")
     meta = {"label": args.label, "mode": args.ai, "model": config.model.id, "prompt_version": config.prompts.version,
             "config_sha256": config_hash, "variant": args.config.as_posix() if args.config else None,
             "prompt_overrides": {k: v.relative_to(ROOT).as_posix() for k, v in overrides.items()} or None,

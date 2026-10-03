@@ -30,7 +30,7 @@ def git_commit() -> str:
     try:
         head = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True, text=True,
                               check=True).stdout.strip()
-        dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=ROOT,
+        dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=normal"], cwd=ROOT,
                                capture_output=True, text=True, check=True).stdout.strip()
         return head + ("+uncommitted" if dirty else "")
     except (OSError, subprocess.CalledProcessError):
@@ -55,11 +55,16 @@ def aggregate(scenario: Scenario, runs: list[RunResult]) -> dict[str, Any]:
         "runs": len(runs), "passed": len(passed), "failed": len(scored) - len(passed),
         "errored": len(runs) - len(scored),
         "success_rate": round(len(passed) / len(scored), 3) if scored else None,
+        # trajectory: runs whose path checks all held, of the runs that have any
+        "path": [sum(r.path_ok is True for r in scored), sum(r.path_ok is not None for r in scored)],
+        "path_failures": [{"run": r.run, "checks": [{"id": c.id, "got": c.got, "want": c.want} for c in r.checks
+                                                     if c.level == "trajectory" and not c.ok]}
+                          for r in scored if r.path_ok is False][:1],
         "spread": [round(min(r.met for r in scored), 3), round(max(r.met for r in scored), 3)] if scored else None,
         "worst": None if worst is None else {
             "run": worst.run, "status": worst.status, "component": worst.component, "error": worst.error,
             "failed_checks": [{"id": c.id, "component": c.component, "got": c.got, "want": c.want}
-                              for c in worst.checks if not c.ok]},
+                              for c in worst.checks if not c.ok and c.level == "end_to_end"]},
         "components_failed": sorted({r.component for r in scored if r.component}),
         "mean": {k: avg(k) for k in ("ai_calls", "tool_calls", "refused", "loops", "wasted_calls", "retries",
                                        "schema_failures", "invalid_candidates")},
@@ -118,9 +123,9 @@ def markdown(report: dict[str, Any]) -> str:
         "",
         "## Scenarios",
         "",
-        "| Scenario | Success | Spread (checks met) | Worst run | Model calls | Tool calls | Wasted | Retries "
+        "| Scenario | Success | Path | Spread (checks met) | Worst run | Model calls | Tool calls | Wasted | Retries "
         "| Escalations | Tokens in / out / thoughts | Cost µUSD mean / max |",
-        "|---|---|---|---|---|---|---|---|---|---|---|",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for r in report["scenarios"]:
         w = r["worst"]
@@ -130,8 +135,9 @@ def markdown(report: dict[str, Any]) -> str:
         tok = r["tokens_mean"]
         errored = f", {r['errored']} errored" if r["errored"] else ""
         success = f"{r['passed']}/{r['runs'] - r['errored']} ({_pct(r['success_rate'])}){errored}"
+        path = "no path checks" if not r["path"][1] else f"{r['path'][0]}/{r['path'][1]}"
         out.append(
-            f"| {r['title']} | {success} | {spread} | {worst} | {r['mean']['ai_calls']} | {r['mean']['tool_calls']} "
+            f"| {r['title']} | {success} | {path} | {spread} | {worst} | {r['mean']['ai_calls']} | {r['mean']['tool_calls']} "
             f"| {r['mean']['wasted_calls']} | {r['mean']['retries']} | {', '.join(r['escalations']) or 'none'} "
             f"| {tok['input']:.0f} / {tok['output']:.0f} / {tok['thoughts']:.0f} "
             f"| {r['cost_micro_usd']['mean']:.0f} / {r['cost_micro_usd']['max']} |")
@@ -145,9 +151,22 @@ def markdown(report: dict[str, Any]) -> str:
             for c in w["failed_checks"]:
                 out.append(f"- `{c['id']}` ({c['component']}): got `{c['got']}`, wanted `{c['want']}`")
             out.append("")
+    path_failures = [r for r in report["scenarios"] if r["path_failures"]]
+    if path_failures:
+        out += ["", "## Path failures (the first run of each scenario whose path checks failed)", ""]
+        for r in path_failures:
+            pf = r["path_failures"][0]
+            out.append(f"**{r['title']}**, run {pf['run']}"
+                       + (": the end result held." if r["passed"] == r["runs"] - r["errored"] else ".") )
+            for c in pf["checks"]:
+                out.append(f"- `{c['id']}`: got `{c['got']}`, wanted `{c['want']}`")
+            out.append("")
     out += ["", "## What each column means", "",
-            "- **Success:** runs whose every check held, of the runs that finished (ERRORED runs are not counted).",
-            "- **Spread:** the least and most share of a scenario's checks a run met, across its runs.",
+            "- **Success:** runs whose every end-to-end check held, of the runs that finished (ERRORED runs are not "
+            "counted). A live run leaves out the checks that pin the fixture AI's own path.",
+            "- **Path:** runs whose trajectory checks held (the path taken: steps, escalations), of the runs of a "
+            "scenario that has any. A path failure doesn't fail the run's success.",
+            "- **Spread:** the least and most share of a scenario's end-to-end checks a run met, across its runs.",
             "- **Worst run:** the run with the fewest checks met, and the component its first failed check (in "
             "pipeline order: sort, extract, validate, reconcile, planner, agent) belongs to.",
             "- **Model calls, tool calls, wasted, retries:** means per run, counted from the run's own trace and job "

@@ -38,17 +38,14 @@ from app.ai.email_text import email_text
 from app.ai.fixture_backend import FIXTURE_UPLOADS
 from app.clock import TIMEZONE, FakeClock
 from app.config import AppConfig
-from app.db.connection import write_connection
-from app.db.migrate import apply_migrations
 from app.domain.money import format_inr, parse_inr
 from app.ingest.files import sniff_mime
 from app.ingest.pdf import unlock_email
 from app.trace.tracer import Tracer
 from evals import outcomes
-from evals.knockouts import _Decision
-from evals.runner import INBOXES, START, RunResult, StopRun, never
+from evals.knockouts import Decision
+from evals.runner import INBOXES, START, RunResult, StopRun, find_fixture, fresh_world, never
 from evals.scenario import Scenario
-from fixtures.seed import seed
 
 MAX_STEPS = 20
 THINKING = "medium"
@@ -73,7 +70,7 @@ class BareFinal(BaseModel):
     model_config = ConfigDict(extra="forbid")
     lowest_balance_text: str
     lowest_on: date | None = None
-    decisions: list[_Decision] = Field(default_factory=list)
+    decisions: list[Decision] = Field(default_factory=list)
     summary: str = ""
 
 
@@ -202,14 +199,14 @@ def _events(env: BareEnv, scenario: Scenario) -> list[str]:
             out.append(f"It is now {target:%a %d %b %Y, %H:%M}.")
         elif kind == "deliver":
             for name in arg:
-                raw = next(f / name for f in (scenario.folder, *INBOXES) if f and (f / name).is_file()).read_bytes()
+                raw = find_fixture(name, (scenario.folder, *INBOXES)).read_bytes()
                 env.emails[name] = raw
                 msg = email.message_from_bytes(raw, policy=email.policy.default)
                 atts = [att.get_filename() or att.get_content_type() for att in msg.iter_attachments()]
                 out.append(f"Email arrived (id {name}):\n{email_text(msg)}"
                            + (f"\n[attachments: {', '.join(atts)}; read_attachment to open]" if atts else ""))
         elif kind == "upload":
-            raw = (FIXTURE_UPLOADS / arg["file"]).read_bytes()
+            raw = find_fixture(arg["file"], (scenario.folder, FIXTURE_UPLOADS)).read_bytes()
             env.parts.append(Part(sniff_mime(raw, arg["kind"]) or "application/octet-stream", raw))
             out.append(f"The helper uploaded a {arg['kind']} ({arg['file']}); it is attached.")
         elif kind == "monday_plan":
@@ -223,8 +220,8 @@ def _events(env: BareEnv, scenario: Scenario) -> list[str]:
         elif kind == "confirm_balance":
             out.append(f"The owner says the account's real balance is Rs.{arg['amount']}.")
         elif kind == "choose_option":
-            out.append({"early_receipt": "The owner asks Nandi Foods to pay early, and they agree to pay on Fri "
-                                         "16 Oct."}.get(arg, f"The owner chooses: {arg}."))
+            out.append({"early_receipt": "The owner asks Nandi Foods to pay their invoice early, by Fri 16 Oct."
+                        }.get(arg, f"The owner chooses: {arg}."))
     return out
 
 
@@ -238,11 +235,8 @@ def run_once(scenario: Scenario, backend: Backend, app_config: AppConfig, run: i
 
     with tempfile.TemporaryDirectory(prefix=f"bare-{scenario.name}-") as tmp_name:
         tmp = Path(tmp_name)
-        apply_migrations(tmp / "bare.db")
-        conn = write_connection(tmp / "bare.db")
         clock = FakeClock(START)
-        seed(conn, clock)
-        conn.commit()
+        conn = fresh_world(tmp / "bare.db", clock)
         env = BareEnv(conn, clock)
         tracer = Tracer(f"bare-{scenario.name}-{run}", str(tmp / "traces"), clock)
         history = [_state(env), "What happened, in order:", *_events(env, scenario)]

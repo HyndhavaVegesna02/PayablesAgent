@@ -12,6 +12,8 @@ steps:
 expect:
   - id: agent-tried-medium-then-high
     component: agent
+    level: trajectory
+    fixtures_only: true             # the fixture AI's scripted path; a live model may take another
     sql: SELECT thinking || ' ' || escalation_rule FROM agent_case WHERE kind = 'drift'
     equals: "high max_steps"
   - id: owner-asked-for-the-real-balance

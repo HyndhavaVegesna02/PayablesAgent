@@ -40,20 +40,19 @@ from cryptography.fernet import Fernet
 from fastapi.testclient import TestClient
 
 from app.ai.client import Backend
-from app.ai.fixture_backend import FIXTURE_AGENT_INBOX, FIXTURE_INBOX, FIXTURE_UPLOADS
+from app.ai.fixture_backend import FIXTURE_UPLOADS
 from app.clock import TIMEZONE, clock_for
 from app.config import AppConfig, Settings
-from app.db.connection import write_connection
-from app.db.migrate import apply_migrations
 from app.jobs import alerts
 from app.jobs.replan import replan
 from app.main import create_app
-from app.worker import default_handlers, process_one
-from fixtures.seed import BUSINESS_ID, DEV_HELPER_PASSWORD, DEV_OWNER_PASSWORD, HELPER_EMAIL, OWNER_EMAIL, seed
+from app.worker import default_handlers
+from evals.runner import INBOXES, StopRun, drain_jobs, find_fixture, fresh_world
+from evals.runner import START as RUNNER_START
+from fixtures.seed import BUSINESS_ID, DEV_HELPER_PASSWORD, DEV_OWNER_PASSWORD, HELPER_EMAIL, OWNER_EMAIL
 
 ROOT = Path(__file__).resolve().parent.parent
-START = "2026-10-12T09:00:00+05:30"  # Mon 12 Oct 2026, the worked example's Monday
-MAX_JOBS = 500  # per drain: a run that queues more is looping
+START = RUNNER_START.isoformat()  # Mon 12 Oct 2026 09:00 IST, the worked example's Monday
 
 
 class StepFailed(Exception):
@@ -199,31 +198,30 @@ def _text(html: str) -> str:
 # --- the run's world -----------------------------------------------------------------------------
 
 
-class CapturedSMTP:
-    """Stands in for smtplib.SMTP: keeps every message the alert job sends."""
+def capturing_smtp(sent: list[EmailMessage]) -> type:
+    """A stand-in for smtplib.SMTP that appends every message the alert job
+    sends to `sent` (one list per run)."""
 
-    sent: list[EmailMessage] = []
+    class CapturedSMTP:
+        def __init__(self, host: str, port: int, timeout: float | None = None) -> None:
+            self.host = host
 
-    def __init__(self, host: str, port: int, timeout: float | None = None) -> None:
-        self.host = host
+        def __enter__(self) -> CapturedSMTP:
+            return self
 
-    def __enter__(self) -> CapturedSMTP:
-        return self
+        def __exit__(self, *exc: Any) -> None:
+            return None
 
-    def __exit__(self, *exc: Any) -> None:
-        return None
+        def starttls(self, *a: Any, **k: Any) -> None:
+            return None
 
-    def starttls(self, *a: Any, **k: Any) -> None:
-        return None
+        def login(self, *a: Any, **k: Any) -> None:
+            return None
 
-    def login(self, *a: Any, **k: Any) -> None:
-        return None
+        def send_message(self, msg: EmailMessage) -> None:
+            sent.append(msg)
 
-    def send_message(self, msg: EmailMessage) -> None:
-        type(self).sent.append(msg)
-
-    def quit(self) -> None:
-        return None
+    return CapturedSMTP
 
 
 @dataclass
@@ -267,13 +265,11 @@ class Run:
             smtp_host="smtp.capture.invalid", smtp_port=587, alert_from="alerts@payablesagent.example")
         self.app_config = app_config
         self.clock = clock_for(self.settings.demo_now, self.settings.data_dir)
-        apply_migrations(db)  # make reseed: a fresh database, seeded, with its first plan
-        self.conn = write_connection(db)
-        seed(self.conn, self.clock)
+        self.conn = fresh_world(db, self.clock)  # make reseed: migrated, seeded, with its first plan
         replan(self.conn, BUSINESS_ID, triggered_by="seed", clock=self.clock)
         self.conn.commit()
-        CapturedSMTP.sent = []
-        self.handlers = {**default_handlers(backend), **alerts.handlers(smtp_factory=CapturedSMTP)}
+        self.outbox: list[EmailMessage] = []
+        self.handlers = {**default_handlers(backend), **alerts.handlers(smtp_factory=capturing_smtp(self.outbox))}
         app = create_app(self.settings, clock=self.clock, app_config=app_config)
         self.owner = Browser(app, "owner")
         self.owner.login(OWNER_EMAIL, DEV_OWNER_PASSWORD)
@@ -284,14 +280,17 @@ class Run:
 
     # the world moves
     def drain(self) -> None:
-        for _ in range(MAX_JOBS):
-            reason = self.should_stop()
-            if reason:
-                raise StepFailed(f"stopped: {reason}")
-            if not process_one(self.conn, self.handlers, clock=self.clock, settings=self.settings,
-                               app_config=self.app_config):
-                return
-        raise StepFailed(f"more than {MAX_JOBS} jobs in one drain: the run is looping")
+        """The worker runs every due job. A job waiting to retry within the hour
+        (a model call that timed out, say) is waited for by moving the demo
+        clock to its retry time, as the real worker would simply wait."""
+        try:
+            drain_jobs(self.conn, self.handlers, clock=self.clock, settings=self.settings,
+                       app_config=self.app_config, should_stop=self.should_stop,
+                       wait=lambda delta: self.clock.set(self.clock.now() + delta))
+        except StopRun as e:
+            raise StepFailed(f"stopped: {e}") from None
+        except RuntimeError as e:
+            raise StepFailed(str(e)) from None
 
     def move_to(self, when: str) -> None:
         """The owner moves the demo clock (the Settings page's demo form); the worker catches up."""
@@ -300,12 +299,11 @@ class Run:
 
     def deliver(self, *names: str) -> None:
         for name in names:
-            folder = FIXTURE_AGENT_INBOX if (FIXTURE_AGENT_INBOX / name).is_file() else FIXTURE_INBOX
-            shutil.copy(folder / name, self.settings.test_inbox_path)
+            shutil.copy(find_fixture(name, INBOXES), self.settings.test_inbox_path)
 
     def upload(self, name: str) -> None:
         """The helper uploads a file on the Add page."""
-        content = (FIXTURE_UPLOADS / name).read_bytes()
+        content = find_fixture(name, (FIXTURE_UPLOADS,)).read_bytes()
         mime = {".png": "image/png", ".jpg": "image/jpeg", ".wav": "audio/wav", ".pdf": "application/pdf"}[
             Path(name).suffix]
         self.helper.submit("/add", "/uploads", files={"file": (name, content, mime)})
@@ -338,7 +336,7 @@ class Run:
 
     def sent(self) -> list[EmailMessage]:
         """The owner alerts sent so far (captured)."""
-        return list(CapturedSMTP.sent)
+        return list(self.outbox)
 
     def expect(self, check_id: str, actual: Any, expected: Any, why: str = "") -> None:
         self.steps[-1].checks.append(Check(check_id, expected, actual, why))
@@ -371,12 +369,20 @@ def play(name: str, backend: Backend, app_config: AppConfig, *, fixtures_mode: b
 
     title, script = RUNS[name]
     with tempfile.TemporaryDirectory(prefix=f"workflow-{name}-") as tmp_name:
-        run = Run(Path(tmp_name), backend, app_config, fixtures_mode=fixtures_mode)
+        try:
+            run = Run(Path(tmp_name), backend, app_config, fixtures_mode=fixtures_mode)
+        except Exception as e:  # noqa: BLE001 - the run could not even start: say so in the report
+            failed = Step(1, START[:16], "setup", "reseed the database, start the app, log in",
+                          error=f"{type(e).__name__}: {e}")
+            return Result(name, title, [failed], [], {"ai_calls": 0, "cost_micro_usd": 0}, should_stop())
         run.should_stop = should_stop
         try:
             script(run)
+        except Exception as e:  # noqa: BLE001 - outside every step (the opening drain): reported as its own step
+            run.steps.append(Step(len(run.steps) + 1, f"{run.now():%a %d %b %H:%M}", "worker",
+                                  "(outside any step)", error=f"{type(e).__name__}: {e}"))
         finally:
-            sent = [{"to": m["To"], "subject": m["Subject"], "body": m.get_content()} for m in CapturedSMTP.sent]
+            sent = [{"to": m["To"], "subject": m["Subject"], "body": m.get_content()} for m in run.outbox]
             m = metrics.collect(metrics.trace_steps(run.settings.trace_dir), run.conn)
             run.close()
     return Result(name, title, run.steps, sent, m, should_stop())

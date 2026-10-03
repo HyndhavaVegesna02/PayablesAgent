@@ -33,6 +33,13 @@ class Expectation(BaseModel):
     equals: Any = None
     rows: list[list[Any]] | None = None
     why: str = ""  # what it shows, for the report
+    # end_to_end checks decide a run's success; trajectory checks judge the path
+    # it took (steps, escalations) and are reported in their own column.
+    level: Literal["end_to_end", "trajectory"] = "end_to_end"
+    # A check that pins the canned model's own path (what the fixture AI was
+    # scripted to try). Scored offline; left out of a live run, where a correct
+    # model may well take another path.
+    fixtures_only: bool = False
 
     @model_validator(mode="after")
     def _one_check(self) -> Expectation:

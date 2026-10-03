@@ -114,7 +114,7 @@ def build(meta: dict[str, Any], harnesses: list[str], scenarios: list[Scenario],
              and p["outcome_success_rate"] is not None}
     top = max(drops.values(), default=None)
     return {"meta": meta, "harnesses": per, "drops": drops,
-            "earned_most": sorted(h for h, d in drops.items() if d == top) if top else [],
+            "earned_most": sorted(h for h, d in drops.items() if d == top) if top is not None and top > 0 else [],
             "runs": {h: [{"scenario": r.scenario, "run": r.run, "status": r.status, "outcome_ok": r.outcome_ok,
                           "outcomes": r.outcomes, "error": r.error} for r in rs] for h, rs in results.items()}}
 
@@ -169,6 +169,9 @@ def markdown(report: dict[str, Any], scenarios: list[Scenario]) -> str:
     for h in names:
         if per[h]["seams"]:
             out.append(f"- **{h}:** " + ", ".join(f"`{s}`" for s in per[h]["seams"]))
+    if "no_rule_checks" in per:
+        out.append("- **no_rule_checks** leaves on the checks that decide whether a record can be read at all: "
+                   + ", ".join(knockouts.RULE_CHECKS_LEFT_ON) + ".")
     out += ["- **bare:** evals/bare.py: one growing chat history, every tool (write tools included) on its own "
             f"database, no checks, no case file, no escalation, no planner, a cap of {bare.MAX_STEPS} steps.", ""]
     return "\n".join(out)
@@ -234,7 +237,7 @@ def main(argv: list[str] | None = None) -> int:
     built = build(meta, harnesses, chosen, results, seams)
     out_dir = write(built, chosen, args.out / f"{today.date().isoformat()}-{args.ai}-{args.label}")
     print(f"report: {out_dir}")
-    return 0
+    return 0 if stopped is None else 1  # an ABORTED comparison is not a result
 
 
 if __name__ == "__main__":

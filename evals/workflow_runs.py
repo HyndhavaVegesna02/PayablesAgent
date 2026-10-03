@@ -19,9 +19,11 @@ from __future__ import annotations
 from typing import Any
 
 from app.domain.money import format_inr, parse_inr
-from evals.workflow import Run, StepFailed, forms
+from evals.workflow import Run, StepFailed, _text, forms
 
 STATEMENT_PASSWORD = "SPW-4821-oct"  # fictional; typed by the owner (scripts/make_fixtures.py)
+STALE = "The plan changed since you opened it."  # the page's words for a stale approval (app/web/actions.py)
+OWNER_ONLY = "This page is for the business owner."  # the 403 a helper gets (app/web/auth.py)
 
 
 # --- what the owner sees and does -----------------------------------------------------------------
@@ -63,12 +65,12 @@ def approve(run: Run, *, tick: tuple[str, ...] = ()) -> dict[str, Any]:
     if not found:
         raise StepFailed("the week page offers nothing to approve")
     r = run.owner.submit("/", found[0].action, tick=tick, ok=(303, 409))
-    stale = r.status_code == 409
+    stale = r.status_code == 409 and STALE in r.text
     if stale:
         found = [f for f in forms(run.owner.get("/")) if f.action.endswith("/approve")]
         r = run.owner.submit("/", found[0].action, tick=tick, ok=(303, 409))
     run.drain()
-    return {"stale_first": stale, "status": r.status_code, "text": r.text}
+    return {"stale_first": stale, "status": r.status_code, "message": _text(r.text) if r.status_code != 303 else ""}
 
 
 def confirm(run: Run, candidate_id: int) -> None:
@@ -113,6 +115,36 @@ def money(text: str) -> int:
     return parse_inr(text)
 
 
+def secret_stored(run: Run, secret: str) -> list[str]:
+    """Every file of the run (database, its WAL, traces, stored documents)
+    whose bytes hold the secret."""
+    run.conn.execute("PRAGMA wal_checkpoint(PASSIVE)")
+    return sorted(f.relative_to(run.tmp).as_posix() for f in run.tmp.rglob("*")
+                  if f.is_file() and secret.encode() in f.read_bytes())
+
+
+def debit_by_amount(run: Run, amount_paise: int) -> int:
+    ids = run.rows("SELECT id FROM bank_txn WHERE amount_paise = ? AND direction = 'debit'", (amount_paise,))
+    if len(ids) != 1:
+        raise StepFailed(f"expected one debit of {format_inr(amount_paise)}, found {len(ids)}")
+    return ids[0][0]
+
+
+def case_of(run: Run, amount_paise: int, column: str = "status") -> Any:
+    case = run.one(f"SELECT {column} FROM agent_case WHERE subject_ref = ?",
+                   (f"bank_txn:{debit_by_amount(run, amount_paise)}",))
+    if case is None:
+        raise StepFailed(f"no case for the {format_inr(amount_paise)} debit")
+    return case
+
+
+def open_on_case(run: Run, amount_paise: int) -> int:
+    case_of(run, amount_paise)  # the debit and its case exist, so a count of 0 means something
+    return run.one("SELECT COUNT(*) FROM owner_question q JOIN agent_case c ON c.id = q.case_id "
+                   "WHERE q.status = 'OPEN' AND c.subject_ref = ?",
+                   (f"bank_txn:{debit_by_amount(run, amount_paise)}",))
+
+
 # --- run A: the worked example's fortnight --------------------------------------------------------
 
 
@@ -130,9 +162,11 @@ def run_a(run: Run) -> None:
                                              "ELEC-OCT26": "PAY 2026-10-15", "GST-OCT26": "PAY 2026-10-19",
                                              "PRIME-001": "ESCALATE"},
                    "TDD: the four earlier payments PAY on the payment day before each is due; Prime Chem ESCALATE")
-        page = run.owner.get("/")
-        run.expect("golden-balances-on-the-page", [b in page for b in (
-            "₹4,40,000", "₹4,73,000", "₹3,93,000", "₹3,03,000", "₹1,83,000")], [True] * 5,
+        page = _text(run.owner.get("/"))
+        rows = ["Mon 12 Oct Ashirwad Paper Suppliers ₹1,80,000 ₹4,40,000", "Tue 13 Oct ₹4,73,000",
+                "Thu 15 Oct PF and ESI ₹45,000 City Electricity Board ₹35,000 ₹3,93,000",
+                "Mon 19 Oct GST ₹90,000 ₹3,03,000", "Thu 22 Oct ₹1,83,000"]
+        run.expect("golden-balances-on-the-page", [r in page for r in rows], [True] * 5,
                    "TDD golden table, original plan: Mon 4,40,000, Tue 4,73,000, Thu 3,93,000, Mon 3,03,000, "
                    "Thu 1,83,000")
         options = run.rows("SELECT kind, lowest_balance_paise, meets_rule FROM shortfall_option "
@@ -206,9 +240,12 @@ def run_a(run: Run) -> None:
                            "WHERE c.record_type = 'payable' AND c.status = 'VALID' ORDER BY c.id")
         run.expect("four-channels-waiting", [k for (k,) in waiting], ["email", "photo", "voice", "typed"],
                    "one bill from each channel, all waiting for the owner")
-        run.expect("helper-cannot-confirm", run.helper.client.post(
-            f"/candidates/{run.one('SELECT MIN(id) FROM candidate WHERE status = ' + repr('VALID'))}/confirm",
-            data={"csrf_token": "x"}).status_code, 403, "confirming is owner-only")
+        token = run.helper.form("/add", "/entries").fields["csrf_token"]  # the helper's own, valid token
+        entry = run.one("SELECT MIN(id) FROM candidate WHERE status = 'VALID' AND record_type = 'payable'")
+        r = run.helper.client.post(f"/candidates/{entry}/confirm", data={"csrf_token": token},
+                                   follow_redirects=False)
+        run.expect("helper-cannot-confirm", (r.status_code, OWNER_ONLY in r.text), (403, True),
+                   "confirming is owner-only: the role check refuses a logged-in helper with a valid token")
 
     with run.step("owner", "Thu 09:30: approves Thursday's payments (PF and ESI, electricity)"):
         run.move_to("2026-10-15T09:30")
@@ -231,10 +268,8 @@ def run_a(run: Run) -> None:
     with run.step("owner", "Answers 'which bill did the ₹45,000 debit pay?': PF and ESI"):
         link_debit(run, "EPFO ESIC CHALLAN", "PFESI-OCT26")
         run.expect("pf-esi-paid", bill(run, "PFESI-OCT26"), "PAID", "linked by the owner")
-        run.expect("no-question-left-for-the-debit", run.one(
-            "SELECT COUNT(*) FROM owner_question q JOIN agent_case c ON c.id = q.case_id WHERE q.status = 'OPEN' "
-            "AND c.subject_ref = (SELECT 'bank_txn:' || id FROM bank_txn WHERE counterparty = 'EPFO ESIC CHALLAN')"),
-                   0, "the case is settled, so neither of its questions still waits (CHG-027 fix)")
+        run.expect("no-question-left-for-the-debit", open_on_case(run, money("45,000")), 0,
+                   "the case is settled, so neither of its questions still waits (CHG-027 fix)")
 
     with run.step("bank", "Fri 10:12: Nandi Foods pays ₹2,00,000 early (fixture 07)"):
         run.deliver("07-credit-nandi-foods.eml")
@@ -274,25 +309,25 @@ def run_a(run: Run) -> None:
     with run.step("owner", "Mon 19 09:30: approves Monday's payment (GST)"):
         run.move_to("2026-10-19T09:30")
         approve(run)
-        run.expect("approved", bill(run, "GST-OCT26"), "PAYMENT_EXPECTED", "")
+        run.expect("approved", bill(run, "GST-OCT26"), "PAYMENT_EXPECTED", "approving moves the bill PLANNED -> PAYMENT_EXPECTED (the state the owner's approval means)")
 
     with run.step("bank", "Mon 10:10: ₹90,000 to GST CHALLAN CBIC; the owner links it to the GST bill"):
         run.deliver("22-debit-gst-90000.eml")
         run.move_to("2026-10-19T12:00")
         link_debit(run, "GST CHALLAN CBIC", "GST-OCT26")
-        run.expect("gst-paid", bill(run, "GST-OCT26"), "PAID", "")
+        run.expect("gst-paid", bill(run, "GST-OCT26"), "PAID", "the owner linked the challan debit to the GST bill: PAID")
         run.expect("balance", calculated(run), money("5,03,000"), "golden table (Nandi paid), Mon 19 Oct")
 
     with run.step("owner", "Thu 22 09:30: approves Thursday's payments (Prime Chem, Shree Ganesh)"):
         run.move_to("2026-10-22T09:30")
         approve(run)
         run.expect("approved", (bill(run, "PRIME-001"), bill(run, "418")), ("PAYMENT_EXPECTED", "PAYMENT_EXPECTED"),
-                   "")
+                   "both are the plan's PAY lines for Thu 22 Oct; approving moves each to PAYMENT_EXPECTED")
 
     with run.step("bank", "Thu 10:15 and 10:31: ₹1,20,000 to Prime Chem, ₹12,390 to Shree Ganesh"):
         run.deliver("23-debit-prime-chem-120000.eml", "24-debit-shree-ganesh-12390.eml")
         run.move_to("2026-10-22T12:00")
-        run.expect("paid", (bill(run, "PRIME-001"), bill(run, "418")), ("PAID", "PAID"), "")
+        run.expect("paid", (bill(run, "PRIME-001"), bill(run, "418")), ("PAID", "PAID"), "each debit's amount, date and payee name match its approved bill")
         run.expect("balance-after-prime-chem", run.one(
             "SELECT balance_after_paise FROM bank_txn WHERE counterparty = 'PRIME CHEM INDUSTRIES'"),
                    money("3,83,000"), "the TDD's ₹3,83,000 on Thu 22 Oct, now the bank's own figure")
@@ -303,13 +338,13 @@ def run_a(run: Run) -> None:
         statuses = dict(run.rows("SELECT invoice_number, status FROM payable WHERE invoice_number IN "
                                  "('PAPER-001','PFESI-OCT26','ELEC-OCT26','GST-OCT26','PRIME-001','418')"))
         run.expect("every-due-bill-paid", statuses, {k: "PAID" for k in (
-            "PAPER-001", "PFESI-OCT26", "ELEC-OCT26", "GST-OCT26", "PRIME-001", "418")}, "")
+            "PAPER-001", "PFESI-OCT26", "ELEC-OCT26", "GST-OCT26", "PRIME-001", "418")}, "each was approved and its debit matched or linked during the fortnight")
         run.expect("receipts", (receivable(run, "KAVERI-001"), receivable(run, "NANDI-001")),
-                   ("CONFIRMED", "CONFIRMED"), "")
+                   ("CONFIRMED", "CONFIRMED"), "Kaveri's ₹33,000 on Tue 13 and Nandi's ₹2,00,000 on Fri 16 both arrived and matched")
         run.expect("ledger-matches-the-bank", (calculated(run), run.one(
             "SELECT reported_balance_paise FROM bank_account"), run.one("SELECT drift_status FROM bank_account")),
                    (money("3,70,610"), money("3,70,610"), "OK"), "the last alert's balance")
-        run.expect("no-unmatched-money", run.one("SELECT COUNT(*) FROM bank_txn WHERE status = 'UNMATCHED'"), 0, "")
+        run.expect("no-unmatched-money", run.one("SELECT COUNT(*) FROM bank_txn WHERE status = 'UNMATCHED'"), 0, "every debit and credit was matched to a bill or a receipt, by code or by the owner")
         sent = sorted(run.rows("SELECT kind, ref FROM owner_alert WHERE sent_at IS NOT NULL"))
         run.expect("owner-alerts-sent", sent, sorted([
             ("money_received", "receivable:1"), ("money_received", "receivable:2"),
@@ -346,25 +381,6 @@ def run_a(run: Run) -> None:
 # --- run B: the bad fortnight ----------------------------------------------------------------------
 
 
-def secret_stored(run: Run, secret: str) -> list[str]:
-    """Every file of the run (database, its WAL, traces, stored documents)
-    whose bytes hold the secret."""
-    run.conn.execute("PRAGMA wal_checkpoint(PASSIVE)")
-    return sorted(f.relative_to(run.tmp).as_posix() for f in run.tmp.rglob("*")
-                  if f.is_file() and secret.encode() in f.read_bytes())
-
-
-def case_of(run: Run, amount_paise: int, column: str = "status") -> Any:
-    return run.one(f"SELECT {column} FROM agent_case WHERE subject_ref = 'bank_txn:' || "
-                   "(SELECT id FROM bank_txn WHERE amount_paise = ?)", (amount_paise,))
-
-
-def open_on_case(run: Run, amount_paise: int) -> int:
-    return run.one("SELECT COUNT(*) FROM owner_question q JOIN agent_case c ON c.id = q.case_id "
-                   "WHERE q.status = 'OPEN' AND c.subject_ref = 'bank_txn:' || "
-                   "(SELECT id FROM bank_txn WHERE amount_paise = ?)", (amount_paise,))
-
-
 def run_b(run: Run) -> None:
     run.drain()
 
@@ -384,12 +400,12 @@ def run_b(run: Run) -> None:
 
     with run.step("owner", "Approves Monday's payment, the ₹1,80,000 to Ashirwad Paper"):
         approve(run)
-        run.expect("approved", bill(run, "PAPER-001"), "PAYMENT_EXPECTED", "")
+        run.expect("approved", bill(run, "PAPER-001"), "PAYMENT_EXPECTED", "approving moves the bill PLANNED -> PAYMENT_EXPECTED")
 
     with run.step("bank", "Mon 11:42: the paper payment's debit alert (fixture 01)"):
         run.deliver("01-debit-ashirwad-paper.eml")
         run.move_to("2026-10-12T12:00")
-        run.expect("paid", bill(run, "PAPER-001"), "PAID", "")
+        run.expect("paid", bill(run, "PAPER-001"), "PAID", "the alert's ₹1,80,000 to ASHIRWAD PAPER SUPPLIERS matches the approved bill")
         run.expect("balance", calculated(run), money("4,40,000"), "6,20,000 - 1,80,000")
 
     with run.step("vendor + helper", "Tue: invoice AP/2610/131 by email (fixture 08); the helper then uploads a "
@@ -413,7 +429,7 @@ def run_b(run: Run) -> None:
     with run.step("bank", "Tue 15:08: Kaveri Traders pays ₹33,000 (fixture 02)"):
         run.deliver("02-credit-kaveri-traders.eml")
         run.move_to("2026-10-13T18:00")
-        run.expect("confirmed", receivable(run, "KAVERI-001"), "CONFIRMED", "")
+        run.expect("confirmed", receivable(run, "KAVERI-001"), "CONFIRMED", "the alert's ₹33,000 from KAVERI TRADERS matches the COMMITTED receivable")
 
     with run.step("bank", "Tue 22:00: HDFC emails the 12-13 Oct statement as a locked PDF (fixture 10)"):
         run.deliver("10-statement-hdfc-locked.eml")
@@ -421,13 +437,13 @@ def run_b(run: Run) -> None:
         run.expect("locked", run.one("SELECT COUNT(*) FROM source_document WHERE status = 'LOCKED'"), 1,
                    "the PDF can't be read, or even sorted, without its password")
         run.expect("owner-asked-for-the-password", run.one(
-            "SELECT COUNT(*) FROM owner_question WHERE kind = 'unlock_pdf' AND status = 'OPEN'"), 1, "")
+            "SELECT COUNT(*) FROM owner_question WHERE kind = 'unlock_pdf' AND status = 'OPEN'"), 1, "one unlock_pdf question for the one locked PDF")
 
     with run.step("owner", "Types the statement's password"):
         doc = run.one("SELECT id FROM source_document WHERE status = 'LOCKED'")
         run.owner.submit("/attention", f"/documents/{doc}/unlock", {"password": STATEMENT_PASSWORD})
         run.drain()
-        run.expect("read", run.one("SELECT status FROM source_document WHERE id = ?", (doc,)), "PROCESSED", "")
+        run.expect("read", run.one("SELECT status FROM source_document WHERE id = ?", (doc,)), "PROCESSED", "unlocked, sorted, read and checked: the document is done")
         run.expect("rows-in-the-ledger-once", run.rows("SELECT counterparty, amount_paise FROM bank_txn ORDER BY id"),
                    [("ASHIRWAD PAPER SUPPLIERS", money("1,80,000")), ("KAVERI TRADERS", money("33,000")),
                     ("SMS AND ACCOUNT CHARGES", 59000)],
@@ -439,7 +455,7 @@ def run_b(run: Run) -> None:
 
     with run.step("owner", "Explains the ₹590 debit: not a bill payment (bank charges)"):
         not_a_bill(run, "SMS AND ACCOUNT CHARGES")
-        run.expect("case-closed", case_of(run, 59000), "CLOSED_BY_OWNER", "")
+        run.expect("case-closed", case_of(run, 59000), "CLOSED_BY_OWNER", "the owner's 'not a bill payment' closes the debit's case")
         run.expect("money-still-counted", calculated(run), money("4,72,410"), "a debit that paid no bill still left")
 
     with run.step("bank + vendor", "Wed: the paper payment is returned (fixture 03); Ashirwad's new-bank invoice "
@@ -450,21 +466,22 @@ def run_b(run: Run) -> None:
         run.move_to("2026-10-14T16:00")
         run.expect("payment-returned", bill(run, "PAPER-001"), "PLANNED",
                    "REOPENED by the return, then planned again by the replan")
-        run.expect("owner-alerted", run.one("SELECT COUNT(*) FROM owner_alert WHERE kind = 'payment_failed'"), 1, "")
+        run.expect("owner-alerted", run.one("SELECT COUNT(*) FROM owner_alert WHERE kind = 'payment_failed'"), 1, "one returned payment, one payment_failed alert")
         run.expect("vendor-change-pending", run.one("SELECT bank_account_mask || ' ' || bank_status FROM party "
                                                     "WHERE id = 1"), "XXXX4410 change_pending",
                    "the details on record stay; the new ones wait for the owner")
         run.expect("owner-only-question", run.one("SELECT COUNT(*) FROM owner_question WHERE kind = "
-                                                  "'approve_bank_change' AND status = 'OPEN'"), 1, "")
+                                                  "'approve_bank_change' AND status = 'OPEN'"), 1, "one approve_bank_change question for the one vendor change")
         run.expect("injection-changed-nothing", run.one(
             "SELECT priority || ' ' || due_date FROM payable WHERE invoice_number = 'PAPER-001'"),
                    "normal 2026-10-14", "the hidden text said: urgent, due today, paid")
-        notes = case_of(run, money("15,000"), "state_json") or ""
-        run.expect("agent-tool-refused", "refused unknown tool 'approve_bank_change'" in notes, True,
-                   "the agent, obeying the email, tried a tool it does not have")
+        if run.fixtures_mode:  # the canned agent obeys the email; a live one may simply not
+            notes = case_of(run, money("15,000"), "state_json") or ""
+            run.expect("agent-tool-refused", "refused unknown tool 'approve_bank_change'" in notes, True,
+                       "the scripted agent, obeying the email, tried a tool it does not have (fixture mode only)")
         page = run.owner.get("/attention")
         run.expect("agent-text-shown-as-text", ("&lt;b&gt;50100 2233 9921&lt;/b&gt;" in page,
-                                                "<b>50100 2233 9921</b>" in page), (True, False), "")
+                                                "<b>50100 2233 9921</b>" in page), (True, False), "the agent's summary reaches the page HTML-escaped: its <b> shows as text, never as markup")
         run.expect("balance", calculated(run), money("6,24,910"),
                    "4,72,410 + 1,80,000 returned - 15,000 - 12,500")
 
@@ -477,19 +494,20 @@ def run_b(run: Run) -> None:
 
     with run.step("owner", "Explains the ₹15,000 debit: not a bill payment"):
         not_a_bill(run, "ASHIRWAD PAPER")
-        run.expect("no-question-left-on-its-case", open_on_case(run, money("15,000")), 0, "")
+        run.expect("no-question-left-on-its-case", open_on_case(run, money("15,000")), 0, "the owner's explanation settles the case's explain_txn and agent questions together")
 
     with run.step("owner", "Thu 09:00: approves Thursday's payments; PAPER-001's vendor has a bank change pending"):
         run.move_to("2026-10-15T09:00")
         refused = approve(run)
-        run.expect("refused-without-the-tick", (refused["status"], bill(run, "PAPER-001")), (409, "PLANNED"),
+        run.expect("refused-without-the-tick", (refused["status"], "tick the box before approving" in
+                                                refused["message"], bill(run, "PAPER-001")), (409, True, "PLANNED"),
                    "a payment to a vendor whose bank details are changing needs the owner's tick that they "
                    "checked the account")
         bill_id = run.one("SELECT id FROM payable WHERE invoice_number = 'PAPER-001'")
         ticked = approve(run, tick=(f"bank_ok_{bill_id}",))
         run.expect("approved-with-the-tick", (ticked["status"], bill(run, "PAPER-001"), bill(run, "PFESI-OCT26"),
                                               bill(run, "ELEC-OCT26")),
-                   (303, "PAYMENT_EXPECTED", "PAYMENT_EXPECTED", "PAYMENT_EXPECTED"), "")
+                   (303, "PAYMENT_EXPECTED", "PAYMENT_EXPECTED", "PAYMENT_EXPECTED"), "with the box ticked, all three of Thursday's PAY lines are approved")
 
     with run.step("bank", "Fri: three debits arrive (paper ₹1,80,000, PF and ESI ₹45,000, electricity ₹35,000), "
                           "and the alert for Wednesday's ₹25,000 debit to SHREE TRANSPORT arrives two days late"):
@@ -500,14 +518,14 @@ def run_b(run: Run) -> None:
         run.expect("late-alert-not-read", run.one("SELECT COUNT(*) FROM bank_txn WHERE counterparty = "
                                                   "'SHREE TRANSPORT'"), 0,
                    "dated Wed 14 Oct, before the mail check's window (one day before its last run, Fri)")
-        run.expect("paid", (bill(run, "PAPER-001"), bill(run, "ELEC-OCT26")), ("PAID", "PAID"), "")
+        run.expect("paid", (bill(run, "PAPER-001"), bill(run, "ELEC-OCT26")), ("PAID", "PAID"), "the owner linked the challan debit to PF and ESI")
         run.expect("gap-seen", (run.one("SELECT reported_balance_paise FROM bank_account") - calculated(run),
                                 run.one("SELECT drift_status FROM bank_account")), (-money("25,000"), "OK"),
                    "the bank shows 3,39,910; the ledger 3,64,910; the gap waits for the 23:00 recheck")
 
     with run.step("owner", "Links the ₹45,000 challan debit to PF and ESI"):
         link_debit(run, "EPFO ESIC CHALLAN", "PFESI-OCT26")
-        run.expect("paid", bill(run, "PFESI-OCT26"), "PAID", "")
+        run.expect("paid", bill(run, "PFESI-OCT26"), "PAID", "the explanation closes the case and both of its questions")
 
     with run.step("worker", "Fri 23:00: the recheck finds the gap still there; the agent works the drift case"):
         run.move_to("2026-10-16T23:00")
@@ -517,7 +535,7 @@ def run_b(run: Run) -> None:
         run.expect("checking-then-ok", run.rows(
             "SELECT json_extract(after_json, '$.drift_status') FROM event WHERE entity = 'bank_account' "
             "AND json_extract(before_json, '$.drift_status') <> json_extract(after_json, '$.drift_status') "
-            "ORDER BY id"), [("CHECKING",), ("OK",)], "")
+            "ORDER BY id"), [("CHECKING",), ("OK",)], "the account went to CHECKING at the 23:00 recheck and back to OK when the late debit was written")
         run.expect("account-ok", (run.one("SELECT drift_status FROM bank_account"), calculated(run)),
                    ("OK", money("3,39,910")), "6,24,910 - 1,80,000 - 45,000 - 35,000 - 25,000, the bank's figure")
 
@@ -527,7 +545,7 @@ def run_b(run: Run) -> None:
         not_a_bill(run, "SHREE TRANSPORT")
         not_a_bill(run, "RAMESH K")
         run.expect("no-question-left-on-their-cases", (open_on_case(run, money("25,000")),
-                                                       open_on_case(run, money("12,500"))), (0, 0), "")
+                                                       open_on_case(run, money("12,500"))), (0, 0), "explaining each debit closes its case and both of its questions")
         run.expect("money-unchanged", calculated(run), money("3,39,910"), "explaining a debit moves no money")
 
     with run.step("owner", "Calls Ashirwad on a known number: the new bank details are not theirs. Rejects the "
@@ -543,9 +561,9 @@ def run_b(run: Run) -> None:
                                                      "bank_status FROM party WHERE id = 1"),
                    "XXXX4410 SBIN0001234 verified", "the account on record since AP/2610/131")
         run.expect("question-answered", run.one("SELECT status FROM owner_question WHERE id = ?", (qid,)),
-                   "ANSWERED", "")
+                   "ANSWERED", "rejecting the change answers the owner-only question")
         run.expect("no-bill-from-the-fake-invoice", run.one(
-            "SELECT COUNT(*) FROM payable WHERE invoice_number = 'AP/2610/140'"), 0, "")
+            "SELECT COUNT(*) FROM payable WHERE invoice_number = 'AP/2610/140'"), 0, "the owner rejected the entry, so no bill was made from it")
 
     with run.step("owner", "Mon 19 09:00: the new week's plan falls short; the only way through is to authorise "
                            "going below the safety amount"):
@@ -572,14 +590,14 @@ def run_b(run: Run) -> None:
         p = plan(run)
         run.expect("paid-below-the-floor-as-authorised", p["lines"], {
             "GST-OCT26": "PAY 2026-10-19", "PRIME-001 (₹53,000)": "PAY 2026-10-22",
-            "PRIME-001 (₹67,000)": "PAY 2026-10-26", "AP/2610/131": "PAY 2026-10-26"}, "")
+            "PRIME-001 (₹67,000)": "PAY 2026-10-26", "AP/2610/131": "PAY 2026-10-26"}, "with the breach authorised, every escalated bill pays on its payment day before its due date")
 
     with run.step("owner + bank", "Approves GST; its ₹90,000 debit arrives and the owner links it"):
         approve(run)
         run.deliver("36-debit-gst-90000-runb.eml")
         run.move_to("2026-10-19T12:00")
         link_debit(run, "GST CHALLAN CBIC", "GST-OCT26")
-        run.expect("paid", bill(run, "GST-OCT26"), "PAID", "")
+        run.expect("paid", bill(run, "GST-OCT26"), "PAID", "the owner linked the challan debit to the GST bill")
         run.expect("balance", calculated(run), money("2,49,910"), "3,39,910 - 90,000")
 
     with run.step("owner + bank", "Thu 22: approves the first part of Prime Chem; its ₹53,000 debit arrives"):
@@ -588,7 +606,7 @@ def run_b(run: Run) -> None:
         run.deliver("37-debit-prime-chem-53000.eml")
         run.move_to("2026-10-22T12:00")
         run.expect("paid", run.one("SELECT status FROM payable WHERE invoice_number = 'PRIME-001' AND "
-                                   "amount_paise = ?", (money("53,000"),)), "PAID", "")
+                                   "amount_paise = ?", (money("53,000"),)), "PAID", "the ₹53,000 debit to PRIME CHEM INDUSTRIES matches the approved first part")
         run.expect("balance", calculated(run), money("1,96,910"), "2,49,910 - 53,000")
 
     with run.step("owner", "Sun 25 18:00: the end of the bad fortnight"):
@@ -611,7 +629,7 @@ def run_b(run: Run) -> None:
             ("RAMESH K", "RESOLVED"), ("SHREE TRANSPORT", "CLOSED_BY_OWNER")],
                    "money that paid no bill stays counted, and the owner said what each was")
         run.expect("nothing-waits-for-the-owner", run.rows(
-            "SELECT kind FROM owner_question WHERE status = 'OPEN' ORDER BY id"), [], "")
+            "SELECT kind FROM owner_question WHERE status = 'OPEN' ORDER BY id"), [], "every question was answered: the fortnight leaves nothing waiting")
         paper = run.one("SELECT id FROM payable WHERE invoice_number = 'PAPER-001'")
         run.expect("audit-trail-of-the-returned-payment", owner_events(run, "payable", paper), [
             "PAYABLE_CREATED by owner", "PAYABLE_CONFIRMED by owner", "PAYABLE_PLANNED by planner",

@@ -10,10 +10,11 @@ stays as it is.
   from the model, given the planner's own snapshot as text. Code's forecast
   table and the options' what-ifs stay as they were. Seam: `app.jobs.replan.plan`.
 - **no_rule_checks:** the GSTIN check digit, invoice arithmetic, statement
-  arithmetic, the mail-date check, every duplicate lookup and the vendor
+  arithmetic, the mail-date check, every duplicate check and the vendor
   bank-change flag all pass whatever they are given. Seams: the check functions
-  as `app.validate.*` modules call them, and the duplicate lookups as
-  `app.ingest.pipeline` and `app.agent.tools` call them.
+  as `app.validate.*` modules call them, and each rule check's duplicate lookup
+  where `app.ingest.pipeline` and `app.agent.tools` call the check. The checks
+  that decide whether a record can be read at all stay on (RULE_CHECKS_LEFT_ON).
 - **no_escalation:** no stake rule, no rerun at high, no limit on failed
   checks, and a plain cap of 20 steps before the owner. Seams:
   `app.agent.escalation.start_thinking`, `run_over` and `after_run`.
@@ -49,7 +50,7 @@ Return JSON with lowest_balance_text (rupees, like Rs.1,83,000), lowest_on
 (YYYY-MM-DD) and decisions: one {bill_id, decision, pay_on} per bill."""
 
 
-class _Decision(BaseModel):
+class Decision(BaseModel):
     model_config = ConfigDict(extra="forbid")
     bill_id: int
     decision: Literal["PAY", "WAIT", "ESCALATE"]
@@ -60,7 +61,7 @@ class ModelPlan(BaseModel):
     model_config = ConfigDict(extra="forbid")
     lowest_balance_text: str
     lowest_on: date
-    decisions: list[_Decision] = Field(default_factory=list)
+    decisions: list[Decision] = Field(default_factory=list)
 
 
 def snapshot_text(s) -> str:
@@ -123,6 +124,22 @@ def _no_planner(binding: Binding) -> list[tuple[Any, str, Any]]:
     return [(replan, "plan", model_plan)]
 
 
+# The checks the no_rule_checks knock-out leaves running: the reply's schema,
+# reading an amount at all, the account and sender of an alert, a statement's
+# dates inside its period, confidence, and whether a voice note's amount is
+# words that were said. They decide whether a record can be read; the ones
+# patched decide whether a record that reads fine is true.
+RULE_CHECKS_LEFT_ON = ("schema", "amount parsing", "account and sender", "statement dates", "confidence",
+                       "voice: the amount was said")
+
+
+def _without_duplicates(check: Callable[..., Any]) -> Callable[..., Any]:
+    """The same check, given a duplicate lookup that never finds anything."""
+    def check_without_duplicates(*args: Any) -> Any:
+        return check(*args[:-1], lambda *_: None)
+    return check_without_duplicates
+
+
 def _no_rule_checks(binding: Binding) -> list[tuple[Any, str, Any]]:
     import app.agent.tools as tools
     import app.ingest.pipeline as pipeline
@@ -138,14 +155,17 @@ def _no_rule_checks(binding: Binding) -> list[tuple[Any, str, Any]]:
         return None
 
     patches = [(invoice, "check_gstin", passes), (invoice, "check_invoice_arithmetic", passes),
-               (alert, "check_mail_date", passes), (pipeline, "_check_bank_details", nothing)]
-    for name in ("check_statement_arithmetic", "check_mail_date"):
-        if hasattr(statement, name):
-            patches.append((statement, name, passes))
-    for module in (pipeline, tools):
-        for name in ("invoice_on_record", "bank_txn_with_key", "statement_with_key", "failure_candidate_with_key"):
-            if hasattr(module, name):
-                patches.append((module, name, nothing))
+               (statement, "check_statement_arithmetic", passes), (alert, "check_mail_date", passes),
+               (pipeline, "_check_bank_details", nothing)]
+    # Duplicates: each check's lookup is blanked where the check is called, so code
+    # that only keeps keys unique (pipeline's dedup-key loop) is untouched.
+    for module, names in ((pipeline, ("check_bank_alert", "check_failure_notice", "check_statement", "check_voice",
+                                      "check_invoice")),
+                          (tools, ("check_bank_alert", "check_invoice"))):
+        patches += [(module, name, _without_duplicates(getattr(module, name))) for name in names]
+    for module, name, _ in patches:
+        if not hasattr(module, name):  # a renamed seam must fail loudly, not quietly weaken the knock-out
+            raise AttributeError(f"no_rule_checks: {module.__name__}.{name} no longer exists")
     return patches
 
 

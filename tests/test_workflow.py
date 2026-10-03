@@ -23,6 +23,7 @@ def test_the_run_holds_at_every_step_in_fixture_mode(name):
               for s in r.steps if not s.ok]
     assert broken == []
     assert all(s.checks for s in r.steps), "every step has an explicit check"
+    assert [c.id for s in r.steps for c in s.checks if not c.why] == [], "every expected value says where it comes from"
     assert r.alerts and {a["to"] for a in r.alerts} == {"owner@example.test"}
 
 
