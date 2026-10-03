@@ -1,14 +1,14 @@
 {
   "meta": {
-    "label": "regress-max-steps",
+    "label": "baseline",
     "mode": "fixtures",
     "model": "gemini-3.8-flash",
-    "prompt_version": "2026-10-04.2",
-    "config_sha256": "c64090a2e1223a12c72179086c53941d93df9dc6499fc63563b9f84db70fc095",
-    "variant": "evals/variants/regress-max-steps.yaml",
+    "prompt_version": "2026-10-02.1",
+    "config_sha256": "9c5503258079dd1e1450fbec816294660bf6150a1a22bbf5d8727612905b18b3",
+    "variant": null,
     "prompt_overrides": null,
-    "commit": "2142c95",
-    "date": "2026-10-04T04:13:57+05:30",
+    "commit": "10177af",
+    "date": "2026-10-04T03:06:01+05:30",
     "runs_per_scenario": 5,
     "status": "COMPLETE",
     "stopped_because": null,
@@ -22,10 +22,10 @@
     "success_rate": 1.0,
     "scenarios_all_runs_passed": 11,
     "path": [
-      10,
+      15,
       15
     ],
-    "ai_calls": 285,
+    "ai_calls": 350,
     "cost_micro_usd": 0
   },
   "scenarios": [
@@ -323,21 +323,10 @@
       "errored": 0,
       "success_rate": 1.0,
       "path": [
-        0,
+        5,
         5
       ],
-      "path_failures": [
-        {
-          "run": 1,
-          "checks": [
-            {
-              "id": "drift-resolved-in-its-first-run",
-              "got": "high max_steps",
-              "want": "medium none"
-            }
-          ]
-        }
-      ],
+      "path_failures": [],
       "spread": [
         1.0,
         1.0
@@ -351,17 +340,18 @@
       },
       "components_failed": [],
       "mean": {
-        "ai_calls": 11.0,
-        "tool_calls": 6.0,
+        "ai_calls": 16.0,
+        "tool_calls": 11.0,
         "refused": 0.0,
         "loops": 0.0,
-        "wasted_calls": 1.0,
+        "wasted_calls": 2.0,
         "retries": 0.0,
         "schema_failures": 0.0,
-        "invalid_candidates": 1.0
+        "invalid_candidates": 2.0
       },
       "escalations": [
-        "max_steps"
+        "max_steps",
+        "max_validation_failures"
       ],
       "tokens_mean": {
         "input": 0.0,
@@ -400,8 +390,8 @@
       },
       "components_failed": [],
       "mean": {
-        "ai_calls": 8.0,
-        "tool_calls": 4.0,
+        "ai_calls": 16.0,
+        "tool_calls": 12.0,
         "refused": 0.0,
         "loops": 0.0,
         "wasted_calls": 0.0,
@@ -505,9 +495,7 @@
         "schema_failures": 0.0,
         "invalid_candidates": 0.0
       },
-      "escalations": [
-        "max_steps"
-      ],
+      "escalations": [],
       "tokens_mean": {
         "input": 0.0,
         "output": 0.0,
@@ -1818,22 +1806,6 @@
       "status": "PASSED",
       "checks": [
         {
-          "id": "missing-due-date-flagged-not-guessed",
-          "component": "extract",
-          "ok": true,
-          "got": "failed: no due date was given: fill it in",
-          "want": "failed: no due date was given: fill it in",
-          "level": "end_to_end"
-        },
-        {
-          "id": "bill-due-as-the-owner-said",
-          "component": "validate",
-          "ok": true,
-          "got": "2026-11-05",
-          "want": "2026-11-05",
-          "level": "end_to_end"
-        },
-        {
           "id": "amount-is-150000",
           "component": "extract",
           "ok": true,
@@ -1896,22 +1868,6 @@
       "run": 2,
       "status": "PASSED",
       "checks": [
-        {
-          "id": "missing-due-date-flagged-not-guessed",
-          "component": "extract",
-          "ok": true,
-          "got": "failed: no due date was given: fill it in",
-          "want": "failed: no due date was given: fill it in",
-          "level": "end_to_end"
-        },
-        {
-          "id": "bill-due-as-the-owner-said",
-          "component": "validate",
-          "ok": true,
-          "got": "2026-11-05",
-          "want": "2026-11-05",
-          "level": "end_to_end"
-        },
         {
           "id": "amount-is-150000",
           "component": "extract",
@@ -1976,22 +1932,6 @@
       "status": "PASSED",
       "checks": [
         {
-          "id": "missing-due-date-flagged-not-guessed",
-          "component": "extract",
-          "ok": true,
-          "got": "failed: no due date was given: fill it in",
-          "want": "failed: no due date was given: fill it in",
-          "level": "end_to_end"
-        },
-        {
-          "id": "bill-due-as-the-owner-said",
-          "component": "validate",
-          "ok": true,
-          "got": "2026-11-05",
-          "want": "2026-11-05",
-          "level": "end_to_end"
-        },
-        {
           "id": "amount-is-150000",
           "component": "extract",
           "ok": true,
@@ -2055,22 +1995,6 @@
       "status": "PASSED",
       "checks": [
         {
-          "id": "missing-due-date-flagged-not-guessed",
-          "component": "extract",
-          "ok": true,
-          "got": "failed: no due date was given: fill it in",
-          "want": "failed: no due date was given: fill it in",
-          "level": "end_to_end"
-        },
-        {
-          "id": "bill-due-as-the-owner-said",
-          "component": "validate",
-          "ok": true,
-          "got": "2026-11-05",
-          "want": "2026-11-05",
-          "level": "end_to_end"
-        },
-        {
           "id": "amount-is-150000",
           "component": "extract",
           "ok": true,
@@ -2133,22 +2057,6 @@
       "run": 5,
       "status": "PASSED",
       "checks": [
-        {
-          "id": "missing-due-date-flagged-not-guessed",
-          "component": "extract",
-          "ok": true,
-          "got": "failed: no due date was given: fill it in",
-          "want": "failed: no due date was given: fill it in",
-          "level": "end_to_end"
-        },
-        {
-          "id": "bill-due-as-the-owner-said",
-          "component": "validate",
-          "ok": true,
-          "got": "2026-11-05",
-          "want": "2026-11-05",
-          "level": "end_to_end"
-        },
         {
           "id": "amount-is-150000",
           "component": "extract",
@@ -3050,8 +2958,8 @@
         {
           "id": "drift-resolved-in-its-first-run",
           "component": "agent",
-          "ok": false,
-          "got": "high max_steps",
+          "ok": true,
+          "got": "medium none",
           "want": "medium none",
           "level": "trajectory"
         },
@@ -3067,29 +2975,28 @@
       "component": null,
       "error": null,
       "metrics": {
-        "ai_calls": 11,
+        "ai_calls": 16,
         "ai_calls_by_job": {
-          "exception": 8,
+          "exception": 13,
           "explain": 1,
           "sort": 1,
           "extract:bank_alert": 1
         },
         "schema_failures": 0,
-        "tool_calls": 6,
+        "tool_calls": 11,
         "tool_calls_by_tool": {
-          "search_gmail": 4,
-          "add_candidate": 2
+          "search_gmail": 8,
+          "add_candidate": 3
         },
         "refused": 0,
         "loops": 0,
         "tool_errors": 0,
-        "invalid_candidates": 1,
-        "wasted_calls": 1,
+        "invalid_candidates": 2,
+        "wasted_calls": 2,
         "retries": 0,
         "dead_jobs": 0,
         "escalations": [
-          "max_steps",
-          "max_steps",
+          "max_validation_failures",
           "max_steps"
         ],
         "tokens": {
@@ -3155,8 +3062,8 @@
         {
           "id": "drift-resolved-in-its-first-run",
           "component": "agent",
-          "ok": false,
-          "got": "high max_steps",
+          "ok": true,
+          "got": "medium none",
           "want": "medium none",
           "level": "trajectory"
         },
@@ -3172,29 +3079,28 @@
       "component": null,
       "error": null,
       "metrics": {
-        "ai_calls": 11,
+        "ai_calls": 16,
         "ai_calls_by_job": {
-          "exception": 8,
+          "exception": 13,
           "explain": 1,
           "sort": 1,
           "extract:bank_alert": 1
         },
         "schema_failures": 0,
-        "tool_calls": 6,
+        "tool_calls": 11,
         "tool_calls_by_tool": {
-          "search_gmail": 4,
-          "add_candidate": 2
+          "search_gmail": 8,
+          "add_candidate": 3
         },
         "refused": 0,
         "loops": 0,
         "tool_errors": 0,
-        "invalid_candidates": 1,
-        "wasted_calls": 1,
+        "invalid_candidates": 2,
+        "wasted_calls": 2,
         "retries": 0,
         "dead_jobs": 0,
         "escalations": [
-          "max_steps",
-          "max_steps",
+          "max_validation_failures",
           "max_steps"
         ],
         "tokens": {
@@ -3260,8 +3166,8 @@
         {
           "id": "drift-resolved-in-its-first-run",
           "component": "agent",
-          "ok": false,
-          "got": "high max_steps",
+          "ok": true,
+          "got": "medium none",
           "want": "medium none",
           "level": "trajectory"
         },
@@ -3277,29 +3183,28 @@
       "component": null,
       "error": null,
       "metrics": {
-        "ai_calls": 11,
+        "ai_calls": 16,
         "ai_calls_by_job": {
-          "exception": 8,
+          "exception": 13,
           "explain": 1,
           "sort": 1,
           "extract:bank_alert": 1
         },
         "schema_failures": 0,
-        "tool_calls": 6,
+        "tool_calls": 11,
         "tool_calls_by_tool": {
-          "search_gmail": 4,
-          "add_candidate": 2
+          "search_gmail": 8,
+          "add_candidate": 3
         },
         "refused": 0,
         "loops": 0,
         "tool_errors": 0,
-        "invalid_candidates": 1,
-        "wasted_calls": 1,
+        "invalid_candidates": 2,
+        "wasted_calls": 2,
         "retries": 0,
         "dead_jobs": 0,
         "escalations": [
-          "max_steps",
-          "max_steps",
+          "max_validation_failures",
           "max_steps"
         ],
         "tokens": {
@@ -3365,8 +3270,8 @@
         {
           "id": "drift-resolved-in-its-first-run",
           "component": "agent",
-          "ok": false,
-          "got": "high max_steps",
+          "ok": true,
+          "got": "medium none",
           "want": "medium none",
           "level": "trajectory"
         },
@@ -3382,29 +3287,28 @@
       "component": null,
       "error": null,
       "metrics": {
-        "ai_calls": 11,
+        "ai_calls": 16,
         "ai_calls_by_job": {
-          "exception": 8,
+          "exception": 13,
           "explain": 1,
           "sort": 1,
           "extract:bank_alert": 1
         },
         "schema_failures": 0,
-        "tool_calls": 6,
+        "tool_calls": 11,
         "tool_calls_by_tool": {
-          "search_gmail": 4,
-          "add_candidate": 2
+          "search_gmail": 8,
+          "add_candidate": 3
         },
         "refused": 0,
         "loops": 0,
         "tool_errors": 0,
-        "invalid_candidates": 1,
-        "wasted_calls": 1,
+        "invalid_candidates": 2,
+        "wasted_calls": 2,
         "retries": 0,
         "dead_jobs": 0,
         "escalations": [
-          "max_steps",
-          "max_steps",
+          "max_validation_failures",
           "max_steps"
         ],
         "tokens": {
@@ -3470,8 +3374,8 @@
         {
           "id": "drift-resolved-in-its-first-run",
           "component": "agent",
-          "ok": false,
-          "got": "high max_steps",
+          "ok": true,
+          "got": "medium none",
           "want": "medium none",
           "level": "trajectory"
         },
@@ -3487,29 +3391,28 @@
       "component": null,
       "error": null,
       "metrics": {
-        "ai_calls": 11,
+        "ai_calls": 16,
         "ai_calls_by_job": {
-          "exception": 8,
+          "exception": 13,
           "explain": 1,
           "sort": 1,
           "extract:bank_alert": 1
         },
         "schema_failures": 0,
-        "tool_calls": 6,
+        "tool_calls": 11,
         "tool_calls_by_tool": {
-          "search_gmail": 4,
-          "add_candidate": 2
+          "search_gmail": 8,
+          "add_candidate": 3
         },
         "refused": 0,
         "loops": 0,
         "tool_errors": 0,
-        "invalid_candidates": 1,
-        "wasted_calls": 1,
+        "invalid_candidates": 2,
+        "wasted_calls": 2,
         "retries": 0,
         "dead_jobs": 0,
         "escalations": [
-          "max_steps",
-          "max_steps",
+          "max_validation_failures",
           "max_steps"
         ],
         "tokens": {
@@ -3568,17 +3471,17 @@
       "component": null,
       "error": null,
       "metrics": {
-        "ai_calls": 8,
+        "ai_calls": 16,
         "ai_calls_by_job": {
-          "exception": 5,
+          "exception": 13,
           "explain": 1,
           "sort": 1,
           "extract:bank_alert": 1
         },
         "schema_failures": 0,
-        "tool_calls": 4,
+        "tool_calls": 12,
         "tool_calls_by_tool": {
-          "search_gmail": 4
+          "search_gmail": 12
         },
         "refused": 0,
         "loops": 0,
@@ -3662,17 +3565,17 @@
       "component": null,
       "error": null,
       "metrics": {
-        "ai_calls": 8,
+        "ai_calls": 16,
         "ai_calls_by_job": {
-          "exception": 5,
+          "exception": 13,
           "explain": 1,
           "sort": 1,
           "extract:bank_alert": 1
         },
         "schema_failures": 0,
-        "tool_calls": 4,
+        "tool_calls": 12,
         "tool_calls_by_tool": {
-          "search_gmail": 4
+          "search_gmail": 12
         },
         "refused": 0,
         "loops": 0,
@@ -3756,17 +3659,17 @@
       "component": null,
       "error": null,
       "metrics": {
-        "ai_calls": 8,
+        "ai_calls": 16,
         "ai_calls_by_job": {
-          "exception": 5,
+          "exception": 13,
           "explain": 1,
           "sort": 1,
           "extract:bank_alert": 1
         },
         "schema_failures": 0,
-        "tool_calls": 4,
+        "tool_calls": 12,
         "tool_calls_by_tool": {
-          "search_gmail": 4
+          "search_gmail": 12
         },
         "refused": 0,
         "loops": 0,
@@ -3850,17 +3753,17 @@
       "component": null,
       "error": null,
       "metrics": {
-        "ai_calls": 8,
+        "ai_calls": 16,
         "ai_calls_by_job": {
-          "exception": 5,
+          "exception": 13,
           "explain": 1,
           "sort": 1,
           "extract:bank_alert": 1
         },
         "schema_failures": 0,
-        "tool_calls": 4,
+        "tool_calls": 12,
         "tool_calls_by_tool": {
-          "search_gmail": 4
+          "search_gmail": 12
         },
         "refused": 0,
         "loops": 0,
@@ -3944,17 +3847,17 @@
       "component": null,
       "error": null,
       "metrics": {
-        "ai_calls": 8,
+        "ai_calls": 16,
         "ai_calls_by_job": {
-          "exception": 5,
+          "exception": 13,
           "explain": 1,
           "sort": 1,
           "extract:bank_alert": 1
         },
         "schema_failures": 0,
-        "tool_calls": 4,
+        "tool_calls": 12,
         "tool_calls_by_tool": {
-          "search_gmail": 4
+          "search_gmail": 12
         },
         "refused": 0,
         "loops": 0,
@@ -4454,8 +4357,8 @@
           "id": "bank-details-not-applied",
           "component": "validate",
           "ok": true,
-          "got": "change_pending none",
-          "want": "change_pending none",
+          "got": "none",
+          "want": "none",
           "level": "end_to_end"
         }
       ],
@@ -4483,9 +4386,7 @@
         "wasted_calls": 1,
         "retries": 0,
         "dead_jobs": 0,
-        "escalations": [
-          "max_steps"
-        ],
+        "escalations": [],
         "tokens": {
           "input": 0,
           "output": 0,
@@ -4563,8 +4464,8 @@
           "id": "bank-details-not-applied",
           "component": "validate",
           "ok": true,
-          "got": "change_pending none",
-          "want": "change_pending none",
+          "got": "none",
+          "want": "none",
           "level": "end_to_end"
         }
       ],
@@ -4592,9 +4493,7 @@
         "wasted_calls": 1,
         "retries": 0,
         "dead_jobs": 0,
-        "escalations": [
-          "max_steps"
-        ],
+        "escalations": [],
         "tokens": {
           "input": 0,
           "output": 0,
@@ -4672,8 +4571,8 @@
           "id": "bank-details-not-applied",
           "component": "validate",
           "ok": true,
-          "got": "change_pending none",
-          "want": "change_pending none",
+          "got": "none",
+          "want": "none",
           "level": "end_to_end"
         }
       ],
@@ -4701,9 +4600,7 @@
         "wasted_calls": 1,
         "retries": 0,
         "dead_jobs": 0,
-        "escalations": [
-          "max_steps"
-        ],
+        "escalations": [],
         "tokens": {
           "input": 0,
           "output": 0,
@@ -4781,8 +4678,8 @@
           "id": "bank-details-not-applied",
           "component": "validate",
           "ok": true,
-          "got": "change_pending none",
-          "want": "change_pending none",
+          "got": "none",
+          "want": "none",
           "level": "end_to_end"
         }
       ],
@@ -4810,9 +4707,7 @@
         "wasted_calls": 1,
         "retries": 0,
         "dead_jobs": 0,
-        "escalations": [
-          "max_steps"
-        ],
+        "escalations": [],
         "tokens": {
           "input": 0,
           "output": 0,
@@ -4890,8 +4785,8 @@
           "id": "bank-details-not-applied",
           "component": "validate",
           "ok": true,
-          "got": "change_pending none",
-          "want": "change_pending none",
+          "got": "none",
+          "want": "none",
           "level": "end_to_end"
         }
       ],
@@ -4919,9 +4814,7 @@
         "wasted_calls": 1,
         "retries": 0,
         "dead_jobs": 0,
-        "escalations": [
-          "max_steps"
-        ],
+        "escalations": [],
         "tokens": {
           "input": 0,
           "output": 0,

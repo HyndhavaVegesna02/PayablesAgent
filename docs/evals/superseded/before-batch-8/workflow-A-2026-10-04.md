@@ -2,13 +2,13 @@
 
 | Mode | Model | Prompt version | Commit | Date | Repeats | Model calls | Cost µUSD |
 |---|---|---|---|---|---|---|---|
-| fixtures | gemini-3.8-flash | 2026-10-04.2 | 2142c95 | 2026-10-04T04:14:16+05:30 | 1 | 37 | 0 |
+| fixtures | gemini-3.8-flash | 2026-10-02.1 | 10177af | 2026-10-04T03:06:34+05:30 | 1 | 38 | 0 |
 
 Fixture mode: every model reply is canned (fixtures/ai_replies.json), so the run is deterministic and costs nothing. It shows the system end to end, not the model.
 
 ## Repeat 1: PASS
 
-19 of 19 steps passed; 57 of 57 checks.
+19 of 19 steps passed; 52 of 52 checks.
 
 | # | When | Who | Step | Check | Expected | Actual | Result |
 |---|---|---|---|---|---|---|---|
@@ -31,31 +31,26 @@ Fixture mode: every model reply is canned (fixtures/ai_replies.json), so the run
 | | | | | `balance` | 47300000 | 47300000 | PASS |
 | 7 | Wed 14 Oct 11:00 | helper | Wed: uploads Shree Ganesh's handwritten bill (photo) | `read` | 1239000 | 1239000 | PASS |
 | 8 | Wed 14 Oct 11:00 | helper | Uploads a voice note: 'Sharma Packaging ka bill, dedh lakh rupaye, paanch November' | `dedh-lakh-read-by-code` | 15000000 | 15000000 | PASS |
-| | | | | `due-date-flagged-not-guessed` | AWAITING_OWNER failed: no due date was given: fill it in | AWAITING_OWNER failed: no due date was given: fill it in | PASS |
 | 9 | Wed 14 Oct 11:00 | helper | Types a bill: Laxmi Transport LT/2610/88, ₹18,000, due Mon 2 Nov | `four-channels-waiting` | ["email", "photo", "voice", "typed"] | ["email", "photo", "voice", "typed"] | PASS |
 | | | | | `helper-cannot-confirm` | [403, true] | [403, true] | PASS |
 | 10 | Thu 15 Oct 09:30 | owner | Thu 09:30: approves Thursday's payments (PF and ESI, electricity) | `stale-plan-refused-first` | true | true | PASS |
 | | | | | `approved` | ["PAYMENT_EXPECTED", "PAYMENT_EXPECTED"] | ["PAYMENT_EXPECTED", "PAYMENT_EXPECTED"] | PASS |
 | 11 | Thu 15 Oct 12:00 | bank | Thu 10:05 and 10:20: debits of ₹45,000 (EPFO ESIC CHALLAN) and ₹35,000 (electricity) | `electricity-paid` | PAID | PAID | PASS |
-| | | | | `pf-esi-paid-by-its-payee-words` | PAID | PAID | PASS |
-| | | | | `no-case-for-the-challan` | 0 | 0 | PASS |
+| | | | | `statutory-debit-needs-the-owner` | REVIEW | REVIEW | PASS |
 | | | | | `balance` | 39300000 | 39300000 | PASS |
-| 12 | Fri 16 Oct 12:00 | bank | Fri 10:12: Nandi Foods pays ₹2,00,000 early (fixture 07) | `receipt-confirmed` | CONFIRMED | CONFIRMED | PASS |
+| 12 | Thu 15 Oct 12:00 | owner | Answers 'which bill did the ₹45,000 debit pay?': PF and ESI | `pf-esi-paid` | PAID | PAID | PASS |
+| | | | | `no-question-left-for-the-debit` | 0 | 0 | PASS |
+| 13 | Fri 16 Oct 12:00 | bank | Fri 10:12: Nandi Foods pays ₹2,00,000 early (fixture 07) | `receipt-confirmed` | CONFIRMED | CONFIRMED | PASS |
 | | | | | `lowest-balance-now` | 38300000 | 38300000 | PASS |
 | | | | | `prime-chem-pay-thursday` | PAY 2026-10-22 | PAY 2026-10-22 | PASS |
 | | | | | `plan-valid` | true | true | PASS |
 | | | | | `explain-plan-note` | [true, true] | [true, true] | PASS |
-| 13 | Sat 17 Oct 10:00 | owner | Sat: confirms the four new bills on Needs attention, typing in the voice note's due date (Thu 5 Nov), the one field marked for them | `due-date-marked-on-the-form` | true | true | PASS |
-| | | | | `bills-in-the-ledger` | ["", "418", "AP/2610/131", "LT/2610/88"] | ["", "418", "AP/2610/131", "LT/2610/88"] | PASS |
+| 14 | Sat 17 Oct 10:00 | owner | Sat: confirms the four new bills on Needs attention | `bills-in-the-ledger` | ["", "418", "AP/2610/131", "LT/2610/88"] | ["", "418", "AP/2610/131", "LT/2610/88"] | PASS |
 | | | | | `new-decisions` | {"418": "PAY 2026-10-22", "AP/2610/131": "PAY 2026-10-26", "LT/2610/88": "WAIT", "Sharma Packaging": "WAIT"} | {"418": "PAY 2026-10-22", "AP/2610/131": "PAY 2026-10-26", "LT/2610/88": "WAIT", "Sharma Packaging": "WAIT"} | PASS |
 | | | | | `prime-chem-still-thursday` | PAY 2026-10-22 | PAY 2026-10-22 | PASS |
 | | | | | `lowest` | [27561000, "2026-10-26"] | [27561000, "2026-10-26"] | PASS |
-| | | | | `first-bank-details-asked` | [1] | [1] | PASS |
-| 14 | Sat 17 Oct 10:00 | owner | Calls Ashirwad on a known number: account 4410 is theirs. Approves the bank details | `bank-details-on-record` | XXXX4410 SBIN0001234 verified | XXXX4410 SBIN0001234 verified | PASS |
 | 15 | Mon 19 Oct 09:30 | owner | Mon 19 09:30: approves Monday's payment (GST) | `approved` | PAYMENT_EXPECTED | PAYMENT_EXPECTED | PASS |
-| 16 | Mon 19 Oct 12:00 | bank + owner | Mon 10:10: ₹90,000 'NETBANKING TAX PAYMENT' names no tax office; the owner answers which bill it paid: GST | `gst-debit-needs-the-owner` | REVIEW | REVIEW | PASS |
-| | | | | `gst-paid` | PAID | PAID | PASS |
-| | | | | `no-question-left-for-the-debit` | 0 | 0 | PASS |
+| 16 | Mon 19 Oct 12:00 | bank | Mon 10:10: ₹90,000 to GST CHALLAN CBIC; the owner links it to the GST bill | `gst-paid` | PAID | PAID | PASS |
 | | | | | `balance` | 50300000 | 50300000 | PASS |
 | 17 | Thu 22 Oct 09:30 | owner | Thu 22 09:30: approves Thursday's payments (Prime Chem, Shree Ganesh) | `approved` | ["PAYMENT_EXPECTED", "PAYMENT_EXPECTED"] | ["PAYMENT_EXPECTED", "PAYMENT_EXPECTED"] | PASS |
 | 18 | Thu 22 Oct 12:00 | bank | Thu 10:15 and 10:31: ₹1,20,000 to Prime Chem, ₹12,390 to Shree Ganesh | `paid` | ["PAID", "PAID"] | ["PAID", "PAID"] | PASS |
@@ -65,7 +60,7 @@ Fixture mode: every model reply is canned (fixtures/ai_replies.json), so the run
 | | | | | `receipts` | ["CONFIRMED", "CONFIRMED"] | ["CONFIRMED", "CONFIRMED"] | PASS |
 | | | | | `ledger-matches-the-bank` | [37061000, 37061000, "OK"] | [37061000, 37061000, "OK"] | PASS |
 | | | | | `no-unmatched-money` | 0 | 0 | PASS |
-| | | | | `owner-alerts-sent` | [["money_received", "receivable:1"], ["money_received", "receivable:2"], ["unexpected_debit", "bank_txn:6"]] | [["money_received", "receivable:1"], ["money_received", "receivable:2"], ["unexpected_debit", "bank_txn:6"]] | PASS |
+| | | | | `owner-alerts-sent` | [["money_received", "receivable:1"], ["money_received", "receivable:2"], ["unexpected_debit", "bank_txn:3"], ["unexpected_debit", "bank_txn:6"]] | [["money_received", "receivable:1"], ["money_received", "receivable:2"], ["unexpected_debit", "bank_txn:3"], ["unexpected_debit", "bank_txn:6"]] | PASS |
 | | | | | `tdd-money-received-message` | true | true | PASS |
 | | | | | `alerts-go-to-the-owner-only` | ["owner@example.test"] | ["owner@example.test"] | PASS |
 | | | | | `audit-trail-email-to-bill-to-plan` | {"email": "email invoice PROCESSED", "candidate": "ACCEPTED", "bill-from-that-email": true, "bill-events": ["PAYABLE_CREATED by owner", "PAYABLE_CONFIRMED by ow | {"email": "email invoice PROCESSED", "candidate": "ACCEPTED", "bill-from-that-email": true, "bill-events": ["PAYABLE_CREATED by owner", "PAYABLE_CONFIRMED by ow | PASS |
@@ -91,31 +86,26 @@ Fixture mode: every model reply is canned (fixtures/ai_replies.json), so the run
 - **6. `balance`:** golden table, Tue 13 Oct
 - **7. `read`:** the bill's total: 10,000 + 500 + CGST 945 + SGST 945
 - **8. `dedh-lakh-read-by-code`:** 'dedh lakh' is 1.5 lakh; code reads the spoken words, not a model's figure
-- **8. `due-date-flagged-not-guessed`:** 'paanch November' has no year: the date is left for the owner, never guessed (CHG-030)
 - **9. `four-channels-waiting`:** one bill from each channel, all waiting for the owner
 - **9. `helper-cannot-confirm`:** confirming is owner-only: the role check refuses a logged-in helper with a valid token
 - **10. `stale-plan-refused-first`:** the plan on screen was made on Wednesday; approving it on Thursday is refused and the page shows today's plan
 - **10. `approved`:** both approved for Thu 15 Oct
 - **11. `electricity-paid`:** amount, date and name match
-- **11. `pf-esi-paid-by-its-payee-words`:** D27: 'EPFO ESIC CHALLAN' names the PF and ESI payee words, with the bill's amount and date
-- **11. `no-case-for-the-challan`:** code placed it, so neither the agent nor the owner is asked
+- **11. `statutory-debit-needs-the-owner`:** a statutory bill has no vendor name for 'EPFO ESIC CHALLAN' to match, so code asks the owner
 - **11. `balance`:** golden table, Thu 15 Oct; the alert shows Rs.3,93,000.00
-- **12. `receipt-confirmed`:** TDD: matched and CONFIRMED
-- **12. `lowest-balance-now`:** TDD: the planner reruns and the lowest balance becomes ₹3,83,000 (golden table, Thu 22 Oct)
-- **12. `prime-chem-pay-thursday`:** TDD: Prime Chem moves to PAY on Thu 22 Oct
-- **12. `plan-valid`:** ₹3,83,000 is above the ₹2,50,000 safety amount
-- **12. `explain-plan-note`:** a 'what changed' note is on the plan; offline it is code's template (the fixture AI has no canned note); live, Gemini's, or the template when Gemini's fails its check
-- **13. `due-date-marked-on-the-form`:** the empty field is marked on the page, not left to fail on Confirm
-- **13. `bills-in-the-ledger`:** AP/2610/131 (email), 418 (photo), the voice note's bill (no number said), LT/2610/88 (typed)
-- **13. `new-decisions`:** 418 due Sat 24 Oct: paid Thu 22; AP/2610/131 due Wed 28: paid Mon 26; LT/2610/88 (due 2 Nov) and Sharma (due 5 Nov) are after the horizon, Sat 17 to Fri 30 Oct
-- **13. `prime-chem-still-thursday`:** the new bills still leave the floor clear
-- **13. `lowest`:** 5,93,000 - GST 90,000 - Prime 1,20,000 - 418 12,390 - AP/2610/131 95,000 = 2,75,610, on Mon 26
-- **13. `first-bank-details-asked`:** D26: AP/2610/131 is Ashirwad's first bill with bank details; confirming it doesn't approve them, so the owner is asked
-- **14. `bank-details-on-record`:** stored only once the owner approved them
+- **12. `pf-esi-paid`:** linked by the owner
+- **12. `no-question-left-for-the-debit`:** the case is settled, so neither of its questions still waits (CHG-027 fix)
+- **13. `receipt-confirmed`:** TDD: matched and CONFIRMED
+- **13. `lowest-balance-now`:** TDD: the planner reruns and the lowest balance becomes ₹3,83,000 (golden table, Thu 22 Oct)
+- **13. `prime-chem-pay-thursday`:** TDD: Prime Chem moves to PAY on Thu 22 Oct
+- **13. `plan-valid`:** ₹3,83,000 is above the ₹2,50,000 safety amount
+- **13. `explain-plan-note`:** a 'what changed' note is on the plan; offline it is code's template (the fixture AI has no canned note); live, Gemini's, or the template when Gemini's fails its check
+- **14. `bills-in-the-ledger`:** AP/2610/131 (email), 418 (photo), the voice note's bill (no number said), LT/2610/88 (typed)
+- **14. `new-decisions`:** 418 due Sat 24 Oct: paid Thu 22; AP/2610/131 due Wed 28: paid Mon 26; LT/2610/88 (due 2 Nov) and Sharma (due 5 Nov) are after the horizon, Sat 17 to Fri 30 Oct
+- **14. `prime-chem-still-thursday`:** the new bills still leave the floor clear
+- **14. `lowest`:** 5,93,000 - GST 90,000 - Prime 1,20,000 - 418 12,390 - AP/2610/131 95,000 = 2,75,610, on Mon 26
 - **15. `approved`:** approving moves the bill PLANNED -> PAYMENT_EXPECTED (the state the owner's approval means)
-- **16. `gst-debit-needs-the-owner`:** no statutory payee word in the description, so code can't place it and asks (CHG-028's fallback)
-- **16. `gst-paid`:** the owner linked the debit to the GST bill: PAID
-- **16. `no-question-left-for-the-debit`:** the case is settled, so neither of its questions still waits (CHG-027 fix)
+- **16. `gst-paid`:** the owner linked the challan debit to the GST bill: PAID
 - **16. `balance`:** golden table (Nandi paid), Mon 19 Oct
 - **17. `approved`:** both are the plan's PAY lines for Thu 22 Oct; approving moves each to PAYMENT_EXPECTED
 - **18. `paid`:** each debit's amount, date and payee name match its approved bill
@@ -125,7 +115,7 @@ Fixture mode: every model reply is canned (fixtures/ai_replies.json), so the run
 - **19. `receipts`:** Kaveri's ₹33,000 on Tue 13 and Nandi's ₹2,00,000 on Fri 16 both arrived and matched
 - **19. `ledger-matches-the-bank`:** the last alert's balance
 - **19. `no-unmatched-money`:** every debit and credit was matched to a bill or a receipt, by code or by the owner
-- **19. `owner-alerts-sent`:** Kaveri's and Nandi's money arriving; the tax debit code could not place
+- **19. `owner-alerts-sent`:** Kaveri's and Nandi's money arriving; the two challan debits code could not place
 - **19. `tdd-money-received-message`:** TDD Messages table: '₹2,00,000 received from Nandi Foods. Lowest projected balance is now ₹3.83L. Plan updated.'
 - **19. `alerts-go-to-the-owner-only`:** the recipient comes from the database: the owner's login
 - **19. `audit-trail-email-to-bill-to-plan`:** the stored email, the entry read from it, the bill the owner confirmed from that entry, each change as an event, the plan line
@@ -133,5 +123,6 @@ Fixture mode: every model reply is canned (fixtures/ai_replies.json), so the run
 ### The owner alerts the run sent (captured, never delivered)
 
 - **Cash-flow assistant: 1 thing needs you**: - ₹33,000 received from Kaveri Traders. Lowest projected balance is now ₹1,83,000. Plan updated.  Open the app to see and answer them: http://localhost:8000/att
+- **Cash-flow assistant: 1 thing needs you**: - A ₹45,000 debit from HDFC Bank wasn't in the plan. What was it for?  Open the app to see and answer them: http://localhost:8000/attention  This email was writ
 - **Cash-flow assistant: 1 thing needs you**: - ₹2,00,000 received from Nandi Foods. Lowest projected balance is now ₹3,83,000. Plan updated.  Open the app to see and answer them: http://localhost:8000/atte
 - **Cash-flow assistant: 1 thing needs you**: - A ₹90,000 debit from HDFC Bank wasn't in the plan. What was it for?  Open the app to see and answer them: http://localhost:8000/attention  This email was writ

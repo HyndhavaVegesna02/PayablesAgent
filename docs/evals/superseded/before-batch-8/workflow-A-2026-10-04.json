@@ -3,10 +3,10 @@
     "run": "A",
     "mode": "fixtures",
     "model": "gemini-3.8-flash",
-    "prompt_version": "2026-10-04.2",
-    "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
-    "commit": "2142c95",
-    "date": "2026-10-04T04:14:16+05:30",
+    "prompt_version": "2026-10-02.1",
+    "config_sha256": "9c5503258079dd1e1450fbec816294660bf6150a1a22bbf5d8727612905b18b3",
+    "commit": "10177af",
+    "date": "2026-10-04T03:06:34+05:30",
     "budget": null
   },
   "repeats": [
@@ -14,14 +14,14 @@
       "ok": true,
       "stopped": null,
       "metrics": {
-        "ai_calls": 37,
+        "ai_calls": 38,
         "ai_calls_by_job": {
           "explain": 15,
           "sort": 10,
           "extract:bank_alert": 8,
           "extract:invoice": 2,
           "extract:voice_note": 1,
-          "exception": 1
+          "exception": 2
         },
         "schema_failures": 0,
         "tool_calls": 0,
@@ -48,6 +48,11 @@
           "to": "owner@example.test",
           "subject": "Cash-flow assistant: 1 thing needs you",
           "body": "- ₹33,000 received from Kaveri Traders. Lowest projected balance is now ₹1,83,000. Plan updated.\n\nOpen the app to see and answer them: http://localhost:8000/attention\n\nThis email was written by code from your records. The assistant cannot send email.\n"
+        },
+        {
+          "to": "owner@example.test",
+          "subject": "Cash-flow assistant: 1 thing needs you",
+          "body": "- A ₹45,000 debit from HDFC Bank wasn't in the plan. What was it for?\n\nOpen the app to see and answer them: http://localhost:8000/attention\n\nThis email was written by code from your records. The assistant cannot send email.\n"
         },
         {
           "to": "owner@example.test",
@@ -325,13 +330,6 @@
               "actual": 15000000,
               "ok": true,
               "why": "'dedh lakh' is 1.5 lakh; code reads the spoken words, not a model's figure"
-            },
-            {
-              "id": "due-date-flagged-not-guessed",
-              "expected": "AWAITING_OWNER failed: no due date was given: fill it in",
-              "actual": "AWAITING_OWNER failed: no due date was given: fill it in",
-              "ok": true,
-              "why": "'paanch November' has no year: the date is left for the owner, never guessed (CHG-030)"
             }
           ]
         },
@@ -418,18 +416,11 @@
               "why": "amount, date and name match"
             },
             {
-              "id": "pf-esi-paid-by-its-payee-words",
-              "expected": "PAID",
-              "actual": "PAID",
+              "id": "statutory-debit-needs-the-owner",
+              "expected": "REVIEW",
+              "actual": "REVIEW",
               "ok": true,
-              "why": "D27: 'EPFO ESIC CHALLAN' names the PF and ESI payee words, with the bill's amount and date"
-            },
-            {
-              "id": "no-case-for-the-challan",
-              "expected": 0,
-              "actual": 0,
-              "ok": true,
-              "why": "code placed it, so neither the agent nor the owner is asked"
+              "why": "a statutory bill has no vendor name for 'EPFO ESIC CHALLAN' to match, so code asks the owner"
             },
             {
               "id": "balance",
@@ -442,6 +433,29 @@
         },
         {
           "n": 12,
+          "at": "Thu 15 Oct 12:00",
+          "actor": "owner",
+          "action": "Answers 'which bill did the ₹45,000 debit pay?': PF and ESI",
+          "error": null,
+          "checks": [
+            {
+              "id": "pf-esi-paid",
+              "expected": "PAID",
+              "actual": "PAID",
+              "ok": true,
+              "why": "linked by the owner"
+            },
+            {
+              "id": "no-question-left-for-the-debit",
+              "expected": 0,
+              "actual": 0,
+              "ok": true,
+              "why": "the case is settled, so neither of its questions still waits (CHG-027 fix)"
+            }
+          ]
+        },
+        {
+          "n": 13,
           "at": "Fri 16 Oct 12:00",
           "actor": "bank",
           "action": "Fri 10:12: Nandi Foods pays ₹2,00,000 early (fixture 07)",
@@ -491,19 +505,12 @@
           ]
         },
         {
-          "n": 13,
+          "n": 14,
           "at": "Sat 17 Oct 10:00",
           "actor": "owner",
-          "action": "Sat: confirms the four new bills on Needs attention, typing in the voice note's due date (Thu 5 Nov), the one field marked for them",
+          "action": "Sat: confirms the four new bills on Needs attention",
           "error": null,
           "checks": [
-            {
-              "id": "due-date-marked-on-the-form",
-              "expected": true,
-              "actual": true,
-              "ok": true,
-              "why": "the empty field is marked on the page, not left to fail on Confirm"
-            },
             {
               "id": "bills-in-the-ledger",
               "expected": [
@@ -557,33 +564,6 @@
               ],
               "ok": true,
               "why": "5,93,000 - GST 90,000 - Prime 1,20,000 - 418 12,390 - AP/2610/131 95,000 = 2,75,610, on Mon 26"
-            },
-            {
-              "id": "first-bank-details-asked",
-              "expected": [
-                1
-              ],
-              "actual": [
-                1
-              ],
-              "ok": true,
-              "why": "D26: AP/2610/131 is Ashirwad's first bill with bank details; confirming it doesn't approve them, so the owner is asked"
-            }
-          ]
-        },
-        {
-          "n": 14,
-          "at": "Sat 17 Oct 10:00",
-          "actor": "owner",
-          "action": "Calls Ashirwad on a known number: account 4410 is theirs. Approves the bank details",
-          "error": null,
-          "checks": [
-            {
-              "id": "bank-details-on-record",
-              "expected": "XXXX4410 SBIN0001234 verified",
-              "actual": "XXXX4410 SBIN0001234 verified",
-              "ok": true,
-              "why": "stored only once the owner approved them"
             }
           ]
         },
@@ -606,30 +586,16 @@
         {
           "n": 16,
           "at": "Mon 19 Oct 12:00",
-          "actor": "bank + owner",
-          "action": "Mon 10:10: ₹90,000 'NETBANKING TAX PAYMENT' names no tax office; the owner answers which bill it paid: GST",
+          "actor": "bank",
+          "action": "Mon 10:10: ₹90,000 to GST CHALLAN CBIC; the owner links it to the GST bill",
           "error": null,
           "checks": [
-            {
-              "id": "gst-debit-needs-the-owner",
-              "expected": "REVIEW",
-              "actual": "REVIEW",
-              "ok": true,
-              "why": "no statutory payee word in the description, so code can't place it and asks (CHG-028's fallback)"
-            },
             {
               "id": "gst-paid",
               "expected": "PAID",
               "actual": "PAID",
               "ok": true,
-              "why": "the owner linked the debit to the GST bill: PAID"
-            },
-            {
-              "id": "no-question-left-for-the-debit",
-              "expected": 0,
-              "actual": 0,
-              "ok": true,
-              "why": "the case is settled, so neither of its questions still waits (CHG-027 fix)"
+              "why": "the owner linked the challan debit to the GST bill: PAID"
             },
             {
               "id": "balance",
@@ -774,6 +740,10 @@
                 ],
                 [
                   "unexpected_debit",
+                  "bank_txn:3"
+                ],
+                [
+                  "unexpected_debit",
                   "bank_txn:6"
                 ]
               ],
@@ -788,11 +758,15 @@
                 ],
                 [
                   "unexpected_debit",
+                  "bank_txn:3"
+                ],
+                [
+                  "unexpected_debit",
                   "bank_txn:6"
                 ]
               ],
               "ok": true,
-              "why": "Kaveri's and Nandi's money arriving; the tax debit code could not place"
+              "why": "Kaveri's and Nandi's money arriving; the two challan debits code could not place"
             },
             {
               "id": "tdd-money-received-message",

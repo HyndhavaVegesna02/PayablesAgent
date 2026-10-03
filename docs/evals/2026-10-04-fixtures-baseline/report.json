@@ -3,12 +3,12 @@
     "label": "baseline",
     "mode": "fixtures",
     "model": "gemini-3.8-flash",
-    "prompt_version": "2026-10-02.1",
-    "config_sha256": "9c5503258079dd1e1450fbec816294660bf6150a1a22bbf5d8727612905b18b3",
+    "prompt_version": "2026-10-04.2",
+    "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
     "variant": null,
     "prompt_overrides": null,
-    "commit": "10177af",
-    "date": "2026-10-04T03:06:01+05:30",
+    "commit": "2142c95",
+    "date": "2026-10-04T04:13:49+05:30",
     "runs_per_scenario": 5,
     "status": "COMPLETE",
     "stopped_because": null,
@@ -1806,6 +1806,22 @@
       "status": "PASSED",
       "checks": [
         {
+          "id": "missing-due-date-flagged-not-guessed",
+          "component": "extract",
+          "ok": true,
+          "got": "failed: no due date was given: fill it in",
+          "want": "failed: no due date was given: fill it in",
+          "level": "end_to_end"
+        },
+        {
+          "id": "bill-due-as-the-owner-said",
+          "component": "validate",
+          "ok": true,
+          "got": "2026-11-05",
+          "want": "2026-11-05",
+          "level": "end_to_end"
+        },
+        {
           "id": "amount-is-150000",
           "component": "extract",
           "ok": true,
@@ -1868,6 +1884,22 @@
       "run": 2,
       "status": "PASSED",
       "checks": [
+        {
+          "id": "missing-due-date-flagged-not-guessed",
+          "component": "extract",
+          "ok": true,
+          "got": "failed: no due date was given: fill it in",
+          "want": "failed: no due date was given: fill it in",
+          "level": "end_to_end"
+        },
+        {
+          "id": "bill-due-as-the-owner-said",
+          "component": "validate",
+          "ok": true,
+          "got": "2026-11-05",
+          "want": "2026-11-05",
+          "level": "end_to_end"
+        },
         {
           "id": "amount-is-150000",
           "component": "extract",
@@ -1932,6 +1964,22 @@
       "status": "PASSED",
       "checks": [
         {
+          "id": "missing-due-date-flagged-not-guessed",
+          "component": "extract",
+          "ok": true,
+          "got": "failed: no due date was given: fill it in",
+          "want": "failed: no due date was given: fill it in",
+          "level": "end_to_end"
+        },
+        {
+          "id": "bill-due-as-the-owner-said",
+          "component": "validate",
+          "ok": true,
+          "got": "2026-11-05",
+          "want": "2026-11-05",
+          "level": "end_to_end"
+        },
+        {
           "id": "amount-is-150000",
           "component": "extract",
           "ok": true,
@@ -1995,6 +2043,22 @@
       "status": "PASSED",
       "checks": [
         {
+          "id": "missing-due-date-flagged-not-guessed",
+          "component": "extract",
+          "ok": true,
+          "got": "failed: no due date was given: fill it in",
+          "want": "failed: no due date was given: fill it in",
+          "level": "end_to_end"
+        },
+        {
+          "id": "bill-due-as-the-owner-said",
+          "component": "validate",
+          "ok": true,
+          "got": "2026-11-05",
+          "want": "2026-11-05",
+          "level": "end_to_end"
+        },
+        {
           "id": "amount-is-150000",
           "component": "extract",
           "ok": true,
@@ -2057,6 +2121,22 @@
       "run": 5,
       "status": "PASSED",
       "checks": [
+        {
+          "id": "missing-due-date-flagged-not-guessed",
+          "component": "extract",
+          "ok": true,
+          "got": "failed: no due date was given: fill it in",
+          "want": "failed: no due date was given: fill it in",
+          "level": "end_to_end"
+        },
+        {
+          "id": "bill-due-as-the-owner-said",
+          "component": "validate",
+          "ok": true,
+          "got": "2026-11-05",
+          "want": "2026-11-05",
+          "level": "end_to_end"
+        },
         {
           "id": "amount-is-150000",
           "component": "extract",
@@ -4357,8 +4437,8 @@
           "id": "bank-details-not-applied",
           "component": "validate",
           "ok": true,
-          "got": "none",
-          "want": "none",
+          "got": "change_pending none",
+          "want": "change_pending none",
           "level": "end_to_end"
         }
       ],
@@ -4464,8 +4544,8 @@
           "id": "bank-details-not-applied",
           "component": "validate",
           "ok": true,
-          "got": "none",
-          "want": "none",
+          "got": "change_pending none",
+          "want": "change_pending none",
           "level": "end_to_end"
         }
       ],
@@ -4571,8 +4651,8 @@
           "id": "bank-details-not-applied",
           "component": "validate",
           "ok": true,
-          "got": "none",
-          "want": "none",
+          "got": "change_pending none",
+          "want": "change_pending none",
           "level": "end_to_end"
         }
       ],
@@ -4678,8 +4758,8 @@
           "id": "bank-details-not-applied",
           "component": "validate",
           "ok": true,
-          "got": "none",
-          "want": "none",
+          "got": "change_pending none",
+          "want": "change_pending none",
           "level": "end_to_end"
         }
       ],
@@ -4785,8 +4865,8 @@
           "id": "bank-details-not-applied",
           "component": "validate",
           "ok": true,
-          "got": "none",
-          "want": "none",
+          "got": "change_pending none",
+          "want": "change_pending none",
           "level": "end_to_end"
         }
       ],
