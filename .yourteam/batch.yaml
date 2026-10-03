@@ -18,11 +18,12 @@ changes:
     notes_resolved: false
   - id: CHG-028
     lane: planned
-    board: todo
-    start_commit: null
+    board: done
+    start_commit: c7d467c
     blocked_question: null
-    gate_evidence: []
-    prepatch: null
+    gate_evidence:
+      - {command: "make test", exit_code: 0, output_tail: "s, 283 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | agent never imports the ledger writer, web or the pipeline KEPT | the AI and the agent never reach owner email KEPT | notify is pure text and sending: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 9 kept, 0 broken. | Uninstalled 1 package in 1ms | Installed 1 package in 12ms", commit: 9f46b3f, at: 2026-10-03T22:20:54+00:00}
+    prepatch: "PASS at c7d467c: tests/test_statutory_match.py fails on the old tree (no statutory_payees in the config, no keyword match)"
     notes_resolved: false
   - id: CHG-030
     lane: planned
