@@ -4,7 +4,7 @@
 
 | Mode | Model | Prompt version | Config | Commit | Date | Runs per scenario |
 |---|---|---|---|---|---|---|
-| fixtures | gemini-3.8-flash | 2026-10-04.2 | 51f54558b581 | 7ad9d92 | 2026-10-04T04:58:38+05:30 | 1 |
+| fixtures | gemini-3.8-flash | 2026-10-04.2 | 51f54558b581 | 2142c95 | 2026-10-04T04:14:05+05:30 | 1 |
 
 Fixture mode: every model reply is canned, so the full system and the knock-outs that keep its prompts are deterministic, and tokens and cost are zero. The rows marked *mechanics only* ran on a stand-in that plans nothing; they show the harness runs, not what it scores, and are left out of the comparison. The live run (`--ai live --yes-spend`) scores them.
 

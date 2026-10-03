@@ -5,8 +5,8 @@
     "model": "gemini-3.8-flash",
     "prompt_version": "2026-10-04.2",
     "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
-    "commit": "7ad9d92",
-    "date": "2026-10-04T04:58:38+05:30",
+    "commit": "2142c95",
+    "date": "2026-10-04T04:14:05+05:30",
     "runs_per_scenario": 1,
     "status": "COMPLETE",
     "stopped_because": null,
@@ -1025,7 +1025,7 @@
             0
           ]
         ],
-        "error": "the owner's form refused entry 1: entry: Ashirwad Paper Suppliers invoice AP/2610/131 is already waiting for the owner (entry 2)"
+        "error": "the owner's form refused entry 1 as it was read: entry: Ashirwad Paper Suppliers invoice AP/2610/131 is already waiting for the owner (entry 2)"
       },
       {
         "scenario": "06-payment-returned-by-the-bank",
