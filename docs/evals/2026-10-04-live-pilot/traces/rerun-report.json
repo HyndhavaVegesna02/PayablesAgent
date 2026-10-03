@@ -1,0 +1,333 @@
+{
+  "meta": {
+    "label": "pilot-traces",
+    "mode": "live",
+    "model": "gemini-3.8-flash",
+    "prompt_version": "2026-10-02.1",
+    "config_sha256": "9c5503258079dd1e1450fbec816294660bf6150a1a22bbf5d8727612905b18b3",
+    "variant": null,
+    "prompt_overrides": null,
+    "commit": "17000b7",
+    "date": "2026-10-04T03:28:06+05:30",
+    "runs_per_scenario": 1,
+    "status": "COMPLETE",
+    "stopped_because": null,
+    "budget": {
+      "calls": 22,
+      "micro_usd": 122837,
+      "rate_limited": 0,
+      "caps": {
+        "calls": 600,
+        "micro_usd": 5000000
+      },
+      "stopped": null
+    }
+  },
+  "totals": {
+    "scenarios": 2,
+    "runs": 2,
+    "passed": 0,
+    "errored": 0,
+    "success_rate": 0.0,
+    "scenarios_all_runs_passed": 0,
+    "path": [
+      1,
+      1
+    ],
+    "ai_calls": 22,
+    "cost_micro_usd": 122837
+  },
+  "scenarios": [
+    {
+      "scenario": "04-hinglish-voice-note",
+      "title": "Hinglish voice note saying \"dedh lakh\"",
+      "passes_when": "Amount extracted as \u20b91,50,000 and shown with the transcript",
+      "runs": 1,
+      "passed": 0,
+      "failed": 1,
+      "errored": 0,
+      "success_rate": 0.0,
+      "path": [
+        0,
+        0
+      ],
+      "path_failures": [],
+      "spread": [
+        1.0,
+        1.0
+      ],
+      "worst": {
+        "run": 1,
+        "status": "FAILED",
+        "component": "crash",
+        "error": "FieldErrors: due_date: Enter a date.",
+        "failed_checks": []
+      },
+      "components_failed": [
+        "crash"
+      ],
+      "mean": {
+        "ai_calls": 1.0,
+        "tool_calls": 0.0,
+        "refused": 0.0,
+        "loops": 0.0,
+        "wasted_calls": 0.0,
+        "retries": 0.0,
+        "schema_failures": 0.0,
+        "invalid_candidates": 0.0
+      },
+      "escalations": [],
+      "tokens_mean": {
+        "input": 475.0,
+        "output": 76.0,
+        "thoughts": 313.0
+      },
+      "cost_micro_usd": {
+        "mean": 1815.0,
+        "max": 1815
+      }
+    },
+    {
+      "scenario": "07-missed-alert-causes-drift",
+      "title": "Missed alert causes drift",
+      "passes_when": "Gap found, transaction recovered from Gmail, gap closed",
+      "runs": 1,
+      "passed": 0,
+      "failed": 1,
+      "errored": 0,
+      "success_rate": 0.0,
+      "path": [
+        1,
+        1
+      ],
+      "path_failures": [],
+      "spread": [
+        0.333,
+        0.333
+      ],
+      "worst": {
+        "run": 1,
+        "status": "FAILED",
+        "component": "sort",
+        "error": null,
+        "failed_checks": [
+          {
+            "id": "missed-alert-not-polled",
+            "component": "sort",
+            "got": 1,
+            "want": 0
+          },
+          {
+            "id": "written-as-the-pipeline-with-the-case-as-source",
+            "component": "agent",
+            "got": "pipeline source_docu",
+            "want": "pipeline agent:case:"
+          },
+          {
+            "id": "drift-case-resolved",
+            "component": "agent",
+            "got": "ASK_OWNER",
+            "want": "RESOLVED"
+          },
+          {
+            "id": "gap-closed",
+            "component": "reconcile",
+            "got": "ASK_OWNER",
+            "want": "OK"
+          }
+        ]
+      },
+      "components_failed": [
+        "sort"
+      ],
+      "mean": {
+        "ai_calls": 21.0,
+        "tool_calls": 14.0,
+        "refused": 1.0,
+        "loops": 0.0,
+        "wasted_calls": 2.0,
+        "retries": 0.0,
+        "schema_failures": 0.0,
+        "invalid_candidates": 1.0
+      },
+      "escalations": [],
+      "tokens_mean": {
+        "input": 20897.0,
+        "output": 2594.0,
+        "thoughts": 25497.0
+      },
+      "cost_micro_usd": {
+        "mean": 121022.0,
+        "max": 121022
+      }
+    }
+  ],
+  "runs": [
+    {
+      "scenario": "04-hinglish-voice-note",
+      "run": 1,
+      "status": "FAILED",
+      "checks": [
+        {
+          "id": "amount-is-150000",
+          "component": "extract",
+          "ok": true,
+          "got": 15000000,
+          "want": 15000000,
+          "level": "end_to_end"
+        },
+        {
+          "id": "transcript-kept-for-the-owner",
+          "component": "extract",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "amount-checked-against-the-words",
+          "component": "validate",
+          "ok": true,
+          "got": "passed",
+          "want": "passed",
+          "level": "end_to_end"
+        }
+      ],
+      "component": "crash",
+      "error": "FieldErrors: due_date: Enter a date.",
+      "metrics": {
+        "ai_calls": 1,
+        "ai_calls_by_job": {
+          "extract:voice_note": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 475,
+          "output": 76,
+          "thoughts": 313
+        },
+        "cost_micro_usd": 1815
+      },
+      "outcomes": [
+        [
+          "bill-150000-recorded",
+          false,
+          0
+        ]
+      ]
+    },
+    {
+      "scenario": "07-missed-alert-causes-drift",
+      "run": 1,
+      "status": "FAILED",
+      "checks": [
+        {
+          "id": "missed-alert-not-polled",
+          "component": "sort",
+          "ok": false,
+          "got": 1,
+          "want": 0,
+          "level": "end_to_end"
+        },
+        {
+          "id": "gap-found",
+          "component": "reconcile",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "alert-recovered-from-mail",
+          "component": "agent",
+          "ok": true,
+          "got": "2000000 2026-10-13",
+          "want": "2000000 2026-10-13",
+          "level": "end_to_end"
+        },
+        {
+          "id": "written-as-the-pipeline-with-the-case-as-source",
+          "component": "agent",
+          "ok": false,
+          "got": "pipeline source_docu",
+          "want": "pipeline agent:case:",
+          "level": "end_to_end"
+        },
+        {
+          "id": "drift-case-resolved",
+          "component": "agent",
+          "ok": false,
+          "got": "ASK_OWNER",
+          "want": "RESOLVED",
+          "level": "end_to_end"
+        },
+        {
+          "id": "drift-resolved-in-its-first-run",
+          "component": "agent",
+          "ok": true,
+          "got": "medium none",
+          "want": "medium none",
+          "level": "trajectory"
+        },
+        {
+          "id": "gap-closed",
+          "component": "reconcile",
+          "ok": false,
+          "got": "ASK_OWNER",
+          "want": "OK",
+          "level": "end_to_end"
+        }
+      ],
+      "component": "sort",
+      "error": null,
+      "metrics": {
+        "ai_calls": 21,
+        "ai_calls_by_job": {
+          "exception": 16,
+          "explain": 1,
+          "sort": 2,
+          "extract:bank_alert": 2
+        },
+        "schema_failures": 0,
+        "tool_calls": 14,
+        "tool_calls_by_tool": {
+          "search_gmail": 8,
+          "get_ledger": 4,
+          "add_candidate": 1,
+          "ask_owner": 1
+        },
+        "refused": 1,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 1,
+        "wasted_calls": 2,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 20897,
+          "output": 2594,
+          "thoughts": 25497
+        },
+        "cost_micro_usd": 121022
+      },
+      "outcomes": [
+        [
+          "missed-20000-debit-recorded",
+          true,
+          1
+        ]
+      ]
+    }
+  ]
+}
