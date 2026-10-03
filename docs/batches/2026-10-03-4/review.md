@@ -65,3 +65,22 @@
 d016650. The gate is recorded under CHG-022: green, 904 passed, ruff clean, 5 contracts kept.
 
 `yt_prepatch --since 1696b45 --to d016650`: PASS. 10 tests fail at 1696b45. The two coverage tests above pass there by design.
+
+## Round 2: lean re-review of d016650 (one reviewer): FIX_REQUIRED
+
+Every round 1 fix was confirmed, but the C2 fix introduced a regression.
+
+**Critical:**
+1. **A second authorisation lapsed as soon as it was chosen.**
+   - **Cause:** the floor is the low of the run the owner saw, which already had the earlier authorisations applied. Round 1 compared every floor against the plan with no authorisation at all. When an earlier authorisation changed an early-payment discount decision, the later one's floor sat above that baseline, so the owner could never authorise it. The reviewer verified this with a probe.
+   - **Fix (f9a14fc):** `plan()` checks the authorisations in the order chosen. Each is measured against the plan with only the earlier, still-kept authorisations, which is exactly what the owner saw. `build_snapshot` reads overrides `ORDER BY id`. The reason text uses each authorisation's own baseline. C2 still holds, because neither its own knock-on effects nor those of later authorisations count.
+   - **Test:** `test_a_second_authorisation_is_measured_on_the_plan_the_owner_saw`.
+
+**Minor (deferred to the backlog):**
+- An approved (PAYMENT_EXPECTED) authorised bill can lapse on a deeper breach. Approved bills have no plan line, so the D18 reason text shows nowhere and the options come back. This overlaps the deferred authorise_breach minor.
+
+### Fix commit
+
+f9a14fc. The gate is recorded under CHG-021: green, 905 passed.
+
+`yt_prepatch --since 1aa376b`: PASS. The new test fails at 1aa376b.
