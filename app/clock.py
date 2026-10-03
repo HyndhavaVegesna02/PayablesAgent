@@ -5,11 +5,14 @@ seconds. See TDD Part 2, "What this design adds to the TDD" (Time)."""
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
+import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Protocol
+from typing import Protocol, TypeVar
 from zoneinfo import ZoneInfo
 
 TIMEZONE = ZoneInfo("Asia/Kolkata")
+_T = TypeVar("_T")
 
 
 class Clock(Protocol):
@@ -89,19 +92,17 @@ class DemoClock:
         _shared(lambda: self.path.unlink(missing_ok=True))
 
 
-def _shared(op, attempts: int = 200, pause_s: float = 0.005):
+def _shared(op: Callable[[], _T], attempts: int = 200, pause_s: float = 0.005) -> _T:
     """Runs a file operation on the demo clock file. Windows refuses to read a
     file another process is replacing, or to replace one another process is
     reading, with PermissionError; the web app and the worker both use this
     file, so a refusal is retried briefly (about a second at most), the same
     tolerance the worker's heartbeat has."""
-    import time as _time
-
     for _ in range(attempts - 1):
         try:
             return op()
         except PermissionError:
-            _time.sleep(pause_s)
+            time.sleep(pause_s)
     return op()
 
 

@@ -135,3 +135,29 @@ Fixed, with each test in `tests/test_review_fixes_batch3.py` unless noted:
 - Sync sqlite in async routes.
 - A REVIEW → PAID txn stays UNMATCHED and its ambiguous case stays open: the money is now correct (C2), and the case goes to the owner's link action (CHG-022).
 - confirm_balance FieldErrors through /questions go to the generic 422 page.
+
+## Round 2 (lean re-review of fix commit aa97d76 only): FIX_REQUIRED
+
+Every round-1 blocking finding is closed, each confirmed by a revert check, except B-C2, which is only partly closed.
+
+**New critical:** in handle_failure's "no single bill" fallback, a return email for an owner-linked REVIEW → PAID bill, with a same-amount approved twin inside the window, still reversed the linked debit and left the bill PAID. That overstates cash by the bill's amount.
+
+**Minors:**
+- link_payment's refusal of a debit another bill already holds had no test that drives it.
+- demo.advance's rollback wasn't proven by a test.
+- `triggered_by='stale-refresh'` isn't documented.
+- The "debit not seen yet" label is wrong for a KL-1 bill.
+- A VersionRequired refusal shows a misleading message.
+- `_shared` is untyped.
+
+## Fix round 2
+- **The fallback skips any debit a payable holds** and leaves it to the failed_payment case.
+  - **Test:** `test_a_return_with_a_same_amount_twin_leaves_the_linked_debit_for_the_case`. It fails with the fix reverted.
+- **link_payment's held-debit refusal** is now driven by a test (a paid twin in the same business).
+- **demo.advance's rollback:** `test_advance_rolls_back_its_jobs_when_the_clock_cannot_move`.
+- **`stale-refresh`:** documented in the refresh_if_stale docstring.
+- **The label** now reads "bank debit not linked yet".
+- **VersionRequired** gets its own message.
+- **`_shared`** is typed, with `time` imported at module level.
+
+Suite: 863 passed; lint clean; 5 contracts kept. The 6-line round-2 change was checked by reverting it, not by a third reviewer: the PO asked to keep review lean.

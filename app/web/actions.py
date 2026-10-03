@@ -72,7 +72,9 @@ def refresh_if_stale(conn: sqlite3.Connection, user: User, *, clock: Clock) -> i
     """After a stale refusal: replans when the current run no longer matches
     today's inputs (the date rolled over, or the ledger changed with no replan
     yet), so the refusal page shows a plan the owner can approve. Returns the
-    new run id, or None when the current run is still the right one."""
+    new run id, or None when the current run is still the right one. The run's
+    triggered_by is 'stale-refresh': no event caused it, the date (or an
+    unreplanned write) did, so the 'event:<id>' form would name the wrong cause."""
     with writer.atomic(conn):
         current = repo.current_run(conn, user.business_id)
         fresh = inputs_sha256(build_snapshot(conn, user.business_id, clock.today()))

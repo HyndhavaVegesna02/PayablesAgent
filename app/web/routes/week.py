@@ -62,7 +62,10 @@ async def mark_paid(payable_id: int, request: Request, user: User = Depends(owne
     try:
         actions.mark_paid(conn, user, payable_id, int_or_none(values.get("version")),
                           clock=request.app.state.clock)
-    except (StaleVersion, VersionRequired):
+    except StaleVersion:
         return week_page(request, conn, user, message="This bill changed since you opened the page. "
                          "Here is the current plan.", status=409)
+    except VersionRequired:
+        return week_page(request, conn, user, message="The form was missing the bill's version. "
+                         "Use the Mark paid button on this page.", status=409)
     return done(request, "/")

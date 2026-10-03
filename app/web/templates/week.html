@@ -65,7 +65,7 @@
   {% for d in view.days %}
     <tr>
       <td>{{ d.day | day }}</td>
-      <td>{% for ln in d.pays %}{{ ln.name }} {{ ln.amount_paise | inr }}{% if ln.status == "PAYMENT_EXPECTED" %} <small>(approved)</small>{% elif ln.status == "PAID" %} <small>(paid; bank debit not seen yet)</small>{% endif %}{% if not loop.last %}<br>{% endif %}{% endfor %}</td>
+      <td>{% for ln in d.pays %}{{ ln.name }} {{ ln.amount_paise | inr }}{% if ln.status == "PAYMENT_EXPECTED" %} <small>(approved)</small>{% elif ln.status == "PAID" %} <small>(paid; bank debit not linked yet)</small>{% endif %}{% if not loop.last %}<br>{% endif %}{% endfor %}</td>
       <td class="amount {{ 'below' if d.below else '' }}">{{ d.balance_paise | inr }}</td>
     </tr>
   {% endfor %}

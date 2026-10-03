@@ -342,7 +342,11 @@ def handle_failure(conn: sqlite3.Connection, candidate_id: int, *, window_days: 
     if reference is not None:
         for (txn_id,) in conn.execute(
             "SELECT t.id FROM bank_txn t JOIN bank_account a ON a.id = t.account_id WHERE a.business_id = ? "
-            "AND t.status = 'UNMATCHED' AND t.direction = 'debit' AND t.amount_paise = ? AND t.reference = ?",
+            "AND t.status = 'UNMATCHED' AND t.direction = 'debit' AND t.amount_paise = ? AND t.reference = ? "
+            # A debit a bill holds (the owner's REVIEW -> PAID link) is left for the
+            # case, like a MATCHED one: reversing it would leave that PAID bill
+            # pointing at money that came back, and the plan would overstate cash.
+            "AND NOT EXISTS (SELECT 1 FROM payable p WHERE p.matched_txn_id = t.id)",
             (business_id, amount, reference),
         ).fetchall():
             writer.transition(EntityRef("bank_txn", txn_id), "REVERSED", RECONCILER, why, source_ref, **kw)

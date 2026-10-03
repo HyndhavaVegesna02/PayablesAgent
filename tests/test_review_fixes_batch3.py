@@ -138,7 +138,7 @@ def test_a_paid_bill_waiting_for_its_debit_shows_on_its_day(web):
     post(client, f"/plans/{run_id}/approve", csrf, versions)
     post(client, f"/payables/{PAPER}/mark-paid", csrf, {"version": str(version(env, PAPER))})
     row = client.get("/").text.split("<td>Mon 12 Oct</td>")[1].split("</tr>")[0]
-    assert "Ashirwad Paper Suppliers ₹1,80,000" in row and "bank debit not seen yet" in row
+    assert "Ashirwad Paper Suppliers ₹1,80,000" in row and "bank debit not linked yet" in row
 
 
 def test_blank_seed_passwords_are_refused(tmp_path):
@@ -212,6 +212,35 @@ def test_a_return_reopens_a_review_bill_the_owner_marked_paid(web):
     assert PAPER in {p.payable_id for p in build_snapshot(env.conn, 1, env.clock.today()).payables}
 
 
+def test_a_return_with_a_same_amount_twin_leaves_the_linked_debit_for_the_case(web):
+    # Round 2: with a second approved bill of the same amount in the window, the
+    # return matches two bills. The owner-linked debit must not be reversed while
+    # its bill stays PAID: cash would be overstated by the bill's amount.
+    env, client, csrf = web
+    t = _review_then_owner_paid(env)
+    plan_now(env, "t")
+    post(client, f"/payables/{PAPER}/mark-paid", csrf, {"version": str(version(env, PAPER))})
+    from app.domain.models import PayableNew
+
+    twin = writer.create_payable(PayableNew(business_id=1, party_id=2, amount_paise=18_000_000,
+                                            due_date=OCT(13), priority="normal"),
+                                 actor="owner:1", reason="t", source_ref=None, conn=env.conn, clock=env.clock)
+    writer.transition(EntityRef("payable", twin.id), "CONFIRMED", "owner:1", "t", None, conn=env.conn,
+                      expected_version=twin.version, clock=env.clock)
+    writer.transition(EntityRef("payable", twin.id), "PLANNED", "planner", "t", None, conn=env.conn,
+                      fields={"planned_date": OCT(13)}, clock=env.clock)
+    writer.transition(EntityRef("payable", twin.id), "PAYMENT_EXPECTED", "owner:1", "t", None, conn=env.conn,
+                      expected_version=twin.version + 2, clock=env.clock)
+    cand = notice(env)
+    with writer.atomic(env.conn):
+        result = handle_failure(env.conn, cand, window_days=3, clock=env.clock)
+    assert result.outcome == "failure matches 2 bills: failed_payment case"
+    assert status(env, "bank_txn", t) == "UNMATCHED"  # left for the owner, still lowering the balance
+    assert status(env, "payable", PAPER) == "PAID"
+    calc = build_snapshot(env.conn, 1, env.clock.today()).accounts[0].calculated_paise
+    assert calc == 62_000_000 - 18_000_000  # the paid bill's money is still counted as gone
+
+
 def test_a_reversed_debit_is_never_linked_when_the_owner_marks_paid(web):
     env, client, csrf = web
     t = _review_then_owner_paid(env)
@@ -261,9 +290,23 @@ def test_link_payment_bumps_the_version_and_refuses_bad_links(env):
     good = txn(env, "debit", 18_000_000, OCT(12), "X", "R2")
     writer.link_payment(PAPER, good, "reconciler", "x", None, conn=env.conn, clock=env.clock)
     assert version(env, PAPER) == v + 1
+    twin = add_paid_twin(env)
+    with pytest.raises(IllegalTransition, match="already pays bill"):
+        writer.link_payment(twin, good, "reconciler", "x", None, conn=env.conn, clock=env.clock)
     other = add_second_business_bill_paid(env)
-    with pytest.raises(IllegalTransition):
+    with pytest.raises(IllegalTransition, match="not a debit of this business"):
         writer.link_payment(other, good, "reconciler", "x", None, conn=env.conn, clock=env.clock)
+
+
+def add_paid_twin(env):
+    from app.domain.models import PayableNew
+
+    twin = writer.create_payable(PayableNew(business_id=1, party_id=1, amount_paise=18_000_000,
+                                            due_date=OCT(14), priority="normal"),
+                                 actor="owner:1", reason="t", source_ref=None, conn=env.conn, clock=env.clock)
+    env.conn.execute("UPDATE payable SET status = 'PAID' WHERE id = ?", (twin.id,))
+    env.conn.commit()
+    return twin.id
 
 
 def add_second_business_bill_paid(env):
@@ -334,6 +377,23 @@ def test_a_demo_clock_that_stays_locked_is_a_plain_refusal(tmp_path, monkeypatch
     assert r.status_code == 409 and "did not move" in r.text
     assert env.conn.execute("SELECT COUNT(*) FROM job WHERE kind = 'poll_mail'").fetchone()[0] == 0  # rolled back
     env.conn.close()
+
+
+def test_advance_rolls_back_its_jobs_when_the_clock_cannot_move(tmp_path, monkeypatch):
+    # The jobs are enqueued first and rolled back on the same connection if the
+    # clock can't be set, so the caller's connection is left clean.
+    e = make_env(tmp_path)
+    clock = clock_for("2026-10-12T09:00:00+05:30", tmp_path / "files")
+
+    def locked(self, at):
+        raise PermissionError(32, "being used by another process")
+
+    monkeypatch.setattr(DemoClock, "set", locked)
+    with pytest.raises(PermissionError):
+        demo.advance(e.conn, clock, datetime(2026, 10, 20, 9, tzinfo=TIMEZONE))
+    assert not e.conn.in_transaction
+    assert e.conn.execute("SELECT COUNT(*) FROM job").fetchone()[0] == 0
+    e.conn.close()
 
 
 def test_moving_past_a_monday_keys_the_plan_by_that_monday(tmp_path):
