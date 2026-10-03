@@ -13,6 +13,7 @@ from datetime import date
 from typing import Any
 
 from app.domain.money import format_inr
+from app.ledger.reconcile import early_receipt_requests
 from app.ledger.writer import calculated_balance
 from app.planner.plan import format_day
 
@@ -166,6 +167,9 @@ class Option:
     lowest_balance_paise: int | None
     meets_rule: bool
     chosen: bool
+    # CHG-023: an early_receipt the owner already asked the customer for
+    pending: str | None = None  # "Chosen on …: waiting for …", shown in place of Choose
+    asked_note: str | None = None  # "asked by …; not received", once that date has passed
 
 
 @dataclass
@@ -279,8 +283,13 @@ def option_label(kind: str, params: dict[str, Any], bills: dict[int, str], recei
     return "Ask your CA about the statutory payments"
 
 
-def options(conn: sqlite3.Connection, business_id: int, run_id: int) -> list[Option]:
+def options(conn: sqlite3.Connection, business_id: int, run_id: int, today: date | None = None) -> list[Option]:
     bills, receivables = bill_names(conn, business_id), receivable_names(conn, business_id)
+    asked: dict[int, tuple[str, str]] = {}  # receivable -> the latest (asked-by date, chosen at)
+    for rid, day, chosen_at in early_receipt_requests(conn, business_id):
+        asked[rid] = (day, chosen_at)
+    open_rx = {r[0] for r in conn.execute(
+        "SELECT id FROM receivable WHERE business_id = ? AND confidence <> 'CONFIRMED'", (business_id,))}
     out = []
     for r in _rows(conn, "SELECT * FROM shortfall_option WHERE plan_run_id = ? ORDER BY id", (run_id,)):
         params = json.loads(r["params_json"])
@@ -288,8 +297,19 @@ def options(conn: sqlite3.Connection, business_id: int, run_id: int) -> list[Opt
             label = option_label(r["kind"], params, bills, receivables)
         except (KeyError, TypeError, ValueError):
             label = r["kind"].replace("_", " ")
-        out.append(Option(r["id"], r["kind"], label, params, r["lowest_balance_paise"], bool(r["meets_rule"]),
-                          r["chosen_at"] is not None))
+        option = Option(r["id"], r["kind"], label, params, r["lowest_balance_paise"], bool(r["meets_rule"]),
+                        r["chosen_at"] is not None)
+        rid = params.get("receivable_id") if r["kind"] == "early_receipt" else None
+        if rid in asked and rid in open_rx and today is not None:
+            by, chosen_at = asked[rid]
+            by_day = date.fromisoformat(by)
+            amount = format_inr(params["amount_paise"]) if type(params.get("amount_paise")) is int else ""
+            if by_day >= today:
+                option.pending = (f"Chosen on {format_day(date.fromisoformat(chosen_at[:10]))}: waiting for "
+                                  f"{receivables.get(rid, 'the customer')} to pay {amount} by {format_day(by_day)}")
+            else:
+                option.asked_note = f"Asked by {format_day(by_day)}; not received"
+        out.append(option)
     return out
 
 

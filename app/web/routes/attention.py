@@ -41,7 +41,8 @@ def attention_page(request: Request, conn: sqlite3.Connection, user: User, *, me
         "accounts": [a for a in all_accounts if a["drift_status"] != "OK"],
         "all_accounts": all_accounts,
         "overrides": repo.active_overrides(conn, user.business_id),
-        "options": repo.options(conn, user.business_id, run["id"]) if run else [],
+        "options": repo.options(conn, user.business_id, run["id"], today=request.app.state.clock.today())
+        if run else [],
         "message": message, "errors": errors or {}, "values": values or {},
     }, status=status)
 

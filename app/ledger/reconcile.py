@@ -245,21 +245,31 @@ def match_debit(conn: sqlite3.Connection, txn_id: int, *, window_days: int, cloc
     return Result("no bill matches: debit stays UNMATCHED", replan=True, case_ids=[case])
 
 
-def _asked_dates(conn: sqlite3.Connection, business_id: int) -> dict[int, list[str]]:
-    """Dates the owner asked a customer to pay by: the chosen early_receipt
-    options (batch 3 plan, D13). Choosing one changes no ledger row (Q1), so
-    the receivable keeps its expected date; a credit near the asked date is
-    that receivable paying early, and it matches on the same name and amount
-    rules as one near the expected date."""
-    asked: dict[int, list[str]] = {}
-    for rid, day in conn.execute(
-        "SELECT json_extract(o.params_json, '$.receivable_id'), json_extract(o.params_json, '$.to_date') "
-        "FROM shortfall_option o JOIN plan_run r ON r.id = o.plan_run_id "
-        "WHERE r.business_id = ? AND o.kind = 'early_receipt' AND o.chosen_at IS NOT NULL",
+def early_receipt_requests(conn: sqlite3.Connection, business_id: int) -> list[tuple[int, str, str]]:
+    """The early payments the owner asked customers for: (receivable_id,
+    asked-by date, chosen at), from the chosen early_receipt options. Read by
+    match_credit (D13) and by Needs attention (CHG-023), the one rule for both."""
+    out = []
+    for rid, day, chosen_at in conn.execute(
+        "SELECT json_extract(o.params_json, '$.receivable_id'), json_extract(o.params_json, '$.to_date'), "
+        "o.chosen_at FROM shortfall_option o JOIN plan_run r ON r.id = o.plan_run_id "
+        "WHERE r.business_id = ? AND o.kind = 'early_receipt' AND o.chosen_at IS NOT NULL ORDER BY o.chosen_at",
         (business_id,),
     ).fetchall():
         if isinstance(rid, int) and isinstance(day, str):
-            asked.setdefault(rid, []).append(day)
+            out.append((rid, day, chosen_at))
+    return out
+
+
+def _asked_dates(conn: sqlite3.Connection, business_id: int) -> dict[int, list[str]]:
+    """Dates the owner asked a customer to pay by (batch 3 plan, D13).
+    Choosing one changes no ledger row (Q1), so the receivable keeps its
+    expected date; a credit near the asked date is that receivable paying
+    early, and it matches on the same name and amount rules as one near the
+    expected date."""
+    asked: dict[int, list[str]] = {}
+    for rid, day, _ in early_receipt_requests(conn, business_id):
+        asked.setdefault(rid, []).append(day)
     return asked
 
 

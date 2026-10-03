@@ -2,7 +2,7 @@
 id: CHG-023
 title: A chosen early_receipt still pending shows as chosen, not as a fresh option
 type: chore
-lane:
+lane: direct
 ---
 
 ## Context
@@ -14,4 +14,11 @@ PO verdict on batch 3 (2026-10-03), a UX minor. After the clock moves (or any re
 - Fold this into batch 4 only if it touches the same paths; otherwise it is a later chore.
 
 ## Acceptance Criteria
-<!-- to be written when planned -->
+- [ ] **AC1:** After a replan (the clock moves, or a mail arrives), the chosen early_receipt shows as chosen and pending ("Chosen on Mon 12 Oct: waiting for Nandi Foods to pay ₹2,00,000 by Fri 16 Oct"), with no Choose button. After the asked date with no credit, it is offered again with "Asked by Fri 16 Oct; not received".
+
+## Expected paths
+- `app/ledger/reconcile.py`
+- `app/web/repo.py`
+- `app/web/routes/attention.py`
+- `app/web/templates/attention.html`
+- `tests/test_pending_early_receipt.py`

@@ -34,7 +34,9 @@
     {% if o.lowest_balance_paise is not none %}Lowest balance {{ o.lowest_balance_paise | inr }}. {% endif %}
     {% if o.meets_rule %}Meets the safety amount.{% else %}Does not meet the safety amount.{% endif %}
   </p>
-  {% if o.chosen %}<p><mark>Chosen</mark></p>{% else %}
+  {% if o.asked_note %}<p class="muted">{{ o.asked_note }}</p>{% endif %}
+  {% if o.pending %}<p><mark>{{ o.pending }}</mark></p>
+  {% elif o.chosen %}<p><mark>Chosen</mark></p>{% else %}
   <form method="post" action="/options/{{ o.id }}/choose" hx-post="/options/{{ o.id }}/choose" hx-target="#main">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <button type="submit" class="outline">Choose this</button>
