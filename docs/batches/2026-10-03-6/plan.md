@@ -177,3 +177,12 @@
 - **Scope:** CHG-008 (sliced, S1–S8), then CHG-018 in the same batch.
 - **Q1–Q5:** the defaults are accepted.
 - **D21 (adds to Q4):** a transaction the agent recovered is written by code as actor `pipeline`. Its event's source_ref carries where it came from, `agent:case:<id> via gmail:<message id>`, so the audit trail shows the agent found it even though code wrote it. The drift-recovered scenario asserts this.
+
+## Deviations, PO-accepted in advance of verdict (2026-10-03, payablesagent-ac)
+1. RESOLVED needs evidence: at least one cited message from this case's searches, or the owner's answer to this case. An answer with no evidence is refused. (A strict improvement on the brief.)
+2. Drift cases are settled by the balance (TDD drift step 5). A RESOLVED drift answer must close the gap. Otherwise, or on any end at the owner, the account goes CHECKING -> ASK_OWNER with confirm_balance, whose answer closes the case. This happens when the run ends, not at a later 23:00 recheck.
+3. ask_owner refuses once the owner has answered: one owner question per case resume.
+4. Q5 tweak: the missed alert (fixture 11) comes from the configured alerts@ sender, dated before a later poll's window, so the alert's sender rule stays intact.
+5. The agent may store an encrypted source_document for a message the poll never read.
+6. The what-if snapshot and accounts_of moved to app/db/read.py.
+7. An agent-found alert reports its balance at the alert's own time (the document's received_at), as the pipeline does.
