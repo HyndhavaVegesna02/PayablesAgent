@@ -8,16 +8,17 @@ started: "2026-10-03T10:30:00+05:30"
 changes:
   - id: CHG-022
     lane: planned
-    board: in-progress
-    start_commit: ae0169a
+    board: done
+    start_commit: adf655e
     blocked_question: null
-    gate_evidence: []
-    prepatch: null
-    notes_resolved: false
+    gate_evidence:
+      - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 60 files, 165 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 5 kept, 0 broken. | Building cashflow-agent @ file:///C:/Hyn/PayablesAgent | Built cashflow-agent @ file:///C:/Hyn/PayablesAgent | Uninstalled 1 package in 3ms | Installed 1 package in 6ms", commit: 45018f5, at: 2026-10-03T04:13:28+00:00}
+    prepatch: {exit_code: 1, tests: 153, note: "yt_prepatch --since adf655e: PASS, 17 fail without the change. Passing pre-change by design: the existing tests in edited files, plus guards that hold before and after (a matched debit raises no question; a non-agent question kind is still refused)"}
+    notes_resolved: true
   - id: CHG-021
     lane: planned
-    board: todo
-    start_commit: null
+    board: in-progress
+    start_commit: 45018f5
     blocked_question: null
     gate_evidence: []
     prepatch: null
