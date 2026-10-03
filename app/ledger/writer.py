@@ -1098,8 +1098,9 @@ def flag_bank_change(
     with atomic(conn):
         party = _get(conn, "party", party_id)
         _check_owner(conn, who, party["business_id"])
-        first = not (party["bank_account_mask"] or party["bank_ifsc"])
-        if not (first and (last4 or ifsc)) and not differs(party["bank_account_mask"], party["bank_ifsc"], last4, ifsc):
+        # A detail with none of its kind on record (a first account number, or a first IFSC) is a change too.
+        adds = bool((last4 and not party["bank_account_mask"]) or (ifsc and not party["bank_ifsc"]))
+        if not adds and not differs(party["bank_account_mask"], party["bank_ifsc"], last4, ifsc):
             return False
         if party["bank_status"] != "change_pending":
             _set_bank(conn, party_id, {"bank_status": "change_pending"}, "PARTY_BANK_CHANGE_PENDING", actor,

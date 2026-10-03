@@ -405,8 +405,10 @@ def _senders(acct: sqlite3.Row) -> list[str]:
 
 def _since(acct: sqlite3.Row) -> str:
     """The day the account's balances last agreed: its last reconciliation, or its opening balance."""
-    return datetime.fromisoformat(acct["last_reconciled_at"] or acct["opening_balance_at"]).astimezone(
-        TIMEZONE).date().isoformat()
+    value = acct["last_reconciled_at"] or acct["opening_balance_at"]
+    if len(value) == 10:  # a day, as an opening balance is stored: no zone to convert
+        return value
+    return datetime.fromisoformat(value).astimezone(TIMEZONE).date().isoformat()
 
 
 def resolve_drift_cases(conn: sqlite3.Connection, account_id: int, *, clock: Clock) -> list[int]:

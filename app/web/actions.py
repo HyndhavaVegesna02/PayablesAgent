@@ -186,6 +186,24 @@ def _withdraw_proposals_for_others(conn: sqlite3.Connection, user: User, candida
                                       account_mask=None, ifsc=None, conn=conn, clock=clock)
 
 
+def _withdraw_bank_proposals(conn: sqlite3.Connection, user: User, candidate_id: int, source: str,
+                             clock: Clock) -> None:
+    """The owner rejected an entry: the bank details it carried are withdrawn
+    with it, and its vendor goes back to its details on record unless another
+    entry's proposal is still open for that vendor."""
+    for (party_id,) in conn.execute(
+        "SELECT DISTINCT json_extract(choices_json, '$.party_id') FROM owner_question WHERE business_id = ? "
+        "AND status = 'OPEN' AND kind = 'approve_bank_change' AND json_extract(choices_json, '$.candidate_id') = ?",
+        (user.business_id, candidate_id),
+    ).fetchall():
+        _close_open(conn, user, "approve_bank_change", "candidate_id", candidate_id,
+                    {"decision": "withdrawn: the owner rejected the entry", "candidate_id": candidate_id}, clock)
+        if not _open_bank_proposals(conn, user.business_id, party_id) and \
+                repo.party(conn, user.business_id, party_id)["bank_status"] == "change_pending":
+            writer.decide_bank_change(party_id, False, user.actor, "The entry that gave the details was rejected",
+                                      source, account_mask=None, ifsc=None, conn=conn, clock=clock)
+
+
 def _open_bank_proposals(conn: sqlite3.Connection, business_id: int, party_id: int) -> dict[int, dict[str, Any]]:
     """candidate id -> the bank details its bill printed, for this vendor's open questions."""
     out = {}
@@ -682,7 +700,8 @@ def _create_record(conn, user: User, cand, entry: Entry, source: str, clock: Clo
         # are a change too (D26): confirming the bill doesn't approve its bank account.
         writer.flag_bank_change(
             party_id, cand["id"], account_last4(payee.get("account")), normalise_ifsc(payee.get("ifsc")),
-            user.actor, f"candidate {cand['id']} gives different bank details", source, conn=conn, clock=clock,
+            user.actor, f"candidate {cand['id']} gives first or different bank details", source, conn=conn,
+            clock=clock,
         )
         bill = writer.create_payable(
             PayableNew(party_id=party_id,
@@ -751,6 +770,7 @@ def reject_candidate(conn: sqlite3.Connection, user: User, candidate_id: int, *,
         writer.decide_candidate(candidate_id, "REJECTED", user.actor, "Owner rejected the entry",
                                 f"candidate:{candidate_id}", conn=conn, clock=clock)
         _close_questions(conn, user, candidate_id, "rejected", clock)
+        _withdraw_bank_proposals(conn, user, candidate_id, f"candidate:{candidate_id}", clock)
 
 
 # --- the owner explains a debit (batch 4 plan, CHG-022) -------------------------------

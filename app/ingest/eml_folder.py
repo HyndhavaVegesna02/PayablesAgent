@@ -94,7 +94,7 @@ class EmlFolderSource:
             op, _, value = w.partition(":")
             if op in ("after", "before") and value:
                 try:
-                    day = date.fromisoformat(value.replace("/", "-"))
+                    day = datetime.strptime(value.replace("-", "/"), "%Y/%m/%d").date()  # 2026/1/5 too, as Gmail
                 except ValueError:
                     words.append(w)
                     continue

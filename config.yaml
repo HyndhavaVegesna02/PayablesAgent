@@ -13,7 +13,8 @@ escalation:
   max_validation_failures: 2
 matching:
   window_days: 3
-  statutory_payees:                # a challan debit's payee words per tax type (D27)
+  statutory_payees:                # a challan debit's payee words per tax type (D27); without them every
+                                   # statutory debit waits for the owner's link
     PF: [EPFO]
     ESI: [ESIC]
     GST: [GST, CBIC, GSTN]

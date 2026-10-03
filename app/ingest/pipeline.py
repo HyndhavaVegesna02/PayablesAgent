@@ -209,14 +209,15 @@ def checker(conn: sqlite3.Connection, doc_type: str, mail: MailFacts, business_i
 def extract_with_retries(ctx: JobContext, backend: Backend, doc_type: str, contents: Contents, check: Checker,
                          input_ref: str) -> Outcome:
     """Steps 3-5: extract, check, re-extract with the failures attached, then
-    once more at high thinking. Two failures stop the ladder at once:
+    once more at high thinking. Three failures stop the ladder at once:
     - a field the model marks as uncertain goes to the owner (TDD Part 1:
       "fields the model marks as uncertain are flagged for the owner"); asking
       the model again would only invite it to drop the flag;
     - a bill with no due date goes to the owner to fill in (CHG-030); asking
       again would only invite the model to guess one;
     - a reply that only repeats a record already in the ledger is not
-      retried: reading it again cannot change that."""
+      retried: reading it again cannot change that. A missing due date doesn't
+      stop a repeat being caught as one."""
     first = ctx.app_config.model.thinking.extract
     ladder = [first] * ctx.app_config.escalation.max_validation_failures + ["high"]
     attempts: list[Attempt] = []
@@ -237,11 +238,14 @@ def extract_with_retries(ctx: JobContext, backend: Backend, doc_type: str, conte
                         result="all checks passed" if record else f"failed: {sorted(fails)}")
         if record is not None:
             return Outcome("VALID", attempts, record, reading)
-        if "confidence" in fails or fails.get("dates") == NO_DUE_DATE or (doc_type == "voice_note" and "amount" in fails):
+        if "confidence" in fails or (doc_type == "voice_note" and "amount" in fails):
             # an amount the code can't read stays unreadable however often it is asked (Q8)
             return Outcome("AWAITING_OWNER", attempts, None, reading)
-        if set(fails) == {"duplicates"}:
+        blocking = {k: v for k, v in fails.items() if not (k == "dates" and v == NO_DUE_DATE)}
+        if set(blocking) == {"duplicates"}:
             return Outcome("INVALID", attempts, None, reading)
+        if fails.get("dates") == NO_DUE_DATE:
+            return Outcome("AWAITING_OWNER", attempts, None, reading)
         previous, failed_checks = r.text, fails
     return Outcome("AWAITING_OWNER", attempts, None, reading)
 
@@ -391,10 +395,10 @@ def _check_bank_details(ctx: JobContext, doc: sqlite3.Row, outcome: Outcome, can
         return
     party = vendor_party(ctx.conn, doc["business_id"], reading.get("party"), normalise_gstin(x.seller_gstin))
     if party is None:
-        return  # a new vendor: compared when the owner confirms the bill for a vendor on record
+        return  # a new vendor: its first details are flagged when the owner confirms the bill (D26)
     input_ref = f"source_document:{doc['id']}"
     if writer.flag_bank_change(party["id"], candidate_id, last4, ifsc, "pipeline",
-                               f"candidate {candidate_id} gives different bank details", input_ref,
+                               f"candidate {candidate_id} gives first or different bank details", input_ref,
                                conn=ctx.conn, clock=ctx.clock, trace_run_id=ctx.tracer.run_id):
         ctx.tracer.step(input_ref=input_ref, tool="route", escalation_rule="bank_change",
                         result=f"party {party['id']} bank change pending; approve_bank_change asked")
@@ -481,7 +485,7 @@ def _route_statement(ctx: JobContext, doc: sqlite3.Row, outcome: Outcome, candid
                        txn_date=row.txn_date, counterparty=row.counterparty, reference=row.reference,
                        dedup_key=key, source_document_id=doc["id"], candidate_id=candidate_id, status="UNMATCHED"),
             actor="pipeline", reason=f"statement row missing from the ledger, candidate {candidate_id}",
-            source_ref=input_ref, conn=conn, clock=ctx.clock, trace_run_id=ctx.tracer.run_id,
+            source_ref=_found_ref(ctx, input_ref), conn=conn, clock=ctx.clock, trace_run_id=ctx.tracer.run_id,
         )
         queue.enqueue(conn, kind="reconcile_txn", payload={"bank_txn_id": txn.id},
                       idempotency_key=f"reconcile_txn:{txn.id}", clock=ctx.clock)

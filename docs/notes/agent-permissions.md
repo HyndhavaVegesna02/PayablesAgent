@@ -38,7 +38,8 @@ Refusals still count as steps.
 - **RESOLVED** needs evidence: at least one cited message, or the owner's answer to this case's
   question. Every cited message must come from this case's own searches, and every relied-on
   candidate must be VALID. A drift case's RESOLVED must rely on a VALID bank_alert candidate, since
-  only a written transaction can close the gap (CHG-031). Otherwise the answer is refused, noted
+  only a written transaction can close the gap (CHG-031), unless the case was resumed by the owner's
+  answer; code still checks the gap either way. Otherwise the answer is refused, noted
   with the reason, and counted as a failed check, and the run goes on within its limits.
 - A relied-on bank alert is written as the pipeline would write it (actor `pipeline`), with the
   source `agent:case:<id> via gmail:<message id>` (D21). A relied-on bill or invoice is handed to
@@ -50,8 +51,9 @@ Refusals still count as steps.
   writes from it has the source `agent:case:<id> via gmail:<message id> via source_document:<id>`
   (D21, CHG-031). The next poll queues one that was stored but never read, without the case.
   Finding a message never hides it from the pipeline.
-- A candidate that fails the schema is refused with every missing and unknown field named, and the
-  record's fields listed, so the agent can fix its call.
+- A candidate that fails the schema is refused with every missing and unknown field named by its
+  path (`lines.0.amount_text`), and the record's fields listed, so the agent can fix its call. A found
+  invoice with no due date is VALID evidence: the owner fills the date in when the pipeline reads it.
 - A case is saved only over the status it was read with. If the owner closes it, or the gap closes
   during a run, the run stops and keeps nothing from that step.
 - A tool that fails (a mail error, no document store) is a noted step, not a crash. A run that dies

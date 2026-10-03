@@ -25,7 +25,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from app.agent.cases import Case
-from app.ai.extract import BankAlertExtract, InvoiceExtract
+from app.ai.extract import BankAlertExtract, InvoiceExtract, InvoiceLine
 from app.clock import Clock
 from app.db.read import accounts_of, bank_txn_with_key, business_name, invoice_on_record, what_if_snapshot
 from app.domain.money import format_inr, parse_inr
@@ -33,7 +33,7 @@ from app.ingest.eml_folder import parse_message, sender_address, sent_at
 from app.ingest.mail_source import MailSource, MessageRef
 from app.ingest.store import DocumentStore
 from app.planner.plan import plan
-from app.validate import failures
+from app.validate import NO_DUE_DATE, failures
 from app.validate.alert import MailFacts, check_bank_alert
 from app.validate.invoice import check_invoice
 
@@ -228,13 +228,16 @@ def schema_problems(e: ValidationError, model: type[BaseModel]) -> str:
     """Every field a proposed record is missing or has wrongly, by name, and
     the fields it should have, so the agent can fix its call (CHG-031)."""
     errors = e.errors()
-    missing = sorted({str(x["loc"][0]) for x in errors if x["type"] == "missing" and x["loc"]})
-    unknown = sorted({str(x["loc"][0]) for x in errors if x["type"] == "extra_forbidden" and x["loc"]})
+    path = lambda x: ".".join(map(str, x["loc"]))  # noqa: E731 - lines.0.amount_text, not just lines
+    missing = sorted({path(x) for x in errors if x["type"] == "missing" and x["loc"]})
+    unknown = sorted({path(x) for x in errors if x["type"] == "extra_forbidden" and x["loc"]})
     parts = ([f"missing {', '.join(missing)}"] if missing else []) + (
         [f"not fields of this record: {', '.join(unknown)}"] if unknown else [])
-    parts += [f"{'.'.join(map(str, x['loc']))}: {x['msg']}" for x in errors
-              if x["type"] not in ("missing", "extra_forbidden")]
-    return "; ".join(parts) + f". Its fields are: {', '.join(model.model_fields)}"
+    parts += [f"{path(x)}: {x['msg']}" for x in errors if x["type"] not in ("missing", "extra_forbidden")]
+    out = "; ".join(parts) + f". Its fields are: {', '.join(model.model_fields)}"
+    if model is InvoiceExtract and any(x["loc"][:1] == ("lines",) and len(x["loc"]) > 2 for x in errors):
+        out += f"; each of lines has: {', '.join(InvoiceLine.model_fields)}"
+    return out
 
 
 def add_candidate(ctx: ToolContext, args: CandidateArgs) -> str:
@@ -272,6 +275,11 @@ def add_candidate(ctx: ToolContext, args: CandidateArgs) -> str:
     payload["extract"] = None if extract is None else extract.model_dump(mode="json")
     payload["found_by"] = f"agent:case:{ctx.case.id} via gmail:{args.message_id}"
     status = "VALID" if record is not None else "INVALID"
+    # A bill with no due date: the agent can't supply one without making it up, and the pipeline that reads the
+    # handed-on message flags the field for the owner. So it is evidence like any other (CHG-030 x CHG-031).
+    no_due_date = args.record_type == "invoice" and failures(checks) == {"dates": NO_DUE_DATE}
+    if no_due_date:
+        status = "VALID"
     cid = ctx.conn.execute(
         "INSERT INTO candidate (source_document_id, record_type, payload_json, checks_json, status, attempts, "
         "created_by, created_at) VALUES (?, ?, ?, ?, ?, 1, ?, ?)",
@@ -284,6 +292,8 @@ def add_candidate(ctx: ToolContext, args: CandidateArgs) -> str:
         ctx.case.validation_failures += 1
         bad = "; ".join(f"{k}: {v}" for k, v in sorted(failures(checks).items())) or "a check was skipped"
         return f"candidate {cid}: INVALID ({bad})"
+    if no_due_date:
+        return f"candidate {cid}: VALID; it gives no due date, which the owner fills in (leave due_date null)"
     return f"candidate {cid}: VALID, every rule check passed"
 
 
