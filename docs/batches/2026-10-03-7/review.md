@@ -216,3 +216,23 @@ Minors, not fixed:
   if seeding ever fails.
 
 All three subsystems approve. Batch 7 is ready for the PO's verdict.
+
+## PO verdict
+
+ACCEPT for CHG-010b, CHG-010a, CHG-010c and CHG-027, the same verdict for all four (2026-10-04,
+payablesagent-ac). The PO checked e216ef1 independently: 1265 tests pass and all 9 import contracts are
+kept. They also read workflow A's step table. Deviations W1–W6 are accepted; on W1, ₹3,83,000 is checked
+where the TDD puts it.
+
+Decisions carried into batch 8:
+- **D26, CHG-029 (security fix):** a vendor's first bank details from any document are a material banking
+  change. They are recorded as `change_pending` with an approve_bank_change question, an owner decision
+  separate from confirming the bill. Until the owner approves, the bill shows the D20 warning and approval
+  needs the tick. Details the owner types on their own typed entry may be recorded as verified. The
+  known-limit text comes out of the README and the threat model once this is fixed.
+- **D27, CHG-028:** statutory debits match by a config list of payee keywords per tax_type (the statutory
+  "aliases" in config.yaml), plus the same amount and the same 3-day window, giving MATCHED as reconciler.
+  More than one candidate goes to REVIEW. The owner's link stays as a fallback.
+
+Live runs are authorised in two phases from main after the merge. Phase 1 is a pilot, `make evals` live at
+N=1; its numbers go to the PO before phase 2.

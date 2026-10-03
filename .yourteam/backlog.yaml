@@ -217,7 +217,7 @@ changes:
   - id: CHG-010b
     title: Owner alerts by email - notify/smtp, send_alert, throttle, fixed templates
     file: docs/changes/CHG-010b-owner-alerts.md
-    status: ready
+    status: done
     priority: 10
     type: feature
     lane: planned
@@ -227,7 +227,7 @@ changes:
   - id: CHG-010a
     title: Eval system and harness ablation - runner, 11 scenarios, metrics, budget guard, ablation, regression
     file: docs/changes/CHG-010a-evals.md
-    status: ready
+    status: done
     priority: 10
     type: feature
     lane: sliced
@@ -237,7 +237,7 @@ changes:
   - id: CHG-010c
     title: Evidence docs - README, architecture, threat model, permission model, traces, demo script
     file: docs/changes/CHG-010c-evidence-docs.md
-    status: ready
+    status: done
     priority: 10
     type: feature
     lane: planned
@@ -430,7 +430,7 @@ changes:
   - id: CHG-027
     title: Full-workflow runs - two scripted fortnights through the real web routes, worker and demo clock
     file: docs/changes/CHG-027-full-workflow-runs.md
-    status: ready
+    status: done
     priority: 27
     type: feature
     lane: planned
