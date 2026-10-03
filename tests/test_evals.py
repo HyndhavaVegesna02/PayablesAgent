@@ -69,3 +69,17 @@ def test_scenario_folders_hold_inputs_and_expectations_but_no_replies():
         for f in folder.iterdir():
             assert f.name == "expected.yaml" or f.suffix in {".eml", ".png", ".pdf", ".wav"}, f
         assert "Extract" not in (folder / "expected.yaml").read_text(encoding="utf-8")  # no canned model reply
+
+
+TDD_SCENARIOS = [  # TDD Part 1, "Scenario suite (test inbox and uploads)", in its order
+    "01-debit-alert-for-a-planned-payment",
+    "02-password-protected-statement",
+    "03-handwritten-bill-photo",
+    "04-hinglish-voice-note",
+    "05-same-invoice-by-email-and-photo",
+    "06-payment-returned-by-the-bank",
+]
+
+
+def test_the_suite_has_the_tdd_scenarios():
+    assert scenario.names() == TDD_SCENARIOS
