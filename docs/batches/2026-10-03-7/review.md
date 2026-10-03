@@ -156,3 +156,48 @@ Minors:
 - S2: the demo route is listed as "demo mode only".
 - S3: make_traces refuses a run that isn't the success, or the path failure, it stands for.
 - Minors fixed: all except the pronouns, which are outside the batch's diff. CLAUDE.md is the user's file.
+
+## Round 2, app code: APPROVE
+
+Re-review of 044482b only. C1 and M1 are fixed, and so are the minors listed above. The reviewer re-ran its
+round-1 probes: 2 drifts now send 2 emails, and mark-paid now answers the agent question. The deferred
+minors are accepted as recorded.
+
+New minor notes, none blocking:
+- names still keep a bare domain with an uncommon TLD and zero-width characters, so the cleaning is a
+  partial defence. Some legitimate names lose a word to over-matching. Both belong to a future alerts
+  change;
+- 0005 was edited in place, so batch-7 dev databases need `make reseed`. Main never had 0005;
+- `DEFAULT_BASE_URL` repeats the Settings default.
+
+## Round 2, evidence documents: APPROVE
+
+Re-review of 9d3ad6c only. B1–B3 and S1–S3 are met. The reviewer re-ran the walkthrough's and the demo
+script's new paths in scratch: the bank change is flagged, and the approve_bank_change question is OPEN.
+Its one minor, a pointer from docs/evals/README to the superseded reports, is fixed in 10177af.
+
+## Round 2, evals and workflow runs: FIX_REQUIRED
+
+Re-review of the round-1 fix commits. Every round-1 finding is fixed except one the fix introduced: two
+of workflow run B's checks (steps 13 and 14, `paid`) carried the `why` of the neighbouring check. That is
+an evidence defect, not a code one.
+
+Minors:
+- no test for the drain's wait for retries;
+- the worst-run cell said "all checks met" though only end-to-end checks decide it;
+- Run() left its database open if setup failed after the world was built;
+- the runner exits 0 on path failures;
+- no pointer to the superseded reports.
+
+**Fixes (10177af, 2bbeb80):**
+- the two whys now describe their own checks;
+- a test that a job waiting to retry is waited for, on the run's own clock;
+- "all end-to-end checks met";
+- Run() closes its database if setup fails;
+- docs/evals/README lists the superseded folders;
+- not changed: the exit code on path failures. A path failure doesn't decide success (round 1, M1), so
+  exit 0 is consistent with that.
+
+Every fixture-mode report was regenerated at 10177af from a clean tree. The folders are named 2026-10-04
+because the date changed. The 5f3c463 reports are kept, marked, in
+`docs/evals/superseded/before-review-round-2/`.
