@@ -43,7 +43,13 @@ from app.ai.extract import extract_document, prompt_version
 from app.ai.sort import sort_document
 from app.clock import TIMEZONE
 from app.config import Settings
-from app.db.read import bank_txn_with_key, business_name, failure_candidate_with_key, invoice_on_record
+from app.db.read import (
+    bank_txn_with_key,
+    business_name,
+    failure_candidate_with_key,
+    invoice_on_record,
+    vendor_party,
+)
 from app.domain.models import BankTxnNew
 from app.domain.money import format_inr
 from app.ingest.eml_folder import EmlFolderSource, attachments, parse_message, sender_address, sent_at
@@ -62,6 +68,8 @@ from app.validate.alert import (
     check_bank_alert,
     check_failure_notice,
 )
+from app.validate.bank import account_last4, differs, normalise_ifsc
+from app.validate.gstin import normalise_gstin
 from app.validate.invoice import InvoiceRecord, check_invoice
 
 if TYPE_CHECKING:
@@ -346,10 +354,49 @@ def _ask_owner(ctx: JobContext, doc: sqlite3.Row, candidate_id: int, body: str) 
     )
 
 
+def _check_bank_details(ctx: JobContext, doc: sqlite3.Row, outcome: Outcome, candidate_id: int) -> None:
+    """Bank details on a vendor's bill that differ from the ones on record mark
+    the vendor change_pending and ask the owner (approve_bank_change); they
+    are never updated automatically (TDD pipeline step 6; batch 5, S4). Run
+    on every reading, a duplicate included: "same invoice, new account" is
+    the classic fraud."""
+    x = outcome.attempts[-1].result.parsed
+    reading = outcome.reading or {}
+    if x is None or reading.get("kind") != "bill":
+        return
+    last4, ifsc = account_last4(x.payee_account_number), normalise_ifsc(x.payee_ifsc)
+    if last4 is None and ifsc is None:
+        return
+    party = vendor_party(ctx.conn, doc["business_id"], reading.get("party"), normalise_gstin(x.seller_gstin))
+    if party is None or party["bank_status"] == "none":
+        return  # a vendor's first details are recorded when the owner confirms the bill
+    if not differs(party["bank_account_mask"], party["bank_ifsc"], last4, ifsc):
+        return
+    input_ref = f"source_document:{doc['id']}"
+    writer.flag_bank_change(party["id"], "pipeline", f"candidate {candidate_id} gives different bank details",
+                            input_ref, conn=ctx.conn, clock=ctx.clock, trace_run_id=ctx.tracer.run_id)
+    on_record = ", ".join(v for v in (
+        f"account ending {account_last4(party['bank_account_mask'])}" if party["bank_account_mask"] else "",
+        f"IFSC {party['bank_ifsc']}" if party["bank_ifsc"] else "") if v)
+    printed = ", ".join(v for v in (f"account ending {last4}" if last4 else "", f"IFSC {ifsc}" if ifsc else "") if v)
+    ctx.conn.execute(
+        "INSERT INTO owner_question (business_id, kind, body_text, choices_json, status) "
+        "VALUES (?, 'approve_bank_change', ?, ?, 'OPEN')",
+        (doc["business_id"],
+         f"A bill from {party['name']} gives different bank details: {printed} (on record: {on_record}). "
+         "Vendor bank details change pending: verify before paying. Check with the vendor by phone, on a "
+         "number you already have, before approving.",
+         json.dumps({"party_id": party["id"], "candidate_id": candidate_id})),
+    )
+    ctx.tracer.step(input_ref=input_ref, tool="route", escalation_rule="bank_change",
+                    result=f"party {party['id']} bank change pending; approve_bank_change asked")
+
+
 def _route_invoice(ctx: JobContext, doc: sqlite3.Row, outcome: Outcome, candidate_id: int,
                    msg: EmailMessage | None) -> None:
     input_ref = f"source_document:{doc['id']}"
     fails = failures(outcome.attempts[-1].checks)
+    _check_bank_details(ctx, doc, outcome, candidate_id)
     if outcome.status == "INVALID":
         ctx.tracer.step(input_ref=input_ref, tool="route", result=f"duplicate: {fails['duplicates']}")
         return

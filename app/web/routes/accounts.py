@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, Request
 from app.web import actions, repo
 from app.web.app import render
 from app.web.auth import User, db, owner_only
-from app.web.routes._common import done, form_values
+from app.web.routes._common import done, form_values, int_or_none
 
 router = APIRouter()
 
@@ -54,7 +54,13 @@ async def unlock(document_id: int, request: Request, user: User = Depends(owner_
 @router.post("/parties/{party_id}/bank-change")
 async def bank_change(party_id: int, request: Request, user: User = Depends(owner_only),
                       conn: sqlite3.Connection = Depends(db)):
-    party = repo.party(conn, user.business_id, party_id)
-    if party["bank_status"] != "change_pending":
+    if repo.party(conn, user.business_id, party_id)["bank_status"] != "change_pending":
         raise actions.Refused("There is no pending bank change for this vendor.")
-    raise actions.Refused("Approving bank changes comes with a later change (CHG-007).")
+    values = await form_values(request)
+    decision = values.get("decision")
+    candidate_id = int_or_none(values.get("candidate_id"))
+    if decision not in ("approve", "reject") or candidate_id is None:
+        raise actions.Refused("Choose approve or reject for this bank change.")
+    actions.decide_bank_change(conn, user, party_id, candidate_id, decision == "approve",
+                               clock=request.app.state.clock)
+    return done(request, "/attention")

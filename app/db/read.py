@@ -246,3 +246,12 @@ def invoice_on_record(conn: sqlite3.Connection, business_id: int, key: InvoiceKe
             return f"{r.get('party')} invoice {r.get('invoice_number') or 'of ' + str(r.get('invoice_date'))} " \
                    f"is already waiting for the owner (entry {cid})"
     return None
+
+
+def vendor_party(conn: sqlite3.Connection, business_id: int, name: str | None, gstin: str | None) -> sqlite3.Row | None:
+    """The one vendor an invoice names (by GSTIN, or by name either way round),
+    or None when there is none or more than one."""
+    found = [r for r in conn.execute(
+        "SELECT * FROM party WHERE business_id = ? AND kind IN ('vendor', 'both') ORDER BY id", (business_id,)
+    ).fetchall() if same_party(name, gstin, r["name"], normalise_gstin(r["gstin"]))]
+    return found[0] if len(found) == 1 else None

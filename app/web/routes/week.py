@@ -48,8 +48,10 @@ async def approve(run_id: int, request: Request, user: User = Depends(owner_only
         for k, raw in values.items() if k.startswith("version_") and k[8:].isdigit()
         if (v := int_or_none(raw)) is not None
     }
+    bank_checked = frozenset(int(k[8:]) for k, v in values.items()
+                             if k.startswith("bank_ok_") and k[8:].isdigit() and v == "1")
     try:
-        actions.approve(conn, user, run_id, versions, clock=request.app.state.clock)
+        actions.approve(conn, user, run_id, versions, clock=request.app.state.clock, bank_checked=bank_checked)
     except actions.Stale as e:
         return stale_page(request, conn, user, str(e))
     return done(request, "/")

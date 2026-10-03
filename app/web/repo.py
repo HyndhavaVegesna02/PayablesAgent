@@ -187,6 +187,7 @@ class PlanView:
     to_approve: list[Line]  # PLANNED PAY lines on the next payment day
     options: list[Option]
     authorised: set[int] = field(default_factory=set)  # bills paid under an owner's authorisation (CHG-021)
+    bank_pending: set[int] = field(default_factory=set)  # bills to a vendor whose bank change is pending (D20)
 
 
 def plan_view(conn: sqlite3.Connection, business_id: int) -> PlanView | None:
@@ -244,7 +245,14 @@ def plan_view(conn: sqlite3.Connection, business_id: int) -> PlanView | None:
         authorised={r[0] for r in conn.execute(
             "SELECT payable_id FROM plan_override WHERE business_id = ? AND kind = 'authorise_breach' "
             "AND status = 'ACTIVE'", (business_id,))},
+        bank_pending=bank_change_pending_bills(conn, business_id),
     )
+
+
+def bank_change_pending_bills(conn: sqlite3.Connection, business_id: int) -> set[int]:
+    return {r[0] for r in conn.execute(
+        "SELECT p.id FROM payable p JOIN party pt ON pt.id = p.party_id "
+        "WHERE p.business_id = ? AND pt.bank_status = 'change_pending'", (business_id,))}
 
 
 def awaiting_payment(conn: sqlite3.Connection, business_id: int) -> list[dict[str, Any]]:

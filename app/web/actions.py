@@ -34,6 +34,7 @@ from app.ledger.writer import EntityRef
 from app.planner.options import options
 from app.planner.plan import InflowIn, canonical_json, effective_snapshot, format_day, plan
 from app.validate import CHECK_NAMES, NOT_APPLICABLE, PASSED, failed, failures
+from app.validate.bank import account_mask, normalise_ifsc
 from app.validate.duplicates import txn_dedup_key
 from app.web import repo
 from app.web.auth import User
@@ -95,11 +96,13 @@ def _check_current(conn: sqlite3.Connection, user: User, run_id: int, clock: Clo
 
 
 def approve(conn: sqlite3.Connection, user: User, run_id: int, versions: dict[int, int], *,
-            clock: Clock) -> int:
+            clock: Clock, bank_checked: frozenset[int] = frozenset()) -> int:
     """Approves the PAY lines for the next payment day (Q4): each moves
     PLANNED -> PAYMENT_EXPECTED with the version the owner saw. Stale (Q3)
     when the run is not current, the inputs it was planned from have changed
-    (including the date), or a bill's version moved."""
+    (including the date), or a bill's version moved. A bill to a vendor whose
+    bank change is pending needs the owner's tick that he verified the
+    details (D20); without it the approval is refused."""
     with writer.atomic(conn):
         _check_current(conn, user, run_id, clock)
         view = repo.plan_view(conn, user.business_id)
@@ -107,13 +110,46 @@ def approve(conn: sqlite3.Connection, user: User, run_id: int, versions: dict[in
             raise Refused("There is no payment waiting for approval in this plan.")
         if any(versions.get(ln.payable_id) != ln.version for ln in view.to_approve):
             raise Stale(STALE)
+        unticked = [ln.name for ln in view.to_approve
+                    if ln.payable_id in view.bank_pending and ln.payable_id not in bank_checked]
+        if unticked:
+            raise Refused(f"Vendor bank details change pending for {', '.join(unticked)}: verify them with the "
+                          "vendor and tick the box before approving.")
         for ln in view.to_approve:
+            checked = " (bank details change pending: the owner ticked that he verified them)" \
+                if ln.payable_id in view.bank_pending else ""
             writer.transition(
                 EntityRef("payable", ln.payable_id), "PAYMENT_EXPECTED", user.actor,
-                f"Owner approved paying {ln.name} {format_inr(ln.amount_paise)} on {format_day(ln.pay_on)}",
+                f"Owner approved paying {ln.name} {format_inr(ln.amount_paise)} on {format_day(ln.pay_on)}{checked}",
                 f"plan_run:{run_id}", conn=conn, expected_version=ln.version, clock=clock,
             )
         return _replan(conn, user, clock)
+
+
+def decide_bank_change(conn: sqlite3.Connection, user: User, party_id: int, candidate_id: int, approve: bool, *,
+                       clock: Clock) -> None:
+    """POST /parties/{id}/bank-change (owner only): approve copies the new
+    details in, from the document that carried them; reject keeps the old
+    ones. Either way the vendor's open bank-change questions are answered."""
+    with writer.atomic(conn):
+        party = repo.party(conn, user.business_id, party_id)
+        if party["bank_status"] != "change_pending":
+            raise Refused("There is no pending bank change for this vendor.")
+        cand = repo.candidate(conn, user.business_id, candidate_id)
+        payee = json.loads(cand["payload_json"]).get("payee") or {}
+        decision = "approved" if approve else "rejected"
+        writer.decide_bank_change(
+            party_id, approve, user.actor, f"Owner {decision} the bank change from candidate {candidate_id}",
+            f"candidate:{candidate_id}", account_mask=account_mask(payee.get("account")),
+            ifsc=normalise_ifsc(payee.get("ifsc")), conn=conn, clock=clock,
+        )
+        conn.execute(
+            "UPDATE owner_question SET status = 'ANSWERED', answer_json = ?, answered_by = ?, answered_at = ? "
+            "WHERE business_id = ? AND status = 'OPEN' AND kind = 'approve_bank_change' "
+            "AND json_extract(choices_json, '$.party_id') = ?",
+            (json.dumps({"decision": decision, "candidate_id": candidate_id}), user.id, clock.now().isoformat(),
+             user.business_id, party_id),
+        )
 
 
 def mark_paid(conn: sqlite3.Connection, user: User, payable_id: int, version: int | None, *,
@@ -499,8 +535,14 @@ def _create_record(conn, user: User, cand, entry: Entry, source: str, clock: Clo
                   invoice_date=r["invoice_date"] and date.fromisoformat(r["invoice_date"]),
                   amount_paise=r["amount_paise"], source_document_id=cand["source_document_id"])
     if entry.kind == "bill":
+        party_id = _party_id(conn, user.business_id, r["party"], "vendor")
+        payee = json.loads(cand["payload_json"]).get("payee") or {}
+        writer.record_bank_details(  # a vendor's first details, from the bill the owner checked (S4)
+            party_id, account_mask(payee.get("account")), normalise_ifsc(payee.get("ifsc")), user.actor,
+            "Bank details from a bill the owner confirmed", source, conn=conn, clock=clock,
+        )
         bill = writer.create_payable(
-            PayableNew(party_id=_party_id(conn, user.business_id, r["party"], "vendor"),
+            PayableNew(party_id=party_id,
                        due_date=date.fromisoformat(r["due_date"]), priority=r["priority"], **common),
             actor=user.actor, reason="Owner confirmed a typed bill", source_ref=source, conn=conn, clock=clock,
         )

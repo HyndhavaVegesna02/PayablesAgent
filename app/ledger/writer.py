@@ -998,6 +998,110 @@ def add_party_alias(
     return after
 
 
+def _set_bank(conn: sqlite3.Connection, party_id: int, sets: dict[str, Any], event_type: str, actor: str,
+              reason: str, source_ref: str | None, clock: Clock, trace_run_id: str | None) -> dict[str, Any]:
+    before = _get(conn, "party", party_id)
+    cols = ", ".join(f"{k} = ?" for k in sets)
+    conn.execute(f"UPDATE party SET {cols} WHERE id = ?", (*sets.values(), party_id))
+    after = _get(conn, "party", party_id)
+    _insert_event(
+        conn, business_id=before["business_id"], event_type=event_type, entity="party", entity_id=party_id,
+        actor=actor, before=before, after=after, reason=reason, source_ref=source_ref,
+        trace_run_id=trace_run_id, clock=clock,
+    )
+    return after
+
+
+def flag_bank_change(
+    party_id: int,
+    actor: str,
+    reason: str,
+    source_ref: str | None,
+    *,
+    conn: sqlite3.Connection,
+    clock: Clock | None = None,
+    trace_run_id: str | None = None,
+) -> dict[str, Any]:
+    """A document gives a vendor bank details that differ from the ones on
+    record (TDD pipeline step 6): the vendor is marked change_pending, and its
+    stored details are never touched here. Pipeline only; a
+    PARTY_BANK_CHANGE_PENDING event. The proposed details stay in the
+    candidate that carried them."""
+    who = parse_actor(actor)
+    _check_role(who, frozenset({"pipeline"}), "flag a vendor bank change")
+    _require_fk(conn)
+    clock = clock or SystemClock()
+    with atomic(conn):
+        return _set_bank(conn, party_id, {"bank_status": "change_pending"}, "PARTY_BANK_CHANGE_PENDING", actor,
+                         reason, source_ref, clock, trace_run_id)
+
+
+def decide_bank_change(
+    party_id: int,
+    approve: bool,
+    actor: str,
+    reason: str,
+    source_ref: str | None,
+    *,
+    account_mask: str | None,
+    ifsc: str | None,
+    conn: sqlite3.Connection,
+    clock: Clock | None = None,
+    trace_run_id: str | None = None,
+) -> dict[str, Any]:
+    """Only the owner approves a vendor bank change (TDD threat model: "only
+    the owner can approve it"). Approve stores the new details as verified;
+    reject keeps the old ones. PARTY_BANK_CHANGE_APPROVED or _REJECTED."""
+    who = parse_actor(actor)
+    _check_role(who, frozenset({"owner"}), "approve a vendor bank change")
+    _require_fk(conn)
+    clock = clock or SystemClock()
+    with atomic(conn):
+        before = _get(conn, "party", party_id)
+        _check_owner(conn, who, before["business_id"])
+        if before["bank_status"] != "change_pending":
+            raise IllegalTransition(f"party {party_id} has no pending bank change")
+        if approve:
+            if not account_mask and not ifsc:
+                raise ValueError("approving a bank change needs the new details")
+            sets = {"bank_account_mask": account_mask or before["bank_account_mask"],
+                    "bank_ifsc": ifsc or before["bank_ifsc"], "bank_status": "verified"}
+            return _set_bank(conn, party_id, sets, "PARTY_BANK_CHANGE_APPROVED", actor, reason, source_ref, clock,
+                             trace_run_id)
+        status = "verified" if before["bank_account_mask"] or before["bank_ifsc"] else "none"
+        return _set_bank(conn, party_id, {"bank_status": status}, "PARTY_BANK_CHANGE_REJECTED", actor, reason,
+                         source_ref, clock, trace_run_id)
+
+
+def record_bank_details(
+    party_id: int,
+    account_mask: str | None,
+    ifsc: str | None,
+    actor: str,
+    reason: str,
+    source_ref: str | None,
+    *,
+    conn: sqlite3.Connection,
+    clock: Clock | None = None,
+    trace_run_id: str | None = None,
+) -> dict[str, Any] | None:
+    """A vendor's first bank details, from a bill the owner confirmed: owner
+    only, and only while none are on record (batch 5 plan, S4). Any later
+    difference goes through flag_bank_change and the owner's approval."""
+    who = parse_actor(actor)
+    _check_role(who, frozenset({"owner"}), "record vendor bank details")
+    _require_fk(conn)
+    clock = clock or SystemClock()
+    with atomic(conn):
+        before = _get(conn, "party", party_id)
+        _check_owner(conn, who, before["business_id"])
+        if before["bank_status"] != "none" or not (account_mask or ifsc):
+            return None
+        return _set_bank(conn, party_id, {"bank_account_mask": account_mask, "bank_ifsc": ifsc,
+                                          "bank_status": "verified"},
+                         "PARTY_BANK_DETAILS_RECORDED", actor, reason, source_ref, clock, trace_run_id)
+
+
 def close_case(
     case_id: int,
     actor: str,
