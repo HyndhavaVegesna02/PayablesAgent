@@ -255,3 +255,11 @@ def vendor_party(conn: sqlite3.Connection, business_id: int, name: str | None, g
         "SELECT * FROM party WHERE business_id = ? AND kind IN ('vendor', 'both') ORDER BY id", (business_id,)
     ).fetchall() if same_party(name, gstin, r["name"], normalise_gstin(r["gstin"]))]
     return found[0] if len(found) == 1 else None
+
+
+def statement_with_key(conn: sqlite3.Connection, key: str) -> int | None:
+    row = conn.execute(
+        "SELECT id FROM candidate WHERE record_type = 'statement' AND status IN ('VALID', 'ACCEPTED') "
+        "AND json_extract(payload_json, '$.dedup_key') = ?", (key,)
+    ).fetchone()
+    return None if row is None else row[0]

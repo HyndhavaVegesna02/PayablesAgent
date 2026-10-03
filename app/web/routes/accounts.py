@@ -9,10 +9,12 @@ import sqlite3
 
 from fastapi import APIRouter, Depends, Request
 
+from app.ingest.store import DocumentStore
 from app.web import actions, repo
 from app.web.app import render
 from app.web.auth import User, db, owner_only
 from app.web.routes._common import done, form_values, int_or_none
+from app.web.routes.attention import attention_page
 
 router = APIRouter()
 
@@ -43,12 +45,19 @@ async def confirm_balance(account_id: int, request: Request, user: User = Depend
 @router.post("/documents/{document_id}/unlock")
 async def unlock(document_id: int, request: Request, user: User = Depends(owner_only),
                  conn: sqlite3.Connection = Depends(db)):
-    # The password field is never read into a variable, logged or traced:
-    # there is no locked statement to use it on until CHG-007.
-    doc = repo.document(conn, user.business_id, document_id)
-    if doc["status"] != "LOCKED":
+    # The password is used once, in memory: it is never logged, traced, stored or
+    # echoed back into a form (TDD Part 1; batch 5, S5).
+    if repo.document(conn, user.business_id, document_id)["status"] != "LOCKED":
         raise actions.Refused("There is nothing to unlock: this document is not a locked statement.")
-    raise actions.Refused("Unlocking statements comes with a later change (CHG-007).")
+    values = await form_values(request)
+    try:
+        actions.unlock_document(conn, user, document_id, str(values.get("password") or ""),
+                                DocumentStore(request.app.state.settings.data_dir, request.app.state.settings.fernet_key),
+                                clock=request.app.state.clock)
+    except actions.WrongPassword:
+        return attention_page(request, conn, user, message="That password did not open the PDF. Try again.",
+                              status=422)
+    return done(request, "/attention")
 
 
 @router.post("/parties/{party_id}/bank-change")

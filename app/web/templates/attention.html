@@ -52,17 +52,19 @@
 {% set e = errors.get(c.id, {}) %}
 <article>
   <header>
-    {% if c.record_type == "payable" %}Bill{% elif c.record_type == "receivable" %}Sales invoice{% else %}Bank email{% endif %}
+    {% if c.record_type == "payable" %}Bill{% elif c.record_type == "receivable" %}Sales invoice{% elif c.record_type == "statement" %}Bank statement{% else %}Bank email{% endif %}
     <small class="muted">entry {{ c.id }}, {{ c.document_kind }}</small>
   </header>
   {% set failing = [] %}{% for name, result in c.checks.items() %}{% if result.startswith("failed") %}{% set _ = failing.append(name ~ ": " ~ result[8:]) %}{% endif %}{% endfor %}
   {% if failing %}<p class="below">Checks that failed: {{ failing | join("; ") }}</p>{% endif %}
+  {% if c.record_type == "statement" %}<p class="muted">A statement that could not be read reliably: nothing from it was written.</p>{% else %}
   <form method="post" action="/candidates/{{ c.id }}/confirm" hx-post="/candidates/{{ c.id }}/confirm" hx-target="#main">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     {% if c.record_type == "txn" %}{{ txn_fields(shown[c.id], e, all_accounts) }}
     {% else %}{{ entry_fields("bill" if c.record_type == "payable" else "invoice", shown[c.id], e) }}{% endif %}
     <button type="submit">Confirm</button>
   </form>
+  {% endif %}
   <form method="post" action="/candidates/{{ c.id }}/reject" hx-post="/candidates/{{ c.id }}/reject" hx-target="#main">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <button type="submit" class="secondary outline">Reject</button>
@@ -77,6 +79,12 @@
 <article>
   <p>{{ q.body_text }}</p>
   {% if q.kind == "confirm_record" %}<p class="muted">Confirm or reject the entry above.</p>
+  {% elif q.kind == "unlock_pdf" and q.choices.get("document_id") %}
+  <form method="post" action="/documents/{{ q.choices.document_id }}/unlock" hx-post="/documents/{{ q.choices.document_id }}/unlock" hx-target="#main">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>PDF password <input type="password" name="password" autocomplete="off" required></label>
+    <button type="submit">Open the PDF</button>
+  </form>
   {% elif q.kind == "approve_bank_change" and q.choices.get("party_id") %}
   <form method="post" action="/parties/{{ q.choices.party_id }}/bank-change" hx-post="/parties/{{ q.choices.party_id }}/bank-change" hx-target="#main">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

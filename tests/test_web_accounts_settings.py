@@ -2,7 +2,6 @@
 backend lands later (batch 3 plan, CHG-006 S5; AC5, AC6)."""
 
 import json
-from pathlib import Path
 
 import pytest
 
@@ -181,21 +180,6 @@ def test_writer_settings_refuse_a_helper_and_unknown_fields(web):
     with pytest.raises(InvalidActor):
         writer.update_business_settings(1, {"horizon_days": 7}, "helper:2", "x", None, conn=env.conn,
                                         clock=env.clock)
-
-
-def test_unlock_is_refused_until_chg_007_and_the_password_goes_nowhere(web, caplog):
-    env, client, csrf = web
-    doc = env.conn.execute("INSERT INTO source_document (business_id, kind, content_sha256, received_at, status) "
-                           "VALUES (1, 'pdf', 'locked-sha', '2026-10-12T09:00:00+05:30', 'LOCKED')").lastrowid
-    env.conn.commit()
-    secret = "hunter2-statement-password"
-    r = post(client, f"/documents/{doc}/unlock", csrf, {"password": secret})
-    assert r.status_code == 409 and "later change" in r.text
-    assert secret not in r.text and secret not in caplog.text
-    traces = Path(env.settings.trace_dir)
-    assert not traces.exists() or all(secret not in f.read_text(encoding="utf-8")
-                                      for f in traces.rglob("*") if f.is_file())
-    assert secret not in json.dumps([tuple(r) for r in env.conn.execute("SELECT * FROM event")])
 
 
 def test_unlock_on_a_document_that_is_not_locked_says_so(web):

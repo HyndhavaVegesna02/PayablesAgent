@@ -34,6 +34,7 @@ from app.ledger.writer import EntityRef
 from app.planner.options import options
 from app.planner.plan import InflowIn, canonical_json, effective_snapshot, format_day, plan
 from app.validate import CHECK_NAMES, NOT_APPLICABLE, PASSED, failed, failures
+from app.ingest import pdf
 from app.validate.bank import account_mask, normalise_ifsc
 from app.validate.duplicates import txn_dedup_key
 from app.web import repo
@@ -149,6 +150,37 @@ def decide_bank_change(conn: sqlite3.Connection, user: User, party_id: int, cand
             "AND json_extract(choices_json, '$.party_id') = ?",
             (json.dumps({"decision": decision, "candidate_id": candidate_id}), user.id, clock.now().isoformat(),
              user.business_id, party_id),
+        )
+
+
+class WrongPassword(Exception):
+    """The password did not open the PDF. Carries no text: the password never
+    goes into a message."""
+
+
+def unlock_document(conn: sqlite3.Connection, user: User, document_id: int, password: str, store, *,
+                    clock: Clock) -> None:
+    """POST /documents/{id}/unlock (pipeline step 2): the password opens the
+    PDF in memory, once. The unlocked document replaces the locked one in the
+    encrypted store and is queued to be read again; the password itself is
+    never stored, logged, traced or put in a message (TDD Part 1)."""
+    with writer.atomic(conn):
+        doc = repo.document(conn, user.business_id, document_id)
+        if doc["status"] != "LOCKED":
+            raise Refused("There is nothing to unlock: this document is not a locked statement.")
+        raw = store.get(doc["storage_path"])
+        opened = pdf.unlock(raw, password) if doc["kind"] == "pdf" else pdf.unlock_email(raw, password)
+        if opened is None:
+            raise WrongPassword()
+        store.put(opened, doc["content_sha256"])  # same path: the locked copy is replaced
+        conn.execute("UPDATE source_document SET status = 'NEW' WHERE id = ?", (document_id,))
+        queue.enqueue(conn, kind="process_document", payload={"document_id": document_id},
+                      idempotency_key=f"process_document:{document_id}:unlocked", clock=clock)
+        conn.execute(
+            "UPDATE owner_question SET status = 'ANSWERED', answer_json = ?, answered_by = ?, answered_at = ? "
+            "WHERE business_id = ? AND status = 'OPEN' AND kind = 'unlock_pdf' "
+            "AND json_extract(choices_json, '$.document_id') = ?",
+            (json.dumps({"decision": "unlocked"}), user.id, clock.now().isoformat(), user.business_id, document_id),
         )
 
 

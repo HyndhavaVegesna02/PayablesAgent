@@ -33,7 +33,7 @@ import json
 import sqlite3
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from email.message import EmailMessage
 from typing import TYPE_CHECKING, Any
 
@@ -48,12 +48,14 @@ from app.db.read import (
     business_name,
     failure_candidate_with_key,
     invoice_on_record,
+    statement_with_key,
     vendor_party,
 )
 from app.domain.models import BankTxnNew
 from app.domain.money import format_inr
 from app.ingest.eml_folder import EmlFolderSource, attachments, parse_message, sender_address, sent_at
 from app.ingest.files import readable, sniff_mime
+from app.ingest.pdf import is_locked, locked_attachments
 from app.ingest.mail_source import MailSource
 from app.ingest.store import DocumentStore, StoreKeyError
 from app.jobs import queue
@@ -69,13 +71,15 @@ from app.validate.alert import (
     check_failure_notice,
 )
 from app.validate.bank import account_last4, differs, normalise_ifsc
+from app.validate.duplicates import normalise_reference, txn_dedup_key
 from app.validate.gstin import normalise_gstin
 from app.validate.invoice import InvoiceRecord, check_invoice
+from app.validate.statement import StatementRecord, check_statement
 
 if TYPE_CHECKING:
     from app.worker import Handler, JobContext
 
-LATER = {"statement", "challan", "payment_confirmation", "voice_note"}  # statement: S5; voice: S6
+LATER = {"challan", "payment_confirmation", "voice_note"}  # voice: S6
 UPLOAD_WORDS = {"photo": "photo", "pdf": "PDF", "voice": "voice note"}
 
 
@@ -186,7 +190,7 @@ class Attempt:
 class Outcome:
     status: str  # candidate status: VALID, INVALID (duplicate) or AWAITING_OWNER
     attempts: list[Attempt]
-    record: AlertRecord | FailureRecord | InvoiceRecord | None
+    record: AlertRecord | FailureRecord | InvoiceRecord | StatementRecord | None
     reading: dict[str, Any] | None = None  # an invoice's best reading so far, for the owner's form
 
 
@@ -202,6 +206,9 @@ def checker(conn: sqlite3.Connection, doc_type: str, mail: MailFacts, business_i
         accounts = accounts_of(conn, business_id)
         return lambda x, err: (*check_failure_notice(
             x, err, mail, accounts, lambda k: failure_candidate_with_key(conn, k)), None)
+    if doc_type == "statement":
+        accounts = accounts_of(conn, business_id)
+        return lambda x, err: check_statement(x, err, mail, accounts, lambda k: statement_with_key(conn, k))
     if doc_type == "invoice":
         name = business_name(conn, business_id)
         return lambda x, err: check_invoice(x, err, name, lambda key: invoice_on_record(conn, business_id, key))
@@ -275,6 +282,18 @@ def handle_process_document(ctx: JobContext, *, backend: Backend) -> None:
         raw = document_store(ctx.settings).get(doc["storage_path"])
     except StoreKeyError as e:
         raise PermanentJobError(str(e)) from None
+    if _locked(doc, raw):
+        with writer.atomic(conn):
+            conn.execute("UPDATE source_document SET status = 'LOCKED' WHERE id = ?", (doc["id"],))
+            conn.execute(
+                "INSERT INTO owner_question (business_id, kind, body_text, choices_json, status) "
+                "VALUES (?, 'unlock_pdf', ?, ?, 'OPEN')",
+                (doc["business_id"], "A PDF needs its password before it can be read. Type it below: it is used "
+                 "once to open the file and is never stored.", json.dumps({"document_id": doc["id"]})),
+            )
+        ctx.tracer.step(input_ref=input_ref, tool="unlock",
+                        result="password-protected PDF: LOCKED; the owner is asked for the password (unlock_pdf)")
+        return
     contents, mail, msg = document_contents(doc, raw)
 
     if doc["kind"] == "voice":
@@ -308,8 +327,13 @@ def handle_process_document(ctx: JobContext, *, backend: Backend) -> None:
                      (doc_type, doc["id"]))
 
 
-def _plain(value: Any) -> Any:
-    return value.isoformat() if isinstance(value, date) else value
+def _locked(doc: sqlite3.Row, raw: bytes) -> bool:
+    """Pipeline step 2: a password-protected PDF, uploaded or attached."""
+    if doc["kind"] == "pdf":
+        return is_locked(raw)
+    if doc["kind"] == "email":
+        return bool(locked_attachments(parse_message(raw)))
+    return False
 
 
 def _store_candidate(ctx: JobContext, doc: sqlite3.Row, doc_type: str, outcome: Outcome) -> int:
@@ -325,8 +349,8 @@ def _store_candidate(ctx: JobContext, doc: sqlite3.Row, doc_type: str, outcome: 
                                                    "ifsc": extract.get("payee_ifsc")},
         }
     else:
-        record_type = "txn"
-        record = None if outcome.record is None else {k: _plain(v) for k, v in asdict(outcome.record).items()}
+        record_type = "statement" if doc_type == "statement" else "txn"
+        record = None if outcome.record is None else json.loads(json.dumps(asdict(outcome.record), default=str))
         payload = {"doc_type": doc_type, "extract": extract, "record": record,
                    "dedup_key": record["dedup_key"] if record else None}
     cur = ctx.conn.execute(
@@ -414,11 +438,78 @@ def _route_invoice(ctx: JobContext, doc: sqlite3.Row, outcome: Outcome, candidat
                     result=f"{what}, candidate {candidate_id}: the owner confirms it (confirm_record)")
 
 
+def _route_statement(ctx: JobContext, doc: sqlite3.Row, outcome: Outcome, candidate_id: int,
+                     msg: EmailMessage | None) -> None:
+    """Pipeline step 6 for a statement: rows the ledger is missing are added
+    (and reconciled), rows already there are confirmed, and the closing
+    balance goes to the drift check. Rows before the account's opening
+    balance date are already in that balance and are left alone."""
+    conn, input_ref = ctx.conn, f"source_document:{doc['id']}"
+    fails = failures(outcome.attempts[-1].checks)
+    if outcome.status == "INVALID":
+        ctx.tracer.step(input_ref=input_ref, tool="route", result=f"duplicate: {fails['duplicates']}")
+        return
+    if outcome.status == "AWAITING_OWNER":
+        _ask_owner(ctx, doc, candidate_id,
+                   f"A bank statement from {_source_words(doc, msg)} could not be read reliably: "
+                   + "; ".join(f"{k} ({v})" for k, v in sorted(fails.items()))
+                   + ". Nothing from it was written; the drift check against the next alert or statement "
+                   "still guards the balance. Reject it, or ask the bank for a clearer copy.")
+        ctx.tracer.step(input_ref=input_ref, tool="route", escalation_rule="max_validation_failures",
+                        result=f"statement candidate {candidate_id} awaits the owner")
+        return
+    rec = outcome.record
+    opened = conn.execute("SELECT opening_balance_at FROM bank_account WHERE id = ?", (rec.account_id,)).fetchone()[0]
+    since = date.fromisoformat(opened[:10])
+    existing: dict[tuple, list[str | None]] = {}
+    for d, direction, amount, ref in conn.execute(
+        "SELECT txn_date, direction, amount_paise, reference FROM bank_txn WHERE account_id = ? "
+        "AND status <> 'ADJUSTMENT'", (rec.account_id,)
+    ).fetchall():
+        existing.setdefault((d, direction, amount), []).append(normalise_reference(ref))
+    added, confirmed = [], 0
+    for row in rec.rows:
+        if row.txn_date < since:
+            continue
+        same = existing.get((row.txn_date.isoformat(), row.direction, row.amount_paise), [])
+        if same:  # already in the ledger: one statement row confirms one transaction
+            same.remove(row.reference if row.reference in same else same[0])
+            confirmed += 1
+            continue
+        key = txn_dedup_key(rec.account_id, row.txn_date, row.direction, row.amount_paise, row.reference)
+        if bank_txn_with_key(conn, key) is not None:
+            confirmed += 1
+            continue
+        txn = writer.create_bank_txn(
+            BankTxnNew(account_id=rec.account_id, direction=row.direction, amount_paise=row.amount_paise,
+                       txn_date=row.txn_date, counterparty=row.counterparty, reference=row.reference,
+                       dedup_key=key, source_document_id=doc["id"], candidate_id=candidate_id, status="UNMATCHED"),
+            actor="pipeline", reason=f"statement row missing from the ledger, candidate {candidate_id}",
+            source_ref=input_ref, conn=conn, clock=ctx.clock, trace_run_id=ctx.tracer.run_id,
+        )
+        queue.enqueue(conn, kind="reconcile_txn", payload={"bank_txn_id": txn.id},
+                      idempotency_key=f"reconcile_txn:{txn.id}", clock=ctx.clock)
+        added.append(txn.id)
+    reported_at = datetime.combine(rec.period_to, time(23, 59), tzinfo=TIMEZONE)
+    drift = queue.enqueue(
+        conn, kind="drift_check",
+        payload={"account_id": rec.account_id, "source": "statement", "reported_paise": rec.closing_paise,
+                 "reported_at": reported_at.isoformat()},
+        idempotency_key=f"drift_check:statement:{candidate_id}", clock=ctx.clock,
+    )
+    ctx.tracer.step(input_ref=input_ref, tool="route",
+                    result=f"statement: {len(added)} missing rows added {added}, {confirmed} already recorded; "
+                           f"drift_check job {drift} queued")
+
+
 def _route(ctx: JobContext, doc: sqlite3.Row, doc_type: str, outcome: Outcome, candidate_id: int,
            msg: EmailMessage | None) -> None:
     conn, input_ref = ctx.conn, f"source_document:{doc['id']}"
     if doc_type == "invoice":
         _route_invoice(ctx, doc, outcome, candidate_id, msg)
+        return
+    if doc_type == "statement":
+        _route_statement(ctx, doc, outcome, candidate_id, msg)
         return
     if outcome.status == "AWAITING_OWNER":
         fails = failures(outcome.attempts[-1].checks)

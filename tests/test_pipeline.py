@@ -284,11 +284,11 @@ def test_a_return_email_queues_reconcile_failure(env):
     assert rows(env, "SELECT * FROM bank_txn") == []
 
 
-def test_other_document_types_wait_for_chg_007_without_an_extract(env):
+def test_document_types_not_read_yet_stop_after_sort_without_an_extract(env):
     deliver(env, DEBIT)
-    backend = FakeBackend().queue("SortResult", {"doc_type": "statement", "reason": "r"})
+    backend = FakeBackend().queue("SortResult", {"doc_type": "challan", "reason": "r"})
     poll(env, backend)
-    assert tuple(rows(env, "SELECT status, doc_type FROM source_document")[0]) == ("PROCESSED", "statement")
+    assert tuple(rows(env, "SELECT status, doc_type FROM source_document")[0]) == ("PROCESSED", "challan")
     assert len(backend.requests) == 1
 
 
