@@ -15,12 +15,17 @@ Request shape (verified offline against google-genai 2.27.0):
   response_json_schema from the Pydantic model, and we parse r.text ourselves;
 - no temperature, top_p, top_k or thinking_budget is ever sent;
 - the SDK's own retries stay off, so one call is one attempt and the job queue
-  owns retry and backoff."""
+  owns retry and backoff;
+- a photo, PDF or voice note goes as a Part (its bytes and mime type), which
+  becomes an inline_data part; the trace records only its mime type, size and
+  sha256, never its bytes (batch 5 plan, S2)."""
 
 from __future__ import annotations
 
+import hashlib
 import re
-from dataclasses import dataclass
+from collections.abc import Sequence
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -69,8 +74,32 @@ class RawAIResponse:
     thought_tokens: int
 
 
+@dataclass(frozen=True)
+class Part:
+    """A file sent to the model: a photo, a PDF or a voice note."""
+
+    mime_type: str
+    data: bytes = field(repr=False)
+
+    @property
+    def sha256(self) -> str:
+        return hashlib.sha256(self.data).hexdigest()
+
+
+# What the model is shown: text alone, or text and files in order.
+Contents = str | Sequence[str | Part]
+
+
+def describe(contents: Contents) -> list[dict[str, Any]]:
+    """The trace's record of what was sent: text by length, a file by its mime
+    type, size and sha256. Never the file's bytes."""
+    items = [contents] if isinstance(contents, str) else list(contents)
+    return [{"text_chars": len(c)} if isinstance(c, str)
+            else {"mime_type": c.mime_type, "bytes": len(c.data), "sha256": c.sha256} for c in items]
+
+
 class Backend(Protocol):
-    def generate(self, *, model: str, system: str, contents: str, thinking: str,
+    def generate(self, *, model: str, system: str, contents: Contents, thinking: str,
                  json_schema: dict[str, Any] | None) -> RawAIResponse: ...
 
 
@@ -96,7 +125,7 @@ def call(
     job: str,
     thinking: str,
     system: str,
-    context: str,
+    context: Contents,
     schema: type[BaseModel] | None,
     backend: Backend,
     app_config: AppConfig,
@@ -129,7 +158,8 @@ def call(
         model=app_config.model.id,
         thinking=thinking,
         tool=f"ai.call:{job}",
-        arguments={"prompt_version": prompt_version, "schema": schema.__name__ if schema else None},
+        arguments={"prompt_version": prompt_version, "schema": schema.__name__ if schema else None,
+                   **({} if isinstance(context, str) else {"contents": describe(context)})},
         result=None if raw.text is None else raw.text[:RESULT_PREVIEW_CHARS],
         validation="schema: passed" if schema_error is None else f"schema: failed: {schema_error}",
         retries=0,
@@ -172,11 +202,14 @@ class GeminiBackend:
         text = str(message or "").strip()
         return redact_key(text, self._key)[:500] or None
 
-    def generate(self, *, model: str, system: str, contents: str, thinking: str,
+    def generate(self, *, model: str, system: str, contents: Contents, thinking: str,
                  json_schema: dict[str, Any] | None) -> RawAIResponse:
         from google.genai import errors
 
         t = self._types
+        if not isinstance(contents, str):  # one user turn: text and inline files, in order
+            contents = [c if isinstance(c, str) else t.Part.from_bytes(data=c.data, mime_type=c.mime_type)
+                        for c in contents]
         config = t.GenerateContentConfig(
             system_instruction=system,
             thinking_config=t.ThinkingConfig(thinking_level=thinking),

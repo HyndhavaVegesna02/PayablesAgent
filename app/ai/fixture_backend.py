@@ -1,50 +1,72 @@
 """The demo's fixture AI (batch 3 plan, PO decision D15). With DEMO_AI=fixtures
-the worker answers from the canned replies beside the test inbox
-(ai_replies.json, the same copy the tests use) instead of calling Gemini.
+the worker answers from the canned replies in fixtures/ai_replies.json (the
+same copy the tests use) instead of calling Gemini.
 
 It is honest about what it is: the worker records it as model "fixture-ai"
-with no tokens and no cost, and the web app shows a demo banner. An email
+with no tokens and no cost, and the web app shows a demo banner. A document
 with no canned reply is AIUnavailable (permanent): never a guess, and never
-a fall-back to Gemini."""
+a fall-back to Gemini.
+
+An email is matched by its text (a demo delivers mail by copying files from
+fixtures/test_inbox into its own TEST_INBOX_PATH, as the tests do); an
+uploaded photo, PDF or voice note by the sha256 of its bytes against the
+files in fixtures/uploads (batch 5 plan, S2 and Q6)."""
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
 
-from app.ai.client import AIUnavailable, RawAIResponse
+from app.ai.client import AIUnavailable, Contents, RawAIResponse
 from app.ai.email_text import email_text_from_bytes
 
 FIXTURE_MODEL = "fixture-ai"
-REPLIES_FILE = "ai_replies.json"
-# The one copy of the fixtures and their replies. A demo delivers mail by copying
-# files from here into its own TEST_INBOX_PATH, as the tests do.
-FIXTURE_INBOX = Path(__file__).resolve().parents[2] / "fixtures" / "test_inbox"
+FIXTURES = Path(__file__).resolve().parents[2] / "fixtures"
+REPLIES_FILE = FIXTURES / "ai_replies.json"
+FIXTURE_INBOX = FIXTURES / "test_inbox"
+FIXTURE_UPLOADS = FIXTURES / "uploads"
 
 
-def load_replies(inbox: str | Path) -> dict[str, dict[str, Any]]:
-    """File name -> {schema title: reply}. A string entry names the file
-    whose replies it shares (a re-sent alert)."""
-    raw = json.loads((Path(inbox) / REPLIES_FILE).read_text(encoding="utf-8"))["replies"]
+def load_replies(folder: str) -> dict[str, dict[str, Any]]:
+    """File name -> {schema title: reply} for one fixture folder ("test_inbox"
+    or "uploads"). A string entry names the file whose replies it shares (a
+    re-sent alert)."""
+    raw = json.loads(REPLIES_FILE.read_text(encoding="utf-8")).get(folder, {})
     return {name: raw[entry] if isinstance(entry, str) else entry for name, entry in raw.items()}
 
 
 class FixtureBackend:
-    def __init__(self, inbox: str | Path = FIXTURE_INBOX) -> None:
-        self.replies = load_replies(inbox)
+    def __init__(self) -> None:
+        emails, uploads = load_replies("test_inbox"), load_replies("uploads")
         # What the model is shown of each fixture email; a request is matched to
         # the fixture whose text it contains.
         self.texts = {
             f.name: email_text_from_bytes(f.read_bytes())
-            for f in sorted(Path(inbox).glob("*.eml")) if f.name in self.replies
+            for f in sorted(FIXTURE_INBOX.glob("*.eml")) if f.name in emails
+        }
+        self.email_replies = emails
+        self.file_replies = {
+            hashlib.sha256(f.read_bytes()).hexdigest(): uploads[f.name]
+            for f in sorted(FIXTURE_UPLOADS.glob("*")) if f.name in uploads
         }
 
-    def generate(self, *, model: str, system: str, contents: str, thinking: str,
+    def _replies_for(self, contents: Contents) -> list[dict[str, Any]]:
+        items = [contents] if isinstance(contents, str) else list(contents)
+        found = []
+        for item in items:
+            if isinstance(item, str):
+                found += [self.email_replies[n] for n, text in self.texts.items() if text and text in item]
+            elif item.sha256 in self.file_replies:
+                found.append(self.file_replies[item.sha256])
+        return found
+
+    def generate(self, *, model: str, system: str, contents: Contents, thinking: str,
                  json_schema: dict[str, Any] | None) -> RawAIResponse:
         title = (json_schema or {}).get("title", "")
-        for name, text in self.texts.items():
-            if text and text in contents and title in self.replies[name]:
-                return RawAIResponse(json.dumps(self.replies[name][title]), 0, 0, 0)
-        raise AIUnavailable(f"the demo fixture AI has no canned {title or 'reply'} for this email",
+        for replies in self._replies_for(contents):
+            if title in replies:
+                return RawAIResponse(json.dumps(replies[title]), 0, 0, 0)
+        raise AIUnavailable(f"the demo fixture AI has no canned {title or 'reply'} for this document",
                             retryable=False)

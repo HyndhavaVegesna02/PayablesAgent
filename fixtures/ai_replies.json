@@ -1,6 +1,6 @@
 {
-  "_note": "Hand-written replies, as Gemini would send them, for each fixture in this folder. One copy, read by tests/fake_ai.py and by the demo fixture AI (app/ai/fixture_backend.py, DEMO_AI=fixtures). A string value means: the same replies as that file.",
-  "replies": {
+  "_note": "Hand-written replies, as Gemini would send them, for every fixture under fixtures/. One copy, read by tests/fake_ai.py and by the demo fixture AI (app/ai/fixture_backend.py, DEMO_AI=fixtures). Grouped by fixture folder; within a folder, a string value means: the same replies as that file. The fixture AI matches an email by its text and an uploaded file by its sha256.",
+  "test_inbox": {
     "01-debit-ashirwad-paper.eml": {
       "SortResult": {
         "doc_type": "bank_alert",
@@ -86,5 +86,6 @@
       }
     },
     "06-debit-ashirwad-paper-resent.eml": "01-debit-ashirwad-paper.eml"
-  }
+  },
+  "uploads": {}
 }

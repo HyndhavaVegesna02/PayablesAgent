@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from app.ai.client import AIUnavailable, RawAIResponse
+from app.ai.client import AIUnavailable, Contents, RawAIResponse
 from app.ai.fixture_backend import load_replies
 
 INBOX = Path(__file__).resolve().parent.parent / "fixtures" / "test_inbox"
@@ -22,7 +22,7 @@ INBOX = Path(__file__).resolve().parent.parent / "fixtures" / "test_inbox"
 class Request:
     model: str
     system: str
-    contents: str
+    contents: Contents
     thinking: str
     json_schema: dict[str, Any] | None
 
@@ -60,10 +60,11 @@ def unavailable(retryable: bool = True) -> AIUnavailable:
     return AIUnavailable("fake outage", retryable=retryable, code=503 if retryable else 400)
 
 
-# Hand-written replies for fixtures/test_inbox, as Gemini would send them. One
-# copy, in fixtures/test_inbox/ai_replies.json, shared with the demo fixture AI (D15).
+# Hand-written replies for the fixtures, as Gemini would send them. One copy, in
+# fixtures/ai_replies.json, shared with the demo fixture AI (D15; batch 5, Q6).
 FIXTURE_REPLIES: dict[str, list[tuple[str, dict]]] = {
-    name: list(replies.items()) for name, replies in load_replies(INBOX).items()
+    name: list(replies.items())
+    for folder in ("test_inbox", "uploads") for name, replies in load_replies(folder).items()
 }
 
 

@@ -182,7 +182,7 @@ def test_the_demo_worker_uses_the_fixture_ai_even_with_a_gemini_key(demo_env):
 
 
 def test_an_email_with_no_canned_reply_is_ai_unavailable_never_a_guess():
-    backend = FixtureBackend(INBOX)
+    backend = FixtureBackend()
     with pytest.raises(AIUnavailable) as e:
         backend.generate(model="fixture-ai", system="s", contents="From: someone@example.test\n\nhello",
                          thinking="medium", json_schema={"title": "SortResult"})
