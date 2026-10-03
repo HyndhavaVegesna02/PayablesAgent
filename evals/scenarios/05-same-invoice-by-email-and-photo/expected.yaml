@@ -1,0 +1,26 @@
+name: 05-same-invoice-by-email-and-photo
+title: Same invoice by email and by photo
+passes_when: One payable, not two
+steps:
+  - at: "2026-10-13T12:00"
+  - deliver: [08-invoice-ashirwad-ap131.eml]
+  - poll: true
+  - upload: {file: ap-2610-131-photo.png, kind: photo}
+  - confirm_waiting: true
+expect:
+  - id: both-read-as-invoices
+    component: sort
+    sql: SELECT COUNT(*) FROM source_document WHERE doc_type = 'invoice'
+    equals: 2
+  - id: same-invoice-number-read-twice
+    component: extract
+    sql: SELECT COUNT(*) FROM candidate WHERE json_extract(payload_json, '$.record.invoice_number') = 'AP/2610/131'
+    equals: 2
+  - id: second-copy-is-a-duplicate
+    component: validate
+    sql: SELECT instr(json_extract(checks_json, '$.duplicates'), 'already') > 0 FROM candidate ORDER BY id DESC LIMIT 1
+    equals: 1
+  - id: one-payable
+    component: validate
+    sql: SELECT COUNT(*) FROM payable WHERE invoice_number = 'AP/2610/131'
+    equals: 1

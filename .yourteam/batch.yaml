@@ -21,8 +21,8 @@ changes:
     start_commit: 8a7bba8
     blocked_question: null
     slices:
-      - {id: S1, title: "runner core", start_commit: 8a7bba8, board: in_progress}
-      - {id: S2, title: "scenarios 1-6", start_commit: null, board: todo}
+      - {id: S1, title: "runner core", start_commit: 8125f26, end_commit: a555cb7, board: done, prepatch: "PASS: test_evals fails to import evals at 8125f26"}
+      - {id: S2, title: "scenarios 1-6", start_commit: a555cb7, board: in_progress}
       - {id: S3, title: "scenarios 7-11", start_commit: null, board: todo}
       - {id: S4, title: "metrics and the report", start_commit: null, board: todo}
       - {id: S5, title: "live mode and the budget guard", start_commit: null, board: todo}

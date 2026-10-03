@@ -1,0 +1,25 @@
+name: 02-password-protected-statement
+title: Password-protected statement PDF
+passes_when: Unlocked, rows extracted, statement arithmetic passes
+steps:
+  - at: "2026-10-14T09:00"
+  - deliver: [10-statement-hdfc-locked.eml]
+  - poll: true                                      # the PDF is locked: the owner is asked for its password
+  - unlock: {password: "SPW-4821-oct"}              # typed once by the owner (scripts/make_fixtures.py); never stored
+expect:
+  - id: sorted-as-statement
+    component: sort
+    sql: SELECT doc_type FROM source_document ORDER BY id LIMIT 1
+    equals: statement
+  - id: rows-read
+    component: extract
+    sql: SELECT COUNT(*) FROM bank_txn
+    equals: 3
+  - id: statement-arithmetic-passes
+    component: validate
+    sql: SELECT json_extract(checks_json, '$.statement_arithmetic') FROM candidate WHERE record_type = 'statement'
+    equals: passed
+  - id: ledger-agrees-with-the-bank
+    component: reconcile
+    sql: SELECT reported_balance_paise || ' ' || drift_status FROM bank_account WHERE id = 1
+    equals: "47241000 OK"

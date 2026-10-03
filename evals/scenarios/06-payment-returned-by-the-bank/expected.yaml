@@ -1,0 +1,33 @@
+name: 06-payment-returned-by-the-bank
+title: Payment returned by the bank
+passes_when: Bill REOPENED, plan rebuilt, owner told
+steps:
+  - monday_plan: true
+  - approve: next_pay_day
+  - at: "2026-10-12T12:00"
+  - deliver: [01-debit-ashirwad-paper.eml]
+  - poll: true
+  - at: "2026-10-14T11:00"
+  - deliver: [03-return-ashirwad-paper.eml]
+  - poll: true
+expect:
+  - id: return-read-as-a-failure
+    component: sort
+    sql: SELECT doc_type FROM source_document ORDER BY id DESC LIMIT 1
+    equals: failure_notice
+  - id: debit-reversed
+    component: reconcile
+    sql: SELECT status FROM bank_txn ORDER BY id LIMIT 1
+    equals: REVERSED
+  - id: bill-reopened
+    component: reconcile
+    sql: SELECT COUNT(*) FROM event WHERE event_type = 'PAYABLE_REOPENED' AND entity_id = 1
+    equals: 1
+  - id: plan-rebuilt-paying-it-thursday
+    component: planner
+    sql: SELECT l.decision || ' ' || l.pay_on FROM plan_line l JOIN plan_run r ON r.id = l.plan_run_id WHERE r.is_current = 1 AND l.payable_id = 1
+    equals: "PAY 2026-10-15"
+  - id: owner-told
+    component: reconcile
+    sql: SELECT COUNT(*) FROM owner_alert WHERE kind = 'payment_failed' AND ref = 'payable:1'
+    equals: 1

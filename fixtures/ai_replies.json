@@ -266,6 +266,16 @@
         "due_date": "2026-10-30",
         "uncertain_fields": []
       }
+    },
+    "voice-note-sharma.wav": {
+      "VoiceBillExtract": {
+        "transcript": "Sharma Packaging ka bill, dedh lakh rupaye, paanch November tak dena hai.",
+        "vendor_name": "Sharma Packaging",
+        "amount_spoken": "dedh lakh",
+        "invoice_number": null,
+        "due_date": "2026-11-05",
+        "uncertain_fields": []
+      }
     }
   },
   "_agent_scripts_note": "agent_scripts: what the fixture AI answers for an AgentStep (batch 6, CHG-008, S7). The first script whose `case` text is in the case file is used; within it, the first rule whose `if` texts are all in the case file and whose `unless` texts are not gives the step. In a step, {step} is the step's number and \"$valid_candidates\" the case's VALID candidate IDs, read from its findings. A case no script or rule covers is passed to the owner.",

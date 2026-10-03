@@ -55,3 +55,17 @@ def test_a_scenario_file_is_checked():
     with pytest.raises(ValidationError):
         Scenario.model_validate({**base, "expect": [{"id": "a", "component": "gemini", "sql": "SELECT 1",
                                                      "equals": 1}]})
+
+
+@pytest.mark.parametrize("name", scenario.names())
+def test_every_scenario_passes_in_fixture_mode(name):
+    r = run(scenario.load(name))
+    assert r.status == "PASSED", [(c.id, c.got, c.want) for c in r.checks if not c.ok] or r.error
+
+
+def test_scenario_folders_hold_inputs_and_expectations_but_no_replies():
+    for name in scenario.names():
+        folder = scenario.SCENARIOS / name
+        for f in folder.iterdir():
+            assert f.name == "expected.yaml" or f.suffix in {".eml", ".png", ".pdf", ".wav"}, f
+        assert "Extract" not in (folder / "expected.yaml").read_text(encoding="utf-8")  # no canned model reply

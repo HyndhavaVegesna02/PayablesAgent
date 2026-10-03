@@ -1,0 +1,18 @@
+name: 04-hinglish-voice-note
+title: Hinglish voice note saying "dedh lakh"
+passes_when: Amount extracted as ₹1,50,000 and shown with the transcript
+steps:
+  - upload: {file: voice-note-sharma.wav, kind: voice}   # machine-spoken (scripts/make_voice_fixture.ps1, D22)
+expect:
+  - id: amount-is-150000
+    component: extract
+    sql: SELECT json_extract(payload_json, '$.record.amount_paise') FROM candidate ORDER BY id LIMIT 1
+    equals: 15000000
+  - id: transcript-kept-for-the-owner
+    component: extract
+    sql: SELECT instr(lower(json_extract(payload_json, '$.extract.transcript')), 'dedh lakh') > 0 FROM candidate ORDER BY id LIMIT 1
+    equals: 1
+  - id: amount-checked-against-the-words
+    component: validate
+    sql: SELECT status FROM candidate ORDER BY id LIMIT 1
+    equals: VALID

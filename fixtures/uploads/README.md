@@ -7,6 +7,7 @@ Files a person uploads on /add (CHG-007). `scripts/make_fixtures.py` generated t
 | ap-2610-131-photo.png | A photo of Ashirwad's invoice AP/2610/131. The same invoice also arrives by email (`test_inbox/08`), so the second copy becomes a duplicate, not a second bill |
 | handwritten-bill-ganesh.png | Shree Ganesh Hardware's bill 418, ₹12,390. A clean italic rendering stands in for handwriting; real handwriting belongs to Phase 9's eval set |
 | voice-note-ashirwad.wav | Half a second of silence. Its canned reply is the Hinglish transcript ("... dedh lakh rupaye ..."). Only an authorised live run tests real audio |
+| voice-note-sharma.wav | Spoken by Windows' built-in speech synthesiser (`scripts/make_voice_fixture.ps1`, voice Microsoft Hazel, en-GB): "Sharma Packaging ka bill, dedh lakh rupaye, paanch November tak dena hai." The voice is English, so the Hindi words have English phonetics; whether a model can transcribe it is shown only by a live eval run (batch 7, D22). The eval suite's voice scenario uses it |
 
 ## GSTINs
 
