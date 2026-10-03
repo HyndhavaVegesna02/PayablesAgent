@@ -226,10 +226,13 @@ More detail on each module is in [app/validate/README.md](app/validate/README.md
   paths, not the model. In the ablation, the bare harness and the no-planner
   knock-out need a live model to mean anything, so their fixture rows are
   marked *mechanics only*.
-- **A statutory payment always needs the owner to link it (CHG-028).** A PF,
-  ESI or GST bill has no vendor name for its challan debit to match, so each
-  one goes to *Needs attention* as "which bill did this debit pay?". The
-  full-workflow runs take that path.
+- **A tax payment matches only if its debit names the tax office.** A PF, ESI
+  or GST bill has no vendor, so its debit is matched by payee words per tax
+  type (`matching.statutory_payees` in `config.yaml`: EPFO, ESIC, GST, CBIC
+  and so on), with the same amount and dates (CHG-028). A debit whose
+  description names none of them, such as a bank's generic "tax payment", goes
+  to *Needs attention* as "which bill did this debit pay?". Run A takes both
+  paths.
 - **A final answer's evidence rule checks where the evidence came from, not
   whether the answer is true.** A hijacked model can still write a false
   summary. It's shown as the assistant's own words and changes nothing; see

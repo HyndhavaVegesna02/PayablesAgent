@@ -24,6 +24,8 @@ import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.domain.models import TaxType
+
 ThinkingLevel = Literal["low", "medium", "high"]  # "minimal" is not supported, see TDD Part 1
 
 
@@ -130,6 +132,9 @@ class EscalationConfig(BaseModel):
 
 class MatchingConfig(BaseModel):
     window_days: int = Field(gt=0)
+    # A statutory bill has no party: its challan debit is matched by these payee
+    # words for its tax types, as a vendor's bill is by its names (D27).
+    statutory_payees: dict[TaxType, list[str]] = {}
 
 
 class MailConfig(BaseModel):

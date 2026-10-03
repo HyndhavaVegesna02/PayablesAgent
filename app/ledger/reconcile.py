@@ -14,6 +14,7 @@ import json
 import sqlite3
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
+from collections.abc import Mapping, Sequence
 from typing import Any, Literal
 
 from app.clock import TIMEZONE, Clock
@@ -53,6 +54,17 @@ def party_names(conn: sqlite3.Connection, party_id: int | None) -> list[str]:
     except json.JSONDecodeError:
         aliases = []  # a malformed alias list never blocks matching on the name itself
     return [row["name"], *(a for a in aliases if isinstance(a, str))]
+
+
+def payee_names(conn: sqlite3.Connection, bill: dict[str, Any] | sqlite3.Row,
+                statutory_payees: Mapping[str, Sequence[str]]) -> list[str]:
+    """Who a bill's debit should name: its party's names, or, for a statutory
+    bill (no party), the payee words of the tax types it pays (D27)."""
+    if bill["party_id"] is not None:
+        return party_names(conn, bill["party_id"])
+    return [word for (tax_type,) in conn.execute(
+        "SELECT tax_type FROM tax_obligation WHERE payable_id = ? ORDER BY id", (bill["id"],))
+            for word in statutory_payees.get(tax_type, ())]
 
 
 # --- cases --------------------------------------------------------------------------
@@ -159,8 +171,10 @@ def _txn_facts(t: dict[str, Any]) -> list[str]:
 
 
 def match_debit(conn: sqlite3.Connection, txn_id: int, *, window_days: int, clock: Clock,
-                trace_run_id: str | None = None) -> Result:
-    """A new debit (TDD steps 1-5)."""
+                trace_run_id: str | None = None, statutory_payees: Mapping[str, Sequence[str]] | None = None) -> Result:
+    """A new debit (TDD steps 1-5). A statutory bill is matched by its tax
+    types' payee words (`statutory_payees`, from config; D27)."""
+    statutory_payees = statutory_payees or {}
     t = _txn(conn, txn_id)
     if t["status"] != "UNMATCHED" or t["direction"] != "debit":
         return Result(f"bank_txn {txn_id} is a {t['status']} {t['direction']}: nothing to match")
@@ -175,7 +189,7 @@ def match_debit(conn: sqlite3.Connection, txn_id: int, *, window_days: int, cloc
         )
         if _within(r["planned_date"], txn_day, window_days)
     ]
-    named = [c for c in cands if name_matches(t["counterparty"], party_names(conn, c["party_id"]))]
+    named = [c for c in cands if name_matches(t["counterparty"], payee_names(conn, c, statutory_payees))]
     kw = dict(conn=conn, clock=clock, trace_run_id=trace_run_id)
     ref = f"bank_txn:{txn_id}"
 
@@ -207,7 +221,7 @@ def match_debit(conn: sqlite3.Connection, txn_id: int, *, window_days: int, cloc
             goal=f"Decide which bill, if any, debit {ref} paid.",
             facts=_txn_facts(t) + [
                 f"Candidate bill {b['id']} ({b['status']}): {format_inr(b['amount_paise'])}, "
-                f"planned {b['planned_date']}, payee names {party_names(conn, b['party_id'])}" for b in review
+                f"planned {b['planned_date']}, payee names {payee_names(conn, b, statutory_payees)}" for b in review
             ],
             unknowns=["Which bill this debit paid"], clock=clock,
         )

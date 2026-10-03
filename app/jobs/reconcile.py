@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from app.jobs import queue
 from app.jobs.alerts import raise_alert
@@ -65,8 +65,10 @@ def handle_reconcile_txn(ctx: JobContext) -> None:
         raise PermanentJobError(f"bank_txn {txn_id} does not exist")
     acct = _account(conn, txn["account_id"])
     match = reconcile.match_debit if txn["direction"] == "debit" else reconcile.match_credit
-    kw = dict(window_days=ctx.app_config.matching.window_days, clock=ctx.clock,
-              trace_run_id=ctx.tracer.run_id)
+    kw: dict[str, Any] = dict(window_days=ctx.app_config.matching.window_days, clock=ctx.clock,
+                              trace_run_id=ctx.tracer.run_id)
+    if txn["direction"] == "debit":
+        kw["statutory_payees"] = ctx.app_config.matching.statutory_payees
     with writer.atomic(conn):
         _queue_follow_ups(ctx, acct["business_id"], acct["id"], match(conn, txn_id, **kw))
         _recheck_if_checking(ctx, acct["business_id"], acct["id"])

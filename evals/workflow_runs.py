@@ -262,16 +262,13 @@ def run_a(run: Run) -> None:
         run.deliver("20-debit-pf-esi-45000.eml", "21-debit-city-electricity-35000.eml")
         run.move_to("2026-10-15T12:00")
         run.expect("electricity-paid", bill(run, "ELEC-OCT26"), "PAID", "amount, date and name match")
-        run.expect("statutory-debit-needs-the-owner", bill(run, "PFESI-OCT26"), "REVIEW",
-                   "a statutory bill has no vendor name for 'EPFO ESIC CHALLAN' to match, so code asks the owner")
+        run.expect("pf-esi-paid-by-its-payee-words", bill(run, "PFESI-OCT26"), "PAID",
+                   "D27: 'EPFO ESIC CHALLAN' names the PF and ESI payee words, with the bill's amount and date")
+        run.expect("no-case-for-the-challan", run.one(
+            "SELECT COUNT(*) FROM agent_case WHERE subject_ref = ?", (f"bank_txn:{_txn(run, 'EPFO ESIC CHALLAN')}",)),
+                   0, "code placed it, so neither the agent nor the owner is asked")
         run.expect("balance", calculated(run), money("3,93,000"), "golden table, Thu 15 Oct; the alert shows "
                    "Rs.3,93,000.00")
-
-    with run.step("owner", "Answers 'which bill did the ₹45,000 debit pay?': PF and ESI"):
-        link_debit(run, "EPFO ESIC CHALLAN", "PFESI-OCT26")
-        run.expect("pf-esi-paid", bill(run, "PFESI-OCT26"), "PAID", "linked by the owner")
-        run.expect("no-question-left-for-the-debit", open_on_case(run, money("45,000")), 0,
-                   "the case is settled, so neither of its questions still waits (CHG-027 fix)")
 
     with run.step("bank", "Fri 10:12: Nandi Foods pays ₹2,00,000 early (fixture 07)"):
         run.deliver("07-credit-nandi-foods.eml")
@@ -324,11 +321,16 @@ def run_a(run: Run) -> None:
         approve(run)
         run.expect("approved", bill(run, "GST-OCT26"), "PAYMENT_EXPECTED", "approving moves the bill PLANNED -> PAYMENT_EXPECTED (the state the owner's approval means)")
 
-    with run.step("bank", "Mon 10:10: ₹90,000 to GST CHALLAN CBIC; the owner links it to the GST bill"):
+    with run.step("bank + owner", "Mon 10:10: ₹90,000 'NETBANKING TAX PAYMENT' names no tax office; the owner "
+                                  "answers which bill it paid: GST"):
         run.deliver("22-debit-gst-90000.eml")
         run.move_to("2026-10-19T12:00")
-        link_debit(run, "GST CHALLAN CBIC", "GST-OCT26")
-        run.expect("gst-paid", bill(run, "GST-OCT26"), "PAID", "the owner linked the challan debit to the GST bill: PAID")
+        run.expect("gst-debit-needs-the-owner", bill(run, "GST-OCT26"), "REVIEW",
+                   "no statutory payee word in the description, so code can't place it and asks (CHG-028's fallback)")
+        link_debit(run, "NETBANKING TAX PAYMENT", "GST-OCT26")
+        run.expect("gst-paid", bill(run, "GST-OCT26"), "PAID", "the owner linked the debit to the GST bill: PAID")
+        run.expect("no-question-left-for-the-debit", open_on_case(run, money("90,000")), 0,
+                   "the case is settled, so neither of its questions still waits (CHG-027 fix)")
         run.expect("balance", calculated(run), money("5,03,000"), "golden table (Nandi paid), Mon 19 Oct")
 
     with run.step("owner", "Thu 22 09:30: approves Thursday's payments (Prime Chem, Shree Ganesh)"):
@@ -361,9 +363,8 @@ def run_a(run: Run) -> None:
         sent = sorted(run.rows("SELECT kind, ref FROM owner_alert WHERE sent_at IS NOT NULL"))
         run.expect("owner-alerts-sent", sent, sorted([
             ("money_received", "receivable:1"), ("money_received", "receivable:2"),
-            ("unexpected_debit", f"bank_txn:{_txn(run, 'EPFO ESIC CHALLAN')}"),
-            ("unexpected_debit", f"bank_txn:{_txn(run, 'GST CHALLAN CBIC')}")]),
-                   "Kaveri's and Nandi's money arriving; the two challan debits code could not place")
+            ("unexpected_debit", f"bank_txn:{_txn(run, 'NETBANKING TAX PAYMENT')}")]),
+                   "Kaveri's and Nandi's money arriving; the tax debit code could not place")
         mails = run.sent()
         run.expect("tdd-money-received-message", any(
             "₹2,00,000 received from Nandi Foods. Lowest projected balance is now ₹3,83,000. Plan updated."
@@ -544,16 +545,12 @@ def run_b(run: Run) -> None:
         run.expect("late-alert-not-read", run.one("SELECT COUNT(*) FROM bank_txn WHERE counterparty = "
                                                   "'SHREE TRANSPORT'"), 0,
                    "dated Wed 14 Oct, before the mail check's window (one day before its last run, Fri)")
-        run.expect("paid", (bill(run, "PAPER-001"), bill(run, "ELEC-OCT26")), ("PAID", "PAID"),
-                   "the debits' amounts, dates and payee names match the approved PAPER-001 and ELEC-OCT26")
+        run.expect("paid", (bill(run, "PAPER-001"), bill(run, "ELEC-OCT26"), bill(run, "PFESI-OCT26")),
+                   ("PAID", "PAID", "PAID"), "the debits' amounts, dates and payee names match the approved "
+                   "PAPER-001 and ELEC-OCT26; 'EPFO ESIC CHALLAN' names PF and ESI's payee words (D27)")
         run.expect("gap-seen", (run.one("SELECT reported_balance_paise FROM bank_account") - calculated(run),
                                 run.one("SELECT drift_status FROM bank_account")), (-money("25,000"), "OK"),
                    "the bank shows 3,39,910; the ledger 3,64,910; the gap waits for the 23:00 recheck")
-
-    with run.step("owner", "Links the ₹45,000 challan debit to PF and ESI"):
-        link_debit(run, "EPFO ESIC CHALLAN", "PFESI-OCT26")
-        run.expect("paid", bill(run, "PFESI-OCT26"), "PAID",
-                   "the owner linked the ₹45,000 challan debit to the PF and ESI bill")
 
     with run.step("worker", "Fri 23:00: the recheck finds the gap still there; the agent works the drift case"):
         run.move_to("2026-10-16T23:00")
@@ -620,12 +617,12 @@ def run_b(run: Run) -> None:
             "GST-OCT26": "PAY 2026-10-19", "PRIME-001 (₹53,000)": "PAY 2026-10-22",
             "PRIME-001 (₹67,000)": "PAY 2026-10-26", "AP/2610/131": "PAY 2026-10-26"}, "with the breach authorised, every escalated bill pays on its payment day before its due date")
 
-    with run.step("owner + bank", "Approves GST; its ₹90,000 debit arrives and the owner links it"):
+    with run.step("owner + bank", "Approves GST; its ₹90,000 challan debit arrives"):
         approve(run)
         run.deliver("36-debit-gst-90000-runb.eml")
         run.move_to("2026-10-19T12:00")
-        link_debit(run, "GST CHALLAN CBIC", "GST-OCT26")
-        run.expect("paid", bill(run, "GST-OCT26"), "PAID", "the owner linked the challan debit to the GST bill")
+        run.expect("paid", bill(run, "GST-OCT26"), "PAID",
+                   "'GST CHALLAN CBIC' names the GST bill's payee words, with its amount and date (D27)")
         run.expect("balance", calculated(run), money("2,49,910"), "3,39,910 - 90,000")
 
     with run.step("owner + bank", "Thu 22: approves the first part of Prime Chem; its ₹53,000 debit arrives"):
@@ -666,9 +663,9 @@ def run_b(run: Run) -> None:
                    "approved, paid, returned and reopened, planned, approved and paid again: each step an event")
         run.expect("owner-alerts-sent", dict(run.rows(
             "SELECT kind, COUNT(*) FROM owner_alert WHERE sent_at IS NOT NULL GROUP BY kind ORDER BY kind")),
-                   {"money_received": 1, "payment_failed": 1, "unexpected_debit": 6},
-                   "Kaveri's money; the returned payment; six debits code could not place on its own (₹590, "
-                   "₹15,000, ₹12,500, the two challans, the late ₹25,000). No balance mismatch: the agent closed "
+                   {"money_received": 1, "payment_failed": 1, "unexpected_debit": 4},
+                   "Kaveri's money; the returned payment; four debits code could not place on its own (₹590, "
+                   "₹15,000, ₹12,500, the late ₹25,000; the challans match by payee words, D27). No balance mismatch: the agent closed "
                    "the gap before the owner had to be asked")
 
 

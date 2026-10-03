@@ -24,7 +24,7 @@ value, the actual one, PASS or FAIL. The reports also say why each expected valu
 
 | Report | What it is |
 |---|---|
-| `workflow-A-<date>.md` | Run A, the worked example: bills by email (with a PDF), photo, voice note and typed entry; the owner confirms, approves, and asks Nandi Foods to pay early; every debit and credit matches (the two challan debits after the owner links them, CHG-028); the TDD's figures at each step |
+| `workflow-A-<date>.md` | Run A, the worked example: bills by email (with a PDF), photo, voice note and typed entry; the owner confirms, approves, and asks Nandi Foods to pay early; every debit and credit matches (the PF and ESI challan by its payee words; the GST debit, which names no tax office, after the owner links it; CHG-028); the TDD's figures at each step |
 | `workflow-B-<date>.md` | Run B, the bad fortnight: a duplicate invoice, a locked statement, a returned payment, a late alert behind a drift the agent recovers from the mailbox, unexplained debits, a fake bank change, a hidden instruction, a split and an authorised breach |
 
 ## The regression, told straight (D23)

@@ -253,7 +253,7 @@
         "direction": "debit",
         "amount_text": "Rs.90,000.00",
         "txn_date": "2026-10-19",
-        "counterparty": "GST CHALLAN CBIC",
+        "counterparty": "NETBANKING TAX PAYMENT",
         "reference": "N293261000902",
         "available_balance_text": "Rs.5,03,000.00",
         "uncertain_fields": []

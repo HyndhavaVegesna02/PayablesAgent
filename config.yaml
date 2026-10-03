@@ -13,6 +13,12 @@ escalation:
   max_validation_failures: 2
 matching:
   window_days: 3
+  statutory_payees:                # a challan debit's payee words per tax type (D27)
+    PF: [EPFO]
+    ESI: [ESIC]
+    GST: [GST, CBIC, GSTN]
+    TDS: [CBDT, ITD, TIN-NSDL, OLTAS]
+    ADVANCE_TAX: [CBDT, ITD, TIN-NSDL, OLTAS]
 mail:
   poll_minutes: 5
   vendor_senders:
