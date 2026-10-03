@@ -1,6 +1,6 @@
 # Active batch. status: none means no batch is running.
 batch: 3
-status: active      # none | active | review | closed | aborted
+status: review      # none | active | review | closed | aborted
 goal: "TDD Phase 5: the owner plays through the worked example in the web app (login, This week, Needs attention, confirm, approve, mark paid, options), plus CHG-020 (the SDK's error message, redacted)."
 branch: batch-3
 start_tag: null
@@ -17,7 +17,7 @@ changes:
     notes_resolved: true
   - id: CHG-006
     lane: sliced
-    board: in-progress
+    board: done
     start_commit: 8242311
     blocked_question: null
     gate_evidence:
