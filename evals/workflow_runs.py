@@ -21,9 +21,13 @@ import json
 from typing import Any
 
 from app.domain.money import format_inr, parse_inr
+from app.web import repo
+from app.web.routes.attention import flagged_fields, prefill
 from evals.workflow import Run, StepFailed, _text, forms
 
 STATEMENT_PASSWORD = "SPW-4821-oct"  # fictional; typed by the owner (scripts/make_fixtures.py)
+# What the helper's voice note says, as the owner hears it: typed into whatever the page marks (PO D28)
+SHARMA_SAID = {"party": "Sharma Packaging", "amount": "1,50,000", "due_date": "2026-11-05"}
 STALE = "The plan changed since you opened it."  # the page's words for a stale approval (app/web/actions.py)
 OWNER_ONLY = "This page is for the business owner."  # the 403 a helper gets (app/web/auth.py)
 
@@ -75,9 +79,19 @@ def approve(run: Run, *, tick: tuple[str, ...] = ()) -> dict[str, Any]:
     return {"stale_first": stale, "status": r.status_code, "message": _text(r.text) if r.status_code != 303 else ""}
 
 
-def confirm(run: Run, candidate_id: int) -> None:
-    """The owner presses Confirm on an entry, with the fields as the page filled them."""
-    run.owner.submit("/attention", f"/candidates/{candidate_id}/confirm")
+def confirm(run: Run, candidate_id: int, said: dict[str, str] | None = None) -> None:
+    """The owner presses Confirm on an entry as the page filled it, first
+    typing every field the page marks, with the value the document or
+    transcript gives (`said`), as a real owner would (PO D28)."""
+    cand = next((c for c in repo.waiting_candidates(run.conn, 1) if c["id"] == candidate_id), None)
+    if cand is None:
+        raise StepFailed(f"entry {candidate_id} is not waiting on Needs attention")
+    marked = flagged_fields(cand, prefill(cand, repo.accounts(run.conn, 1)))
+    missing = sorted(set(marked) - set(said or {}))
+    if missing:
+        raise StepFailed(f"the page marks {', '.join(missing)} on entry {candidate_id}, and the step gives the owner "
+                         "no value for it")
+    run.owner.submit("/attention", f"/candidates/{candidate_id}/confirm", {k: (said or {})[k] for k in marked})
     run.drain()
 
 
@@ -299,11 +313,7 @@ def run_a(run: Run) -> None:
             "/attention"), True, "the empty field is marked on the page, not left to fail on Confirm")
         for (cid,) in run.rows("SELECT id FROM candidate WHERE record_type = 'payable' AND status IN "
                                "('VALID', 'AWAITING_OWNER') ORDER BY id"):
-            if cid == voice:
-                run.owner.submit("/attention", f"/candidates/{cid}/confirm", {"due_date": "2026-11-05"})
-                run.drain()
-            else:
-                confirm(run, cid)
+            confirm(run, cid, SHARMA_SAID if cid == voice else None)
         p = plan(run)
         run.expect("bills-in-the-ledger", sorted(i or "" for (i,) in run.rows(
             "SELECT invoice_number FROM payable WHERE id > 5")), ["", "418", "AP/2610/131", "LT/2610/88"],

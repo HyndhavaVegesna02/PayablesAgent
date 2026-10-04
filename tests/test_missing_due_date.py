@@ -74,12 +74,28 @@ def _scenario_04(confirm_step):
     return s.model_copy(update={"steps": [s.steps[0], {"confirm_waiting": confirm_step}]})
 
 
-def test_in_an_eval_a_form_refusal_of_what_was_read_is_an_extract_failure(tmp_path):
+SAID = {"fill": {"party": "Sharma Packaging", "amount": "1,50,000", "due_date": "2026-11-05"}}
+
+
+def test_in_an_eval_a_form_refusal_of_what_was_read_is_an_extract_failure(monkeypatch):
     from app.ai.fixture_backend import FixtureBackend
 
-    r = runner.run_once(_scenario_04(True), FixtureBackend(), runner.load_config(None)[0])  # nobody fills the date
+    def refuse(conn, user, cid, values, *, clock):  # a value read from the document, which the owner left as read
+        raise runner.actions.FieldErrors({"invoice_date": "Enter a date."}, values)
+
+    monkeypatch.setattr(runner.actions, "confirm_candidate", refuse)
+    r = runner.run_once(_scenario_04(SAID), FixtureBackend(), runner.load_config(None)[0])
     assert (r.status, r.component) == ("FAILED", "extract")
-    assert r.error.startswith("the owner's form refused entry 1: due_date: ")
+    assert r.error.startswith("the owner's form refused entry 1: invoice_date: ")
+
+
+def test_a_marked_field_the_scenario_gives_no_value_for_is_the_scenarios_gap_not_the_models():
+    from app.ai.fixture_backend import FixtureBackend
+
+    r = runner.run_once(_scenario_04(True), FixtureBackend(), runner.load_config(None)[0])  # the date is marked
+    assert (r.status, r.component) == ("FAILED", "crash")
+    assert r.error == ("ScenarioGap: the page marks due_date on entry 1, and the scenario gives the owner no value "
+                       "for it")
 
 
 def test_a_real_exception_is_still_a_crash(monkeypatch):
@@ -150,5 +166,5 @@ def test_an_app_side_refusal_is_still_a_crash(monkeypatch):
         raise runner.actions.FieldErrors({"priority": "Choose a priority."}, values)
 
     monkeypatch.setattr(runner.actions, "confirm_candidate", refuse)
-    r = runner.run_once(_scenario_04(True), FixtureBackend(), runner.load_config(None)[0])
+    r = runner.run_once(_scenario_04(SAID), FixtureBackend(), runner.load_config(None)[0])
     assert (r.status, r.component) == ("FAILED", "crash") and r.error.startswith("FieldErrors")

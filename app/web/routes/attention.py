@@ -11,7 +11,6 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import Response
 
 from app.domain.money import format_inr
-from app.validate import NO_DUE_DATE, failed
 from app.web import actions, repo
 from app.web.app import render
 from app.web.auth import User, db, owner_only
@@ -51,12 +50,18 @@ def attention_page(request: Request, conn: sqlite3.Connection, user: User, *, me
     }, status=status)
 
 
+# The fields a bill or sales invoice can't be confirmed without (the form's own required fields).
+REQUIRED = {"payable": ("party", "amount", "due_date"), "receivable": ("party", "amount")}
+
+
 def flagged_fields(c: dict, shown: dict[str, str]) -> dict[str, str]:
-    """The fields the document didn't give, shown empty and marked for the
-    owner to fill (CHG-030): field -> the note beside it."""
-    if c["checks"].get("dates") == failed(NO_DUE_DATE) and not shown.get("due_date"):
-        return {"due_date": "Not given on the document: fill it in."}
-    return {}
+    """Every required field the entry reaches the owner without, shown empty
+    and marked for the owner to fill (CHG-030; PO D28): field -> the note
+    beside it. A date the document didn't give, an amount the code couldn't
+    read, a vendor the model couldn't name."""
+    return {f: ("Not given on the document: fill it in." if f == "due_date" else
+                "Not read from the document: fill it in.")
+            for f in REQUIRED.get(c["record_type"], ()) if not shown.get(f)}
 
 
 def prefill(c: dict, accounts: list[dict]) -> dict[str, str]:

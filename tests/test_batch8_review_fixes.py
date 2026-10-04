@@ -220,3 +220,48 @@ def test_the_bare_harness_is_told_the_owners_new_steps_in_words(tmp_path):
         conn.close()
     assert "Where an entry has no due date, the owner fills in 2026-11-05." in out
     assert "The owner has checked by phone and approves the bank details on invoice AP/2610/131." in out
+
+
+# --- batch 10, CHG-034 (PO D28): every empty required field is marked, and the owner fills each one ----------
+
+
+def test_every_empty_required_field_is_marked_for_the_owner():
+    from app.web.routes.attention import flagged_fields
+
+    bill = {"record_type": "payable"}
+    assert flagged_fields(bill, {"party": "Sharma Packaging", "amount": "", "due_date": ""}) == {
+        "amount": "Not read from the document: fill it in.", "due_date": "Not given on the document: fill it in."}
+    assert flagged_fields({"record_type": "receivable"}, {"party": "", "amount": "₹1,000"}) == {
+        "party": "Not read from the document: fill it in."}
+    assert flagged_fields(bill, {"party": "x", "amount": "₹1", "due_date": "2026-11-05"}) == {}
+
+
+def test_the_live_runs_unread_amount_is_marked_and_the_scripted_owner_types_what_was_said(monkeypatch):
+    """Scenario 04, run 4 (docs/evals/2026-10-04-live-baseline): the model's amount couldn't be read. The page
+    now marks the amount, and the scripted owner types the amount said in the note, so the run ends on the
+    model's own reading (extract), not on a form refusal."""
+    import json as _json
+
+    from app.ai.client import RawAIResponse
+    from app.ai.fixture_backend import FixtureBackend, load_replies
+    from evals import scenario
+
+    note = load_replies("uploads")["voice-note-sharma.wav"]["VoiceBillExtract"]
+
+    class Misheard(FixtureBackend):
+        def generate(self, *, model, system, contents, thinking, json_schema):
+            if (json_schema or {}).get("title") == "VoiceBillExtract":
+                return RawAIResponse(_json.dumps({**note, "amount_spoken": "dedh lakh kuch"}), 0, 0, 0)
+            return super().generate(model=model, system=system, contents=contents, thinking=thinking,
+                                    json_schema=json_schema)
+
+    seen = []
+    real = runner.actions.confirm_candidate
+    monkeypatch.setattr(runner.actions, "confirm_candidate",
+                        lambda conn, user, cid, values, *, clock: seen.append(values) or real(
+                            conn, user, cid, values, clock=clock))
+    r = runner.run_once(scenario.load("04-hinglish-voice-note"), Misheard(), runner.load_config(None)[0])
+    assert seen[-1]["amount"] == "1,50,000" and seen[-1]["due_date"] == "2026-11-05"
+    assert r.error is None and r.component == "extract"  # its own reading failed; the owner's typing didn't
+    assert {c.id for c in r.checks if not c.ok} == {"amount-is-150000", "amount-checked-against-the-words"}
+

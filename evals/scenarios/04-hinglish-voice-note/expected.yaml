@@ -3,8 +3,9 @@ title: Hinglish voice note saying "dedh lakh"
 passes_when: Amount extracted as ₹1,50,000 and shown with the transcript
 steps:
   - upload: {file: voice-note-sharma.wav, kind: voice}   # machine-spoken (scripts/make_voice_fixture.ps1, D22)
-  - confirm_waiting: {fill: {due_date: "2026-11-05"}}    # the owner confirms it, with the transcript beside it,
-                                                          # typing the due date only if the entry flags it (CHG-030)
+  - confirm_waiting:                                    # the owner confirms it, with the transcript beside it,
+      fill: {party: Sharma Packaging, amount: "1,50,000", due_date: "2026-11-05"}
+                                                          # typing what was said into any field the page marks (D28)
 expect:
   - id: missing-due-date-flagged-not-guessed
     component: extract
