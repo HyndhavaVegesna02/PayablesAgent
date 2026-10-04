@@ -110,3 +110,39 @@ real amount is dropped). By the loop's rule, this round does not count toward th
 - a spelling in neither list.
 These are tested as they behave.
 
+## Round 4: FIX_REQUIRED
+
+Re-review of 073bc69 and 9387481. Every round-3 row reads as asserted. Round 3's class (A) was still open:
+written amounts were matched by an allow-list (_WRITTEN_AMOUNT), so a form outside it was an ordinary word and
+was dropped, and an advance passed as the one amount. Examples: "1,50,000rupaye", "1,50,000/=",
+"50hazaar", "1,50,000x2", "-1,50,000". This is the same defect again, so the round does not count toward the
+cap.
+
+Minors:
+- a guess after a rupee word or a full stop had closed the amount ("do lakh rupaye se zyada", "ek lakh. Plus
+  GST."), and "+" ("ek lakh + GST"), passed;
+- the parser's sign check missed "₹-1,50,000";
+- "do lakh, 50,000 advance" merged into one amount;
+- false flags: "paise" meaning money in general, a dotted date, "de-do".
+
+The reviewer judged that the work has reached diminishing returns. After this structural fix, what remains
+depends on meaning, and if the next round finds only that, it should approve.
+
+**Fixes:**
+- By form, not by list: any word with a digit in it is a number word. It is money-shaped when it has a comma
+  grouping, ₹, a mark after the digits ("/-", "/=", "/", "-", "="), or letters on the digits that make them
+  money (Rs, INR, k, L, lakh, cr, hazaar, a rupee word...). An invoice number, an ordinal or a date stays bare.
+  The parser reads the word whole, or it is None.
+- A mark is a token with no letter or digit, so "-1,50,000" is an amount, and the parser refuses it as
+  negative.
+- After a closed amount, a guess word (se, zyada, kam, plus, upar, approx; not "to", which is "so" there) or
+  "+" makes it None. Inside an amount, "+" is a range mark like a dash.
+- parse_spoken_inr checks the sign after a leading ₹, Rs or INR.
+- A comma-grouped written amount after a comma starts its own amount.
+- "paise" counts only after a number. A compound is a number word only if all its parts are, or one is a
+  scale ("lakh-ish" yes, "de-do" no).
+- Every round-4 input is a table row. Pass rows cover the removed false flags and "rupaye to dena hai".
+
+**Left for the PO**, as before (no form shows them): a word between an amount and a tail; an amount that
+isn't the total by meaning; a spelling in neither list; a guess word not in the lists ("ke aas paas").
+
