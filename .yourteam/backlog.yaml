@@ -1,6 +1,6 @@
 # Every change, ever. Entries are never deleted -- done and rejected are history.
 # Status is a field, never a folder.
-next_id: 43
+next_id: 45
 changes:
   - id: CHG-001
     title: Repo skeleton — layout, config, schema, Clock, tracer, job table, CI
@@ -585,6 +585,26 @@ changes:
     type: defect
     lane: direct
     expected_paths: ['app/domain/money.py', 'tests/test_voice_amount_dates.py', 'tests/test_voice_amount_said.py']
+    depends_on: null
+    batch: 15
+  - id: CHG-043
+    title: Workflow B's scripted owner finds a debit by amount and date, and picks an offered choice by a stated rule (PO)
+    file: docs/changes/CHG-043-workflow-live-paths.md
+    status: ready
+    priority: 43
+    type: defect
+    lane: direct
+    expected_paths: ['evals/workflow_runs.py', 'tests/test_workflow_live_paths.py', 'docs/evals/']
+    depends_on: null
+    batch: 15
+  - id: CHG-044
+    title: One request timeout for every harness in a live ablation, noted in its header (PO)
+    file: docs/changes/CHG-044-ablation-timeout.md
+    status: ready
+    priority: 44
+    type: defect
+    lane: direct
+    expected_paths: ['evals/ablation.py', 'evals/budget.py', 'tests/test_ablation_timeout.py', 'docs/evals/']
     depends_on: null
     batch: 15
 

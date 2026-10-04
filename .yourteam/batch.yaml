@@ -1,7 +1,7 @@
 # Active batch. status: none means no batch is running.
 batch: 15
 status: active      # none | active | review | closed | aborted
-goal: "The live scenario 04 regression: a day number next to a month name is a date, not money (CHG-042), without loosening D29."
+goal: "What live phase 2 found: a day before a month is a date, not money (CHG-042); workflow B finds debits by amount and answers by a stated rule (CHG-043); one ablation timeout for every harness (CHG-044). Pre-accepted on a green gate."
 branch: batch-15
 start_tag: null
 started: "2026-10-04T16:30:00+05:30"
@@ -10,7 +10,23 @@ changes:
   - id: CHG-042
     lane: direct
     board: in_progress
-    start_commit: null
+    start_commit: 5f74105
+    blocked_question: null
+    gate_evidence: []
+    prepatch: null
+    notes_resolved: false
+  - id: CHG-043
+    lane: direct
+    board: in_progress
+    start_commit: 31d9ffd
+    blocked_question: null
+    gate_evidence: []
+    prepatch: null
+    notes_resolved: false
+  - id: CHG-044
+    lane: direct
+    board: in_progress
+    start_commit: 31d9ffd
     blocked_question: null
     gate_evidence: []
     prepatch: null
