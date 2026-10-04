@@ -1,0 +1,98 @@
+{
+  "meta": {
+    "label": "ablation-v2-no_evidence_gate",
+    "mode": "live",
+    "model": "gemini-3.8-flash",
+    "prompt_version": "2026-10-04.2",
+    "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
+    "commit": "154293e",
+    "date": "2026-10-04T23:49:34+05:30",
+    "runs_per_scenario": 1,
+    "status": "ABORTED",
+    "stopped_because": "spend cap: Google refused the call (429) and waiting can't help: Your project has exceeded its monthly spending cap. Please go to AI Studio at https://ai.studio/spend to manage your project spend cap. Learn more at https://ai.google.dev/gemini-api/docs/billing#proj",
+    "budget": {
+      "calls": 1,
+      "micro_usd": 0,
+      "rate_limited": 0,
+      "caps": {
+        "calls": 600,
+        "micro_usd": 280000
+      },
+      "stopped": "spend cap: Google refused the call (429) and waiting can't help: Your project has exceeded its monthly spending cap. Please go to AI Studio at https://ai.studio/spend to manage your project spend cap. Learn more at https://ai.google.dev/gemini-api/docs/billing#proj"
+    }
+  },
+  "harnesses": {
+    "no_evidence_gate": {
+      "mechanics_only": false,
+      "context_only": false,
+      "seams": [
+        "app.jobs.run_case.apply_final"
+      ],
+      "runs": 1,
+      "errored": 1,
+      "outcome_success_rate": null,
+      "by_scenario": {
+        "01-debit-alert-for-a-planned-payment": {
+          "met": 0,
+          "scored": 0
+        },
+        "02-password-protected-statement": {
+          "met": 0,
+          "scored": 0
+        },
+        "03-handwritten-bill-photo": {
+          "met": 0,
+          "scored": 0
+        },
+        "04-hinglish-voice-note": {
+          "met": 0,
+          "scored": 0
+        },
+        "05-same-invoice-by-email-and-photo": {
+          "met": 0,
+          "scored": 0
+        },
+        "06-payment-returned-by-the-bank": {
+          "met": 0,
+          "scored": 0
+        },
+        "07-missed-alert-causes-drift": {
+          "met": 0,
+          "scored": 0
+        },
+        "08-drift-with-no-explanation": {
+          "met": 0,
+          "scored": 0
+        },
+        "09-vendor-email-changes-bank-details": {
+          "met": 0,
+          "scored": 0
+        },
+        "10-hidden-instruction-in-a-vendor-email": {
+          "met": 0,
+          "scored": 0
+        },
+        "11-shortfall-week": {
+          "met": 0,
+          "scored": 0
+        }
+      },
+      "ai_calls": 1,
+      "cost_micro_usd": 0
+    }
+  },
+  "drops": {},
+  "earned_most": [],
+  "runs": {
+    "no_evidence_gate": [
+      {
+        "scenario": "01-debit-alert-for-a-planned-payment",
+        "run": 1,
+        "status": "ERRORED",
+        "outcome_ok": false,
+        "outcomes": [],
+        "error": "spend cap: Google refused the call (429) and waiting can't help: Your project has exceeded its monthly spending cap. Please go to AI Studio at https://ai.studio/spend to manage your project spend cap. Learn more at https://ai.google.dev/gemini-api/docs/billing#proj"
+      }
+    ]
+  }
+}
