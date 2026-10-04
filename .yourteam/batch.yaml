@@ -9,57 +9,57 @@ interrupts: []
 changes:
   - id: CHG-047
     lane: planned
-    board: todo
-    start_commit: null
+    board: done
+    start_commit: 976e5a5
     blocked_question: null
     gate_evidence: []
-    prepatch: null
+    prepatch: "PASS at 9492c3a: the new trace-timing and live-trace tests fail on the old tree"
     notes_resolved: false
   - id: CHG-049
     lane: planned
-    board: todo
-    start_commit: null
+    board: done
+    start_commit: 9492c3a
     blocked_question: null
     gate_evidence: []
-    prepatch: null
+    prepatch: "PASS at 690f554: the new knock-out tests fail on the old tree (no such knock-outs)"
     notes_resolved: false
   - id: CHG-050
     lane: direct
-    board: todo
-    start_commit: null
+    board: done
+    start_commit: 690f554
     blocked_question: null
     gate_evidence: []
-    prepatch: null
+    prepatch: "PASS at 1334b3e: the path-budget tests fail on the old tree (no budgets)"
     notes_resolved: false
   - id: CHG-051
     lane: planned
-    board: todo
-    start_commit: null
+    board: done
+    start_commit: 1334b3e
     blocked_question: null
     gate_evidence: []
-    prepatch: null
+    prepatch: "PASS at 2fff56a: the harder-scenario tests fail on the old tree (no scenarios 12 to 14)"
     notes_resolved: false
   - id: CHG-048
     lane: direct
-    board: todo
-    start_commit: null
+    board: done
+    start_commit: 2fff56a
     blocked_question: null
     gate_evidence: []
-    prepatch: null
+    prepatch: "PASS at 8b6ec9b: the ablation-combine tests fail on the old tree (no combiner)"
     notes_resolved: false
   - id: CHG-052
     lane: direct
-    board: todo
-    start_commit: null
+    board: done
+    start_commit: b1aae0e
     blocked_question: null
     gate_evidence: []
-    prepatch: null
+    prepatch: "PASS at 51955e7: no test files changed (README only; the doc-citation tests guard it)"
     notes_resolved: false
   - id: CHG-046
     lane: direct
-    board: todo
-    start_commit: null
+    board: done
+    start_commit: 51955e7
     blocked_question: null
     gate_evidence: []
-    prepatch: null
+    prepatch: "PASS at 254454b: no test files changed (docs only; the evidence-doc tests guard it)"
     notes_resolved: false
