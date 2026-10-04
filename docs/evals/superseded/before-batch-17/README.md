@@ -1,7 +1,7 @@
 # Superseded: the fixture reports before batch 17
 
-Generated at 10d29b1 (the two suites and the ablation at their own commits, as
-each header says). They were replaced at batch 17's HEAD because batch 17
+Generated at e424841 (the two suites) and 10d29b1 (the ablation and workflow B), as
+each header says. They were replaced at batch 17's HEAD because batch 17
 changed what the reports say:
 
 - the suite has three harder scenarios (12 to 14, fixture-only, not yet run
