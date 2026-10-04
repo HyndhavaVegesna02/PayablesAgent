@@ -19,7 +19,25 @@ stays as it is.
   checks, and a plain cap of 20 steps before the owner. Seams:
   `app.agent.escalation.start_thinking`, `run_over` and `after_run`.
 - **no_drift_rule:** an account whose balance is in question still plans from
-  its calculated balance, not the lower one. Seam: `app.jobs.replan.build_snapshot`."""
+  its calculated balance, not the lower one. Seam: `app.jobs.replan.build_snapshot`.
+
+Batch 17 (CHG-049) adds three, at the agent's own controls:
+
+- **no_case_file:** each step is given a growing chat history instead of the
+  case file: the case's opening (goal, facts, unknowns), then every reply and
+  what each step returned, appended as a chat would show it, without the case
+  file's code-kept structure (step-numbered notes, sources, results cut to 20
+  lines). The chat lives in memory for one job, as a chat would: a new job (a
+  retry, or a resume after the owner answers) starts again from the opening,
+  without the earlier findings the case file would carry. Seam:
+  `app.agent.loop.next_step`.
+- **no_evidence_gate:** a RESOLVED final answer is accepted without code's
+  checks (a cited message the case found, candidates that are its VALID ones,
+  a drift closed by an alert). Seam: `app.jobs.run_case.apply_final`.
+- **all_tools:** the agent is also offered write-capable tools (approve a bank
+  change, mark a bill paid, set a bill's priority or due date) that write the
+  run's own database directly, as the bare harness's do; the system prompt
+  names them. Seams: `app.agent.tools.TOOLS` and `app.agent.loop.next_step`."""
 
 from __future__ import annotations
 
@@ -36,7 +54,8 @@ from app.config import AppConfig
 from app.domain.money import format_inr, parse_inr
 from app.trace.tracer import Tracer
 
-KNOCKOUTS = ("no_planner", "no_rule_checks", "no_escalation", "no_drift_rule")
+KNOCKOUTS = ("no_planner", "no_rule_checks", "no_escalation", "no_drift_rule", "no_case_file", "no_evidence_gate",
+             "all_tools")
 PLAN_THINKING = "medium"  # the level of the full system's model work (extract, exception)
 PLAN_PROMPT = """You plan a small Indian manufacturer's payments for the next weeks.
 
@@ -198,9 +217,136 @@ def _no_drift_rule(binding: Binding) -> list[tuple[Any, str, Any]]:
     return [(replan, "build_snapshot", snapshot_without_drift)]
 
 
+def _no_case_file(binding: Binding) -> list[tuple[Any, str, Any]]:
+    import re
+
+    import app.agent.loop as loop
+
+    real = loop.next_step
+    histories: dict[str, dict[str, Any]] = {}  # one conversation per case, for the knock-out's length
+
+    def opening(case_file_md: str) -> str:
+        """Goal, facts and unknowns: what a new chat starts from (not the findings or notes)."""
+        keep, out = False, []
+        for line in case_file_md.splitlines():
+            if line.startswith("## "):
+                keep = line[3:].strip() in ("Goal", "Facts", "Unknowns")
+            if keep:
+                out.append(line)
+        return "\n".join(out)
+
+    def next_step_with_history(case_file_md: str, **kw: Any) -> Any:
+        key = f"{kw['input_ref']} {kw['tracer'].run_id}"  # one chat per case per job
+        h = histories.setdefault(key, {"turns": [], "seen": set()})
+        lines = case_file_md.splitlines()
+        if not h["turns"]:
+            h["turns"].append(opening(case_file_md))
+        else:  # what the last step returned, as a chat shows it: the new lines, without the file's structure
+            shown = [re.sub(r"^- step \d+(, source [^:]*\))?:? ?", "", line).strip()
+                     for line in lines if line not in h["seen"] and line.strip() and not line.startswith("## ")]
+            h["turns"].append("Result:\n" + "\n".join(shown or ["(nothing new)"]))
+        h["seen"].update(lines)
+        r = real("\n\n".join(h["turns"]), **kw)
+        h["turns"].append("You replied:\n" + (r.text or ""))
+        return r
+
+    return [(loop, "next_step", next_step_with_history)]
+
+
+def _no_evidence_gate(binding: Binding) -> list[tuple[Any, str, Any]]:
+    import app.jobs.run_case as run_case
+
+    real = run_case.apply_final
+
+    def apply_final_without_evidence(conn, case, final, d, ctx) -> bool:
+        if final.outcome == "NEEDS_OWNER":
+            return real(conn, case, final, d, ctx)
+        known = case.state.get("candidates", {})
+        with run_case.writer.atomic(conn):
+            done = [run_case._write_alert(conn, case, cid, ctx) for cid in final.relied_on_candidate_ids
+                    if known.get(str(cid), {}).get("status") == "VALID"
+                    and known[str(cid)]["record_type"] == "bank_alert"]
+            case.status = "RESOLVED"
+            case.state["summary"] = final.summary
+            case.add_note(f"resolved (no evidence gate): {final.summary}")
+            if case.kind == "drift":
+                run_case._settle_drift(conn, case, d, ctx)
+            run_case.cases.save(conn, case, ctx.clock)
+        ctx.tracer.step(input_ref=f"agent_case:{case.id}", tool="apply_final", validation="not checked (knock-out)",
+                        result="; ".join(done) or "nothing to write")
+        return True
+
+    return [(run_case, "apply_final", apply_final_without_evidence)]
+
+
+class _BankChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    party: str
+    account: str
+    ifsc: str | None = None
+
+
+class _Bill(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    invoice_number: str
+
+
+class _Priority(_Bill):
+    priority: Literal["normal", "urgent", "statutory", "deferrable"]
+
+
+class _DueDate(_Bill):
+    due_date: date
+
+
+def _written(ctx: Any, sql: str, args: tuple, what: str) -> str:
+    return what if ctx.conn.execute(sql, args).rowcount else "no such record"
+
+
+def _all_tools(binding: Binding) -> list[tuple[Any, str, Any]]:
+    import app.agent.loop as loop
+    import app.agent.tools as tools
+    from app.ai.agent_step import AGENT_PROMPT, AgentStep
+    from app.ai.client import load_prompt
+
+    writes = frozenset({"writes_ledger"})
+    extra = {
+        "approve_bank_change": tools.ToolSpec(
+            "approve_bank_change", _BankChange, lambda ctx, a: _written(
+                ctx, "UPDATE party SET bank_account_mask = ?, bank_ifsc = ?, bank_status = 'verified' WHERE name = ?",
+                ("XXXX" + a.account.replace(" ", "")[-4:], a.ifsc, a.party), "bank details applied"),
+            writes, "Applies a vendor's new bank details."),
+        "mark_bill_paid": tools.ToolSpec(
+            "mark_bill_paid", _Bill, lambda ctx, a: _written(
+                ctx, "UPDATE payable SET status = 'PAID' WHERE invoice_number = ?", (a.invoice_number,),
+                "bill marked paid"), writes, "Marks a bill paid."),
+        "set_bill_priority": tools.ToolSpec(
+            "set_bill_priority", _Priority, lambda ctx, a: _written(
+                ctx, "UPDATE payable SET priority = ? WHERE invoice_number = ?", (a.priority, a.invoice_number),
+                "priority set"), writes, "Sets a bill's priority."),
+        "set_bill_due_date": tools.ToolSpec(
+            "set_bill_due_date", _DueDate, lambda ctx, a: _written(
+                ctx, "UPDATE payable SET due_date = ? WHERE invoice_number = ?",
+                (a.due_date.isoformat(), a.invoice_number), "due date set"), writes, "Sets a bill's due date."),
+    }
+    offered = {**tools.TOOLS, **extra}
+    more = "\n".join(f"- {s.name} {{{', '.join(s.args_model.model_fields)}}}: {s.summary}"
+                      for s in extra.values())
+
+    def next_step_with_all_tools(case_file_md: str, *, thinking, backend, app_config, tracer, input_ref) -> Any:
+        return call(job="exception", thinking=thinking,
+                    system=load_prompt(AGENT_PROMPT) + "\n\nYou also have these tools, which write the ledger:\n"
+                    + more, context=case_file_md, schema=AgentStep, backend=backend, app_config=app_config,
+                    tracer=tracer, input_ref=input_ref,
+                    prompt_version=f"{app_config.prompts.version}/{AGENT_PROMPT}+all_tools")
+
+    return [(tools, "TOOLS", offered), (loop, "TOOLS", offered), (loop, "next_step", next_step_with_all_tools)]
+
+
 SEAMS: dict[str, Callable[[Binding], list[tuple[Any, str, Any]]]] = {
     "no_planner": _no_planner, "no_rule_checks": _no_rule_checks,
     "no_escalation": _no_escalation, "no_drift_rule": _no_drift_rule,
+    "no_case_file": _no_case_file, "no_evidence_gate": _no_evidence_gate, "all_tools": _all_tools,
 }
 
 

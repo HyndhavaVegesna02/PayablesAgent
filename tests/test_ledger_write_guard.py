@@ -15,6 +15,8 @@ WRITER = ROOT / "app" / "ledger" / "writer.py"
 ALLOW_LIST: dict[str, str] = {
     "evals/bare.py": "the ablation's bare harness is the system without a ledger writer, by design; it writes only "
                      "its own scratch copy of the seeded database (CHG-010a S6, D24)",
+    "evals/knockouts.py": "the all_tools knock-out offers the agent write tools that bypass the ledger writer, by "
+                          "design; it runs only inside an eval run, on that run's scratch database (CHG-049)",
 }
 
 _TABLE_PREFIX = r"\s+[\"`\[]?"
