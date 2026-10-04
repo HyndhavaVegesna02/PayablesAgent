@@ -74,8 +74,42 @@ FLAGGED = [
     ("Bill ek lakh; pachaas", "ek lakh", [None]),
     ("bill ek lakh rupaye pachaas", "ek lakh", [None]),
     ("bill dedh lakh rup pachaas", "dedh lakh", [None]),
-    ("bill ek lakh rupaye pachaas paise", "ek lakh", [None]),
+    ("bill ek lakh rupaye pachaas paise", "ek lakh", [None, None]),
     ("bill ek lakh rupaye aur pachaas hazaar", "ek lakh", [None, 5_000_000]),
+    # an amount written as one token, with marks, is still an amount (batch 11 review, round 3)
+    ("Rs. 1,50,000/- ka bill, advance 50,000 diya.", "50,000", [15_000_000, 5_000_000]),
+    ("Bill 1,50,000/- only, advance 50,000 diya.", "50,000", [15_000_000, 5_000_000]),
+    ("Rs1,50,000 ka bill, advance 50,000 diya.", "50,000", [None, 5_000_000]),
+    ("INR1,50,000 ka bill, advance 50,000 diya.", "50,000", [None, 5_000_000]),
+    ("Bill 1,50,000rs, advance 50,000 diya.", "50,000", [None, 5_000_000]),
+    ("Bill 1,50,000-, advance 50,000 diya.", "50,000", [15_000_000, 5_000_000]),
+    ("Bill 1.5L ka, advance 50,000 diya.", "50,000", [None, 5_000_000]),
+    ("Bill 150k ka, advance 50,000 diya.", "50,000", [None, 5_000_000]),
+    ("Bill 2cr ka, advance 50,000 diya.", "50,000", [None, 5_000_000]),
+    ("Bill Rs 2.5 cr ka.", "2.5", [None]),
+    ("Bill Rs 50 k ka.", "50", [None]),
+    ("Bill Rs 1.5 L ka.", "1.5", [None]),
+    ("Bill ₹50 k ka.", "₹50", [None]),
+    # a number straight after digits is more of that amount, unread (round 3)
+    ("Bill Rs 1,00,000 pachaas.", "1,00,000", [None]),
+    ("Bill 1,50,000 pachaas.", "1,50,000", [None]),
+    ("Bill Rs 1,00,000 dus.", "1,00,000", [None]),
+    ("Bill Rs 100000 50000.", "100000", [None]),
+    ("Bill Rs 1,00,000 50000.", "1,00,000", [None]),
+    ("Bill Rs 1,50,000 50 paise.", "1,50,000", [None, None]),
+    ("Bill Rs 1,50,000 aur 50 paise.", "1,50,000", [None, None]),
+    # a range or a guess is no one amount (round 3)
+    ("Bill 25 - 30 lakh", "30 lakh", [None]),
+    ("Bill 25 to 30 lakh", "30 lakh", [None]),
+    ("Bill 25 ya 30 lakh", "30 lakh", [None]),
+    ("Bill 25 or 30 lakh", "30 lakh", [None]),
+    ("Bill lagbhag do lakh", "do lakh", [None]),
+    ("Bill do lakh se zyada", "do lakh", [None]),
+    ("Bill ek lakh plus GST.", "ek lakh", [None]),
+    # a hyphenated amount is an amount (round 3)
+    ("Teen sau bori, dedh-lakh ka bill.", "teen sau", [30_000, 15_000_000]),
+    ("Teen sau bori, ek lakh-ish ka bill.", "teen sau", [30_000, None]),
+    ("Bill ek_lakh pachaas hazaar", "pachaas hazaar", [15_000_000]),
     # no amount the code reads: never passed
     ("Sharma Packaging ka bill aaya hai, invoice 418, jaldi dena hai.", "dedh lakh", []),
     ("Bill aaya hai, amount baad mein bataunga.", "dedh lakh", []),
@@ -107,6 +141,10 @@ def test_anything_but_the_one_amount_said_goes_to_the_owner(transcript, spoken, 
     ("Rupees one lakh fifty thousand only, due on 5 November.", "one lakh fifty thousand", 15_000_000),
     ("Sharma ka bill, do lakh 21 hazaar rupaye, 2026-11-05 tak.", "2,21,000", 22_100_000),
     ("Bill no. 150, dedh lakh rupaye, dus din mein.", "dedh lakh", 15_000_000),
+    ("Rs. 1,50,000/- ka bill hai.", "1,50,000", 15_000_000),
+    ("Bill dedh-lakh ka.", "dedh lakh", 15_000_000),
+    ("Bill ek-lakh-pachaas-hazaar ka.", "1,50,000", 15_000_000),
+    ("Rs 1,50,000, 5 November tak.", "1,50,000", 15_000_000),
 ])
 def test_the_one_amount_said_passes_in_any_words(transcript, spoken, paise):
     checks, _, reading = _check(transcript, spoken)
@@ -121,6 +159,15 @@ def test_a_currency_word_or_a_sentence_end_ends_an_amount_and_a_comma_does_not()
     assert money_said("Ashirwad ka bill, ek lakh, pachaas hazaar.") == [15_000_000]
     assert money_said("Rs. 1,50,000 only, 5 November tak") == [15_000_000]
     assert money_said("") == []
+
+
+def test_what_code_cannot_tell_by_form_is_left_to_the_owner():
+    """Left for the PO (review.md, round 2-3): a word between ends an amount, so a tail after it is a bare
+    number, and an amount that isn't the total by meaning passes. The owner confirms every voice bill with
+    the transcript beside it."""
+    assert money_said("Bill ek lakh hai, pachaas.") == [10_000_000]
+    assert money_said("Bill ek lakh rupaye, pachaas.") == [10_000_000]
+    assert money_said("Baaki dedh lakh baad mein dena hai.") == [15_000_000]
 
 
 def test_the_known_false_flags_fail_safe():

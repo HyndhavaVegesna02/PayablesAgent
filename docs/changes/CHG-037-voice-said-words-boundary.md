@@ -34,7 +34,9 @@ Extra false flags are the right trade: a flag costs the owner seconds, a wrong a
   paise, hyphenated numbers) still belong to a cluster, so it reads as None (an amount code can't read).
   A currency word after an amount, or a sentence end, closes it, and a number word straight after that makes
   it None. A comma neither closes an amount nor, after a rupee word, carries it on. Digit groups
-  ("1,50,000") and decimals ("1.5 lakh") stay whole.
+  ("1,50,000") and decimals ("1.5 lakh") stay whole. An amount written as one token ("Rs1,50,000/-",
+  "1.5L"), a hyphenated amount ("dedh-lakh"), a number straight after digits ("Rs 1,00,000 pachaas"), and a
+  range or guess ("25 - 30 lakh", "lagbhag do lakh", "ek lakh plus GST") are read whole or are None.
 - [ ] AC2 (D29): the voice check passes only when the transcript's money-shaped amounts are exactly one
   distinct amount and parse_spoken_inr(amount_spoken) equals it, as integer paise. Every case from the
   review is a table test. Table tests where the words are a substring of what was said but the amounts differ
@@ -51,3 +53,5 @@ Extra false flags are the right trade: a flag costs the owner seconds, a wrong a
   all the transcript's numbers (major) -> PO D29
 - 2026-10-04: batch 11 review round 2: the leading part still passed through number words the parser lacks,
   and through a tail after the unit or a full stop (critical) -> whole-cluster reading
+- 2026-10-04: batch 11 review round 3: amounts written with marks, a number after digits, and hyphenated
+  amounts were dropped or read in part (critical) -> fixed; ranges and guesses are None
