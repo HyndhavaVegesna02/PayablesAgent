@@ -146,3 +146,30 @@ depends on meaning, and if the next round finds only that, it should approve.
 **Left for the PO**, as before (no form shows them): a word between an amount and a tail; an amount that
 isn't the total by meaning; a spelling in neither list; a guess word not in the lists ("ke aas paas").
 
+## Round 5: APPROVE
+
+Re-review of ab570e6 and 000258b. Every round-4 critical input now flags. New written forms the reviewer
+probed flag too: "1,50,000rup", "1.5lakh", "150thousand", "Rs -1,50,000", "Rs 1,00,000 50k". No structural
+path is left that drops a money-shaped amount the parser reads. Full suite 1461 passed, 9 import contracts
+kept, ruff clean, check_evidence: all 5 reports reproduce.
+
+Minors, put in the backlog as CHG-039 (draft) for the PO to order:
+- a Unicode minus ("−1,50,000") is split off as a mark, so the digits read as positive;
+- parse_spoken_inr("rupees -5") is 500: the sign check strips ₹, Rs and INR but not a rupee word;
+- range punctuation the dash rule doesn't cover ("25 / 30 lakh", "25 -- 30 lakh", "25 & 30 lakh") passes the
+  upper bound.
+
+For the PO (D29 rule 1, not a code defect): ungrouped digits ("150000") are not money-shaped, so a note that
+writes the bill bare and an advance grouped passes the advance. Counting a bare run of five or more digits as
+money would close it, at the cost of false flags on long invoice numbers.
+
+**Residue for the PO's acceptance** (by meaning, not form; each passes the head amount):
+1. a tail after an ordinary word or a comma ("Bill ek lakh hai, pachaas"; "ek lakh rupaye, pachaas");
+2. an amount that isn't the total by meaning ("baaki dedh lakh"; "dono dedh lakh ke");
+3. spellings in neither word list;
+4. guesses and ranges in words not on the lists ("ke aas paas", "ya usse zyada", "rupees to 2");
+5. a comma merge only the model could share ("do lakh, 50 hazaar advance" reads ₹2,50,000);
+6. the bare-digits point above.
+
+Every voice bill is still confirmed by the owner with the transcript beside it.
+

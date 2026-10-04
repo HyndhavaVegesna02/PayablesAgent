@@ -1,6 +1,6 @@
 # Every change, ever. Entries are never deleted -- done and rejected are history.
 # Status is a field, never a folder.
-next_id: 39
+next_id: 40
 changes:
   - id: CHG-001
     title: Repo skeleton — layout, config, schema, Clock, tracer, job table, CI
@@ -547,6 +547,16 @@ changes:
     expected_paths: ['evals/ablation.py', 'docs/evals/']
     depends_on: null
     batch: 11
+  - id: CHG-039
+    title: The voice amount reader treats a Unicode minus, a rupee-word sign and range punctuation like their plain forms
+    file: docs/changes/CHG-039-voice-amount-signs-and-ranges.md
+    status: draft
+    priority: 39
+    type: defect
+    lane: null
+    expected_paths: []
+    depends_on: null
+    batch: null
 
 # Shape of an entry:
 #   - id: CHG-001
