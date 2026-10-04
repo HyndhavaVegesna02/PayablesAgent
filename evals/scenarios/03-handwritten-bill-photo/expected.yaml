@@ -13,8 +13,8 @@ expect:
     equals: invoice
   - id: fields-read
     component: extract
-    sql: SELECT json_extract(payload_json, '$.record.invoice_number') || ' ' || json_extract(payload_json, '$.record.amount_paise') || ' ' || json_extract(payload_json, '$.record.party') FROM candidate ORDER BY id LIMIT 1
-    equals: "418 1239000 Shree Ganesh Hardware"      # as read (the candidate), so the owner's typing can't hide a misread
+    sql: SELECT json_extract(payload_json, '$.record.invoice_number') || ' ' || json_extract(payload_json, '$.record.amount_paise') || ' ' || json_extract(payload_json, '$.record.party') || ' ' || json_extract(payload_json, '$.record.due_date') FROM candidate ORDER BY id LIMIT 1
+    equals: "418 1239000 Shree Ganesh Hardware 2026-10-24"   # as read (the candidate): the owner's typing can't hide a misread
   - id: gstin-checked
     component: validate
     sql: SELECT json_extract(checks_json, '$.gstin') FROM candidate ORDER BY id LIMIT 1

@@ -323,3 +323,26 @@ def test_check_evidence_names_a_combined_reports_missing_source(tmp_path, monkey
     assert check_evidence.main() == 1
     assert "its sources ['2026-10-04-gone'] are not under docs/evals/" in capsys.readouterr().out
 
+
+def test_a_missed_handwritten_due_date_is_the_models_failure_even_though_the_owner_types_it():
+    """Batch 10 review, round 2: scenario 03's owner types the due date the bill gives, so its fields-read check
+    reads the candidate's own due date; a model that missed it fails at extract, unseen no longer."""
+    import json as _json
+
+    from app.ai.client import RawAIResponse
+    from app.ai.fixture_backend import FixtureBackend, load_replies
+    from evals import scenario
+
+    bill = load_replies("uploads")["handwritten-bill-ganesh.png"]["InvoiceExtract"]
+
+    class MissesTheDate(FixtureBackend):
+        def generate(self, *, model, system, contents, thinking, json_schema):
+            if (json_schema or {}).get("title") == "InvoiceExtract":
+                return RawAIResponse(_json.dumps({**bill, "due_date": None}), 0, 0, 0)
+            return super().generate(model=model, system=system, contents=contents, thinking=thinking,
+                                    json_schema=json_schema)
+
+    r = runner.run_once(scenario.load("03-handwritten-bill-photo"), MissesTheDate(), runner.load_config(None)[0])
+    assert (r.status, r.component) == ("FAILED", "extract")
+    assert [c.id for c in r.checks if not c.ok] == ["fields-read"]
+
