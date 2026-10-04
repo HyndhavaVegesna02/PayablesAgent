@@ -152,7 +152,7 @@ def parse_spoken_inr(text: str) -> int:
     except ValueError:
         pass
     text = without_currency_word(text)
-    if text.strip().startswith(("-", "\u2212", "minus")):
+    if re.sub(r"^(?:₹|rs\.?|inr)\s*", "", text.strip().lower()).startswith(("-", "\u2212", "minus")):
         raise ValueError(f"a negative amount is not a bill: {text!r}")
     words = re.sub(r"[,/-]", " ", text.lower().replace("₹", " ")).split()
     tokens = [w.strip(".") if not _DECIMAL.match(w) else w for w in words]
@@ -210,7 +210,7 @@ _NUMBER_LIKE = {
     "nawasi", "nabe", "nabbay", "ikyaanave", "ikyanve", "baanave", "banve", "tiraanave", "tiranve",
     "chauraanave", "chauranve", "pachaanave", "pachanve", "chhiyaanave", "chhiyanve", "sattaanave", "sattanve",
     "atthaanave", "athanve", "ninyaanave", "ninyanve", "sava", "savaa", "saare", "saarhe", "sarhe", "sade",
-    "paav", "aadha", "adha", "half", "quarter", "zero", "shunya", "minus", "paisa", "paise", "naught",
+    "paav", "aadha", "adha", "half", "quarter", "zero", "shunya", "minus", "naught",
     "laakh", "laakhs", "hajaar", "hazaaar", "hazaron", "crores", "karoda", "thousands", "hundreds", "million",
     "billion",
 }
@@ -219,14 +219,16 @@ _SCALE_LIKE = {*_SAID_SCALES, "laakh", "laakhs", "hajaar", "hazaaar", "hazaron",
 # Short scales, written after digits ("50 k", "1.5 L", "2 cr"): the parser doesn't read them, so the amount
 # they end is unreadable. Only straight after digits, where they can't be another word.
 _SHORT_SCALES = {"k", "l", "lk", "lkh", "lks", "cr", "crs", "m", "mn"}
-# An amount written as one token: digits, perhaps with Rs, INR or ₹ before, "/-" or "-" after, a currency or
-# a short scale after ("Rs1,50,000/-", "150000rs", "1.5L", "2cr"). "_" stands for a comma between digits.
-_WRITTEN_AMOUNT = re.compile(r"^(?:₹|rs|inr)?₹?\d[\d_.]*(?:/-|-)?(?:rs|inr|k|l|lk|lkh|lks|lac|lacs|lakh|lakhs|cr|"
-                             r"crs|crore|crores|m|mn)?$")
+# Letters written onto digits that make them money ("Rs1,50,000", "150000rs", "1.5L", "2cr", "50hazaar"), as
+# against an invoice number, an ordinal or a date ("AP/2610/150", "5th", "covid-19"). A rupee word or its
+# start counts too.
+_ON_DIGITS = {"rs", "inr", "k", "l", "lk", "lkh", "lks", "lac", "lacs", "lakh", "lakhs", "cr", "crs", "crore",
+              "crores", "m", "mn", "hazaar", "hazar", "hajar", "hajaar", "thousand", "hundred", "sau"}
 # Words that make a number a range or a guess, so the amount it touches is unreadable (round 3): after an
 # amount ("do lakh se zyada", "25 to 30 lakh", "ek lakh plus GST"), or before one ("lagbhag do lakh").
 _HEDGE_AFTER = {"to", "ya", "or", "se", "zyada", "jyada", "jada", "kam", "plus", "upar", "adhik", "till", "upto",
                 "approx"}
+_HEDGE_AFTER_UNIT = _HEDGE_AFTER - {"to", "ya", "or", "till"}  # after "rupaye": "to" is "so", not a range
 _HEDGE_BEFORE = {"lagbhag", "lagbhagh", "kareeb", "karib", "kareeban", "takreeban", "taqreeban", "around",
                  "about", "approx", "approximately", "roughly", "almost", "nearly", "over", "under", "upto",
                  "above", "below", "max", "maximum", "min", "minimum"}
@@ -238,21 +240,26 @@ def _digits(word: str) -> bool:
 
 
 def _number_like(word: str) -> bool:
+    """A word that is, or is part of, a number: any word with a digit in it, a number word (read by the
+    parser or not), or a compound of them ("twenty-five", "dedh-lakh", "lakh-ish"; not "de-do")."""
     w = word.replace("_", "")
-    if (w in _SAID_NUMBERS or w in _SAID_SCALES or w in _SAID_WHOLE or w in _SAID_SHIFT or w == "sawa"
-            or w in _NUMBER_LIKE or _WRITTEN_AMOUNT.match(word)):
+    if (_digits(w) or w in _SAID_NUMBERS or w in _SAID_SCALES or w in _SAID_WHOLE or w in _SAID_SHIFT
+            or w == "sawa" or w in _NUMBER_LIKE):
         return True
-    parts = [p for p in re.split(r"[-/]", word) if p]  # "twenty-five", "dedh-lakh", "lakh-ish", "AP/2610/150"
-    return len(parts) > 1 and any(_number_like(p) for p in parts)
+    parts = [p for p in re.split(r"[-/]", w) if p]
+    return len(parts) > 1 and (all(_number_like(p) for p in parts) or any(p in _SCALE_LIKE for p in parts))
 
 
 def _money_shaped(word: str) -> bool:
+    """By form: a comma grouping, ₹, a scale or rupee word, paise, a mark after digits ("/-", "/=", "-"), or
+    letters on digits that make them money (_ON_DIGITS)."""
     w = word.replace("_", "")
     if "_" in word or "₹" in w or w in ("paise", "paisa") or w in _SCALE_LIKE or _is_currency_word(w):
         return True
-    if _WRITTEN_AMOUNT.match(word) and not _DECIMAL.match(w):
-        return True  # digits with Rs, "/-" or a short scale
-    parts = [p for p in re.split(r"[-/]", word) if p]
+    if _digits(w) and (w.endswith(("/", "-", "=")) or any(r in _ON_DIGITS or _is_currency_word(r)
+                                                          for r in re.findall(r"[a-z]+", w))):
+        return True
+    parts = [p for p in re.split(r"[-/]", w) if p]
     return len(parts) > 1 and any(_money_shaped(p) for p in parts)
 
 
@@ -281,7 +288,7 @@ def money_said(text: str) -> list[int | None]:
     text = re.sub(r"(?<=\d),(?=\d)", "_", text)  # "1,50,000": one word, its grouping remembered
     text = re.sub(r"\b(rs|inr)\.", r"\1 ", text)
     text = re.sub(r"(?<!\d)\.|\.(?!\d)|[!?;:\n]", " . ", text)
-    tokens = re.findall(r"₹?[\w./-]*[\w/-]|[^\w\s]", text)
+    tokens = re.findall(r"₹?[\w./=-]*[\w/=-]|[^\w\s]", text)
 
     found: list[int | None] = []
     cluster: list[str] = []  # the open cluster's words, "_" marking a comma grouping
@@ -313,24 +320,30 @@ def money_said(text: str) -> list[int | None]:
             closed = close()
             if closed is not None:
                 watch, soft = closed, False
-        elif tok in _DASHES:
+        elif tok in _DASHES or tok == "+":
             if numbers:
-                cluster.append("to")  # "25 - 30 lakh": a range
+                cluster.append("to")  # "25 - 30 lakh", "ek lakh + GST": a range, or not the whole
                 ranged = True
-        elif not (tok[0].isalnum() or tok[0] in "₹_"):  # a comma or other mark: inside an amount, it goes on
+            elif tok == "+" and watch is not None:
+                unreadable(watch)  # "Bill ek lakh rupaye + GST"
+                watch = None
+        elif not any(c.isalnum() or c == "₹" for c in tok):  # a comma or other mark: inside an amount, it goes on
             comma = comma or bool(numbers)
             if soft:
                 watch = None
-        elif (_is_currency_word(w) or w == "₹") and not _WRITTEN_AMOUNT.match(tok):
+        elif (_is_currency_word(w) or w == "₹") and not _digits(w):
             cluster.append(tok)
             if numbers:  # the unit after an amount closes it
                 closed = close()
                 if closed is not None:
                     watch, soft = closed, True
-        elif _number_like(tok) or (w in _SHORT_SCALES and numbers and _digits(numbers[-1])):
+        elif (_number_like(tok) or (w in _SHORT_SCALES and numbers and _digits(numbers[-1]))
+              or (w in ("paise", "paisa") and numbers)):  # "paise" alone is money in general, not an amount
             if watch is not None:
                 unreadable(watch)  # "ek lakh rupaye pachaas": the rest of it came after the unit
                 watch = None
+            if numbers and comma and "_" in tok and not _digits(numbers[-1]):
+                close()  # "do lakh, 50,000 advance": a written amount after a comma starts its own
             if numbers and _digits(numbers[-1]) and w not in _SCALE_LIKE and w not in _SHORT_SCALES and not ranged:
                 if comma:
                     close()  # "Rs 1,50,000, 5 November": two
@@ -338,7 +351,10 @@ def money_said(text: str) -> list[int | None]:
                     unreadable(close())  # "Rs 1,00,000 pachaas": the rest of it, unread
             cluster.append(tok)
             numbers.append(w)
-        elif w in _HEDGE_BEFORE or (w in _HEDGE_AFTER and numbers):
+        elif not numbers and watch is not None and w in _HEDGE_AFTER_UNIT:
+            unreadable(watch)  # "do lakh rupaye se zyada", "ek lakh. Plus GST."
+            watch = None
+        elif w in _HEDGE_BEFORE or (numbers and w in _HEDGE_AFTER):
             cluster.append(tok)  # the parser refuses it, so the amount it touches is None
             ranged = True
         elif w in _SAID_NOISE:

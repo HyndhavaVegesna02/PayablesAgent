@@ -110,6 +110,28 @@ FLAGGED = [
     ("Teen sau bori, dedh-lakh ka bill.", "teen sau", [30_000, 15_000_000]),
     ("Teen sau bori, ek lakh-ish ka bill.", "teen sau", [30_000, None]),
     ("Bill ek_lakh pachaas hazaar", "pachaas hazaar", [15_000_000]),
+    # any word with a digit in it is a number; letters or marks on it make it money (round 4)
+    ("Bill 1,50,000rupaye ka, advance 50,000 diya.", "50,000", [None, 5_000_000]),
+    ("Bill 1,50,000rupees, advance 50,000 diya.", "50,000", [None, 5_000_000]),
+    ("Rs 1,50,000/= ka bill, advance 50,000 diya.", "50,000", [None, 5_000_000]),
+    ("Bill 1,50,000/ ka, advance 50,000 diya.", "50,000", [15_000_000, 5_000_000]),
+    ("Bill 50hazaar ka, advance 20,000 diya.", "20,000", [None, 2_000_000]),
+    ("Bill 1,50,000x2 ka, advance 50,000 diya.", "50,000", [None, 5_000_000]),
+    ("Bill 2x75,000 ka, advance 50,000.", "50,000", [None, 5_000_000]),
+    ("Credit note -1,50,000, bill 50,000 ka.", "50,000", [None, 5_000_000]),
+    ("Bill 150000= ka, advance 50,000 diya.", "50,000", [None, 5_000_000]),
+    ("Bill ₹-1,50,000 hai.", "1,50,000", [None]),
+    # a guess after the unit or the full stop that closed an amount (round 4)
+    ("Bill do lakh rupaye se zyada.", "do lakh", [None]),
+    ("Bill dedh lakh rupees approx.", "dedh lakh", [None]),
+    ("Bill ek lakh rupees plus GST.", "ek lakh", [None]),
+    ("Bill ek lakh rupaye ke upar.", "ek lakh", [None]),
+    ("Bill ek lakh. Plus GST.", "ek lakh", [None]),
+    ("Bill ek lakh + GST.", "ek lakh", [None]),
+    ("Bill ₹1,00,000 + GST.", "1,00,000", [None]),
+    ("Bill 1,00,000 + 18% GST.", "1,00,000", [None]),
+    # a written amount after a comma is its own (round 4)
+    ("Bill do lakh, 50,000 advance diya.", "do lakh", [20_000_000, 5_000_000]),
     # no amount the code reads: never passed
     ("Sharma Packaging ka bill aaya hai, invoice 418, jaldi dena hai.", "dedh lakh", []),
     ("Bill aaya hai, amount baad mein bataunga.", "dedh lakh", []),
@@ -145,6 +167,11 @@ def test_anything_but_the_one_amount_said_goes_to_the_owner(transcript, spoken, 
     ("Bill dedh-lakh ka.", "dedh lakh", 15_000_000),
     ("Bill ek-lakh-pachaas-hazaar ka.", "1,50,000", 15_000_000),
     ("Rs 1,50,000, 5 November tak.", "1,50,000", 15_000_000),
+    ("Sharma ji ke paise dene hain, dedh lakh rupaye.", "dedh lakh", 15_000_000),  # paise as money in general
+    ("Dedh lakh rupaye ka bill, due 5.11.2026.", "dedh lakh", 15_000_000),
+    ("Dedh lakh rupaye de-do Sharma ji ko.", "dedh lakh", 15_000_000),
+    ("Bill 1,50,000/- hai, invoice AP/2610/150, 5th November tak.", "1,50,000", 15_000_000),
+    ("Sharma ka bill dedh lakh rupaye to dena hai.", "dedh lakh", 15_000_000),  # "to": "so", after the unit
 ])
 def test_the_one_amount_said_passes_in_any_words(transcript, spoken, paise):
     checks, _, reading = _check(transcript, spoken)

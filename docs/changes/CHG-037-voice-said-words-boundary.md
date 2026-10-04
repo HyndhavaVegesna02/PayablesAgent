@@ -55,3 +55,5 @@ Extra false flags are the right trade: a flag costs the owner seconds, a wrong a
   and through a tail after the unit or a full stop (critical) -> whole-cluster reading
 - 2026-10-04: batch 11 review round 3: amounts written with marks, a number after digits, and hyphenated
   amounts were dropped or read in part (critical) -> fixed; ranges and guesses are None
+- 2026-10-04: batch 11 review round 4: written amounts outside an allow-list were dropped (critical) -> any
+  word with a digit is a number, money-shaped by form; guesses after a closed amount, "+", "₹-" fixed
