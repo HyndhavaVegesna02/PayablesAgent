@@ -704,7 +704,7 @@ changes:
   - id: CHG-053
     title: A model that was unavailable never scores as a harness failure; the budget guard stops on a 402 credit-depleted refusal (PO, batch 18)
     file: docs/changes/CHG-053.md
-    status: ready
+    status: done
     priority: 53
     type: defect
     lane: direct
@@ -714,7 +714,7 @@ changes:
   - id: CHG-054
     title: Kept traces stay under Windows MAX_PATH (a shorter layout, and the long-path prefix) (PO, batch 18)
     file: docs/changes/CHG-054.md
-    status: ready
+    status: done
     priority: 54
     type: defect
     lane: direct
