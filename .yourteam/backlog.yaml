@@ -486,7 +486,7 @@ changes:
     lane: direct
     expected_paths: []
     depends_on: null
-    batch: null
+    batch: 9
 
 # Shape of an entry:
 #   - id: CHG-001
