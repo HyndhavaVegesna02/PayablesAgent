@@ -548,15 +548,15 @@ changes:
     depends_on: null
     batch: 11
   - id: CHG-039
-    title: The voice amount reader treats a Unicode minus, a rupee-word sign and range punctuation like their plain forms
+    title: The voice amount reader counts bare 5+ digits as money (D30) and reads a Unicode minus, a rupee-word sign and range punctuation
     file: docs/changes/CHG-039-voice-amount-signs-and-ranges.md
-    status: draft
+    status: ready
     priority: 39
     type: defect
-    lane: null
-    expected_paths: []
+    lane: direct
+    expected_paths: ['app/domain/money.py', 'tests/test_voice_amount_said.py', 'README.md']
     depends_on: null
-    batch: null
+    batch: 12
 
 # Shape of an entry:
 #   - id: CHG-001
