@@ -117,8 +117,8 @@ def test_an_ablation_keeps_every_harness_traces_bare_included(tmp_path):
                    "06-payment-returned-by-the-bank", "--label", "t", "--keep-traces", "--out", str(tmp_path)])
     (out,) = tmp_path.glob("*-fixtures-t")
     assert sorted(p.name for p in (out / "traces").iterdir()) == ["bare", "full"]
-    for h in ("bare", "full"):  # one layout for every harness: traces/<harness>/<scenario>-run<n>/<date>/
+    for h in ("bare", "full"):  # one layout for every harness: traces/<harness>/<scenario number>-run<n>/<date>/
         (run,) = (out / "traces" / h).iterdir()
-        assert run.name == "06-payment-returned-by-the-bank-run1"
+        assert run.name == "06-run1"
         assert all(d.is_dir() and d.name[:4].isdigit() for d in run.iterdir())
         assert list(run.rglob("*.jsonl"))

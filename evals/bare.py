@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import email
 import email.policy
-import shutil
 import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -44,7 +43,7 @@ from app.ingest.pdf import unlock_email
 from app.trace.tracer import Tracer
 from evals import outcomes
 from evals.knockouts import Decision
-from evals.runner import INBOXES, START, RunResult, StopRun, find_fixture, fresh_world, never
+from evals.runner import INBOXES, START, RunResult, StopRun, find_fixture, fresh_world, keep_traces, never
 from evals.scenario import Scenario
 
 MAX_STEPS = 20
@@ -235,8 +234,8 @@ def _events(env: BareEnv, scenario: Scenario) -> list[str]:
 def run_once(scenario: Scenario, backend: Backend, app_config: AppConfig, run: int = 1, *,
              should_stop: Callable[[], str | None] = never,
              inspect: Callable[[Any], dict[str, Any]] | None = None, keep: Path | None = None) -> RunResult:
-    """One bare run. Its traces are copied to `keep/<scenario>-run<n>` when given, as the runner copies its
-    own (CHG-047: a live ablation keeps them)."""
+    """One bare run. Its traces are copied to `keep/<scenario number>-run<n>` when given, as the runner
+    copies its own (CHG-047, CHG-054: a live ablation keeps them)."""
     from evals import metrics
 
     with tempfile.TemporaryDirectory(prefix=f"bare-{scenario.name}-") as tmp_name:
@@ -293,5 +292,5 @@ def run_once(scenario: Scenario, backend: Backend, app_config: AppConfig, run: i
         result.metrics = metrics.collect(metrics.trace_steps(tmp / "traces"), conn)
         conn.close()
         if keep is not None and (tmp / "traces").exists():
-            shutil.copytree(tmp / "traces", keep / f"{scenario.name}-run{run}", dirs_exist_ok=True)
+            keep_traces(tmp / "traces", keep, scenario.name, run)
     return result

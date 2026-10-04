@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import os
 import shutil
 import tempfile
 from collections.abc import Callable, Iterator
@@ -355,6 +356,26 @@ def make_env(tmp: Path, scenario: Scenario, backend: Backend, app_config: AppCon
                   DocumentStore(settings.data_dir, settings.fernet_key), scenario)
 
 
+SEP = chr(92)  # a backslash
+LONG_PREFIX = SEP * 2 + "?" + SEP  # Windows' prefix for a path past MAX_PATH
+
+
+def long_path(p: str | Path) -> str:
+    """The path as Windows' file APIs take one past MAX_PATH (260 characters): absolute, with the long-path
+    prefix (CHG-054). Elsewhere, the path as it is."""
+    s = str(Path(p).resolve())
+    if os.name != "nt" or s.startswith(LONG_PREFIX):
+        return s
+    return LONG_PREFIX + "UNC" + s[1:] if s.startswith(2 * SEP) else LONG_PREFIX + s
+
+
+def keep_traces(traces: Path, keep: Path, scenario_name: str, run: int) -> None:
+    """Copies one run's traces to `keep/<scenario number>-run<n>/` (CHG-047, CHG-054): one short layout for
+    every harness, and a copy a deep output folder can't fail."""
+    dest = keep / f"{scenario_name.split('-', 1)[0]}-run{run}"
+    shutil.copytree(long_path(traces), long_path(dest), dirs_exist_ok=True)
+
+
 def run_once(scenario: Scenario, backend: Backend, app_config: AppConfig, run: int = 1, *,
              should_stop: Callable[[], str | None] = never,
              inspect: Callable[[RunEnv], dict[str, Any]] | None = None, keep: Path | None = None,
@@ -397,7 +418,7 @@ def run_once(scenario: Scenario, backend: Backend, app_config: AppConfig, run: i
             if inspect is not None:
                 result.metrics = inspect(env)
             if keep is not None and (tmp / "traces").is_dir():
-                shutil.copytree(tmp / "traces", keep / f"{scenario.name}-run{run}", dirs_exist_ok=True)
+                keep_traces(tmp / "traces", keep, scenario.name, run)
         finally:
             env.conn.close()  # before the temp dir goes: Windows will not delete an open database
     return result

@@ -85,7 +85,7 @@ def run_harness(name: str, scenario: Scenario, backend: Backend, app_config: App
                 should_stop: Callable[[], str | None] = never,
                 keep: Path | None = None) -> tuple[RunResult, list[str]]:
     """One run of one scenario under one harness; the result and the seams it patched. With `keep`, the
-    run's traces are copied to `keep/<scenario>-run<n>`, whichever the harness."""
+    run's traces are copied to `keep/<scenario number>-run<n>`, whichever the harness."""
     if name == "full":
         return runner.run_once(scenario, backend, app_config, run, should_stop=should_stop,
                                inspect=metrics.inspect, keep=keep), []
@@ -257,7 +257,7 @@ def main(argv: list[str] | None = None) -> int:
                 stopped = stopped or should_stop()
                 if stopped:
                     break
-                keep = out_dir / "traces" / h if keep_traces else None  # traces/<harness>/<scenario>-run<n>
+                keep = out_dir / "traces" / h if keep_traces else None  # traces/<harness>/<scenario number>-run<n>
                 r, seams[h] = run_harness(h, s, backend(), config, i, should_stop=should_stop, keep=keep)
                 results[h].append(r)
                 print(f"{h:15} {'met' if r.outcome_ok else r.status:8} {s.name} run {i}", flush=True)
