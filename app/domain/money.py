@@ -90,6 +90,24 @@ _SAID_SHIFT = {"saade": Fraction(1, 2), "sadhe": Fraction(1, 2), "saadhe": Fract
 _SAID_NOISE = {"rupees", "rupee", "rupaye", "rupaiye", "rupay", "rs", "inr", "only", "sirf", "bas", "ka", "ki", "ke",
                "and", "aur", "₹"}
 _DECIMAL = re.compile(r"^[0-9]+(?:\.[0-9]+)?$")
+# The unit said after an amount (PO D28). The number words decide the amount; the unit is noise, and so is
+# a unit cut short ("dedh lakh rup"): a prefix of at least three letters of one of these, never another word.
+CURRENCY_WORDS = ("rupaye", "rupees", "rupee", "rupiya", "rupaiye", "rupay", "rs", "inr")
+
+
+def _is_currency_word(word: str) -> bool:
+    w = word.lower().strip(".")
+    return w in CURRENCY_WORDS or (len(w) >= 3 and w.isalpha() and any(c.startswith(w) for c in CURRENCY_WORDS))
+
+
+def without_currency_word(text: str) -> str:
+    """The amount as said, without a currency word (or the start of one) at
+    its end: "dedh lakh rup" -> "dedh lakh". Anything else at the end stays,
+    and is refused by the parser as before."""
+    words = text.split()
+    while words and _is_currency_word(words[-1]):
+        words.pop()
+    return " ".join(words)
 
 
 def _said_number(tokens: list[str], i: int) -> tuple[Fraction, int] | None:
@@ -134,6 +152,7 @@ def parse_spoken_inr(text: str) -> int:
         return parse_inr(text)
     except ValueError:
         pass
+    text = without_currency_word(text)
     if text.strip().startswith(("-", "\u2212", "minus")):
         raise ValueError(f"a negative amount is not a bill: {text!r}")
     words = re.sub(r"[,/-]", " ", text.lower().replace("₹", " ")).split()

@@ -11,7 +11,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from app.domain.money import parse_spoken_inr
+from app.domain.money import parse_spoken_inr, without_currency_word
 from app.validate import CHECK_NAMES, NO_DUE_DATE, NOT_APPLICABLE, PASSED, failed, skipped
 from app.validate.duplicates import normalise_invoice_number
 from app.validate.invoice import ExistingInvoice, InvoiceKey, InvoiceRecord
@@ -44,7 +44,7 @@ def check_voice(
         checks["amount"] = failed("no amount was said")
     else:
         try:
-            if _words(x.amount_spoken) not in _words(x.transcript):
+            if _words(without_currency_word(x.amount_spoken)) not in _words(x.transcript):
                 raise ValueError("not said")  # the words must be the ones said, not the model's own figure
             amount = parse_spoken_inr(x.amount_spoken)
             checks["amount"] = PASSED
