@@ -24,7 +24,7 @@ from typing import Any
 from app.ai.client import Backend, Contents, RawAIResponse
 from app.config import AppConfig
 from app.trace.tracer import Tracer
-from evals import bare, knockouts, metrics, runner
+from evals import bare, budget, knockouts, metrics, runner
 from evals.runner import RunEnv, RunResult, never
 from evals.scenario import Scenario
 
@@ -203,6 +203,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--label", default="ablation")
     p.add_argument("--out", type=Path, default=runner.ROOT / "docs" / "evals")
     p.add_argument("--yes-spend", action="store_true", help="required with --ai live")
+    budget.add_max_usd(p)
     args = p.parse_args(argv)
 
     config, config_hash = runner.load_config()
@@ -212,9 +213,8 @@ def main(argv: list[str] | None = None) -> int:
     guard = None
     should_stop: Callable[[], str | None] = never
     if args.ai == "live":
-        from evals.budget import live_backend
-
-        guard = live_backend(config, confirmed=args.yes_spend)  # one guard for the whole invocation
+        guard = budget.live_backend(config, confirmed=args.yes_spend,  # one guard for the whole invocation
+                                    max_micro_usd=args.max_micro_usd)
         should_stop = guard.should_stop
 
     def backend() -> Backend:

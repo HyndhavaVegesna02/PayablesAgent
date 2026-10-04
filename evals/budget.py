@@ -20,6 +20,8 @@ starts no new run, and writes the partial report marked ABORTED."""
 
 from __future__ import annotations
 
+import argparse
+import re
 import time
 from collections.abc import Callable
 from typing import Any
@@ -92,9 +94,29 @@ class BudgetGuard:
                 "caps": {"calls": self.max_calls, "micro_usd": self.max_micro_usd}, "stopped": self.stopped}
 
 
-def live_backend(app_config: AppConfig, *, confirmed: bool) -> BudgetGuard:
+def usd_cap(text: str) -> int:
+    """`--max-usd` (CHG-041): dollars as text -> integer micro-USD, never a
+    float. It can only lower the hard cap; anything else is refused."""
+    m = re.fullmatch(r"\$?([0-9]+)(?:\.([0-9]{1,6}))?", text.strip())
+    micro = int(m.group(1)) * 1_000_000 + int((m.group(2) or "").ljust(6, "0")) if m else 0
+    if not 0 < micro <= MAX_MICRO_USD:
+        raise argparse.ArgumentTypeError(f"--max-usd takes dollars above 0 and at most "
+                                         f"{MAX_MICRO_USD / 1_000_000:.2f} (the hard cap), e.g. 1.50: {text!r}")
+    return micro
+
+
+def add_max_usd(p: argparse.ArgumentParser) -> None:
+    p.add_argument("--max-usd", dest="max_micro_usd", type=usd_cap, default=MAX_MICRO_USD,
+                   help=f"cost cap for this invocation in dollars (live only; at most "
+                        f"{MAX_MICRO_USD / 1_000_000:.2f}, the default)")
+
+
+def live_backend(app_config: AppConfig, *, confirmed: bool, max_micro_usd: int = MAX_MICRO_USD) -> BudgetGuard:
     """Gemini behind one guard for the whole invocation. Refuses to start
-    without --yes-spend; reads GEMINI_API_KEY through Settings."""
+    without --yes-spend; reads GEMINI_API_KEY through Settings. `max_micro_usd`
+    (from --max-usd) can only lower the hard cost cap."""
+    if not 0 < max_micro_usd <= MAX_MICRO_USD:
+        raise SystemExit(f"a cost cap must be above 0 and at most {MAX_MICRO_USD} micro-USD")
     if not confirmed:
         raise SystemExit(f"--ai live calls Gemini and is billed: at most {MAX_CALLS} calls and "
                          f"{MAX_MICRO_USD} micro-USD (${MAX_MICRO_USD / 1_000_000:.2f}) in this invocation. "
@@ -103,7 +125,8 @@ def live_backend(app_config: AppConfig, *, confirmed: bool) -> BudgetGuard:
     from app.config import Settings
 
     settings = Settings()
-    guard = BudgetGuard(GeminiBackend(settings.gemini_api_key, timeout_ms=app_config.ai.timeout_ms), app_config)
-    print(f"live: {app_config.model.id}; caps {MAX_CALLS} calls, {MAX_MICRO_USD} micro-USD; "
+    guard = BudgetGuard(GeminiBackend(settings.gemini_api_key, timeout_ms=app_config.ai.timeout_ms), app_config,
+                        max_micro_usd=max_micro_usd)
+    print(f"live: {app_config.model.id}; caps {MAX_CALLS} calls, {max_micro_usd} micro-USD; "
           f"{DELAY_S}s between calls", flush=True)
     return guard

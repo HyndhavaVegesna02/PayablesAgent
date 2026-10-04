@@ -38,6 +38,7 @@ from app.web import actions, repo
 from app.web.auth import User
 from app.web.routes.attention import flagged_fields, prefill
 from app.worker import default_handlers, process_one
+from evals import budget
 from evals.scenario import COMPONENTS, Expectation, Scenario
 from fixtures.seed import seed
 
@@ -499,6 +500,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--out", type=Path, default=ROOT / "docs" / "evals")
     p.add_argument("--keep-traces", action="store_true", help="copy each run's traces next to the report")
     p.add_argument("--yes-spend", action="store_true", help="required with --ai live")
+    budget.add_max_usd(p)
     args = p.parse_args(argv)
 
     config, config_hash = load_config(args.config)
@@ -509,9 +511,8 @@ def main(argv: list[str] | None = None) -> int:
     guard = None
     backend_factory: Callable[[], Backend] = FixtureBackend
     if args.ai == "live":
-        from evals.budget import live_backend
-
-        guard = live_backend(config, confirmed=args.yes_spend)  # one guard for the whole invocation
+        guard = budget.live_backend(config, confirmed=args.yes_spend,  # one guard for the whole invocation
+                                    max_micro_usd=args.max_micro_usd)
 
         def backend_factory() -> Backend:
             return guard

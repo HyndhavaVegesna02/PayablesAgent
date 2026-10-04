@@ -47,6 +47,7 @@ from app.jobs import alerts
 from app.jobs.replan import replan
 from app.main import create_app
 from app.worker import default_handlers
+from evals import budget
 from evals.runner import INBOXES, StopRun, drain_jobs, find_fixture, fresh_world
 from evals.runner import START as RUNNER_START
 from fixtures.seed import BUSINESS_ID, DEV_HELPER_PASSWORD, DEV_OWNER_PASSWORD, HELPER_EMAIL, OWNER_EMAIL
@@ -461,13 +462,13 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--runs", type=int, default=1, help="repeats of each run (default 1)")
     p.add_argument("--out", type=Path, default=ROOT / "docs" / "evals")
     p.add_argument("--yes-spend", action="store_true", help="required with --ai live")
+    budget.add_max_usd(p)
     args = p.parse_args(argv)
     config, config_hash = runner.load_config()
     guard = None
     if args.ai == "live":
-        from evals.budget import live_backend
-
-        guard = live_backend(config, confirmed=args.yes_spend)  # one guard for the whole invocation
+        guard = budget.live_backend(config, confirmed=args.yes_spend,  # one guard for the whole invocation
+                                    max_micro_usd=args.max_micro_usd)
     failed = 0
     for name in args.run or sorted(RUNS):
         results = []
