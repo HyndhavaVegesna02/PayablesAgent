@@ -29,3 +29,9 @@ Minors:
 - the four inputs and their ASCII twins are table rows; the test is renamed.
 The reviewer's own old-against-new probe (scratchpad cmp.py), rerun on the fix over the same 177 inputs: the
 only flag-to-pass changes left are the bare-digits passes D30 intends (a bill said as bare digits).
+
+## PO verdict
+
+ACCEPT for CHG-039 (2026-10-04, payablesagent-ac). The PO verified 93ce3dc independently (1489 passed) and
+accepted the probe evidence for the fix that was not re-reviewed. The voice amount check is done.
+

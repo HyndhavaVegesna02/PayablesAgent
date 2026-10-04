@@ -550,7 +550,7 @@ changes:
   - id: CHG-039
     title: The voice amount reader counts bare 5+ digits as money (D30) and reads a Unicode minus, a rupee-word sign and range punctuation
     file: docs/changes/CHG-039-voice-amount-signs-and-ranges.md
-    status: ready
+    status: done
     priority: 39
     type: defect
     lane: direct
