@@ -10,8 +10,8 @@ changes:
   - id: CHG-039
     lane: direct
     board: in_progress
-    start_commit: null
+    start_commit: 263051e
     blocked_question: null
     gate_evidence: []
-    prepatch: null
+    prepatch: "PASS at 263051e: 13 of the 19 new tests in tests/test_voice_amount_d30.py fail by assertion on the old tree (D30, the Unicode minus, rupees -5, the range marks, the false flag); 6 are regression guards that hold before and after (a year stays bare, Rs.-5 and rs -150000 were already refused, & between words)"
     notes_resolved: false
