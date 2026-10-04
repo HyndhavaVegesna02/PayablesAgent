@@ -21,6 +21,12 @@ These are the non-blocking notes from the batch 5 review (docs/batches/2026-10-0
 - **Typed duplicates without a number:** a typed bill with no invoice number, from the same vendor, for the same amount, on the same date as a recorded one is now refused, with no override. This matches the pipeline's rule.
 - **Live check of the prompts:** the multimodal prompts (sort.v2, extract_invoice, extract_statement, extract_voice) are unproven on real Gemini. Run at most 3 authorised smoke calls when the PO allows (Q7).
 
+- **A statement row read with no counterparty (live, 2026-10-04):** in both live runs of workflow B, Gemini read
+  the bank statement's ₹590 bank-charges row ("SMS AND ACCOUNT CHARGES") with no counterparty. The amount and
+  date are right, so the debit is counted and its question is found by amount (CHG-043); the missing name is a
+  true extraction miss, visible in `docs/evals/workflow-B-2026-10-04-live.md` (`rows-in-the-ledger-once`).
+  A fix would be prompt work on extract_statement, measured live.
+
 ## Acceptance Criteria
 <!-- to be written when planned -->
 

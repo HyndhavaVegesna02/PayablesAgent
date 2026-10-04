@@ -71,9 +71,14 @@ section only tells the order things happened in.
      scripted owner find a debit by amount and answer by a rule written into the step. In the rerun
      (`workflow-B-2026-10-04-live.md`) every step runs, and the one failed check left is the missed counterparty
      itself: a true extraction miss, kept visible.
-   - Workflow A's rerun has one failed check left, `new-decisions`: it keys the voice bill's plan line by the
-     vendor name the model read, and the live reading differed from "Sharma Packaging". The bill is in the
-     ledger and planned. The check should key that bill by its amount (a harness change, not yet rerun).
+   - Workflow A's rerun has one failed check left, `new-decisions`: it keyed the voice bill's plan line by the
+     vendor name the model read, and the live reading differed from "Sharma Packaging". The bill was in the
+     ledger and planned, so this was harness keying, not the product. CHG-045 (batch 16) now finds that bill by
+     its amount and due date; the fixture report is regenerated, and the live one is left as it ran: the fix
+     was not rerun live, to save spend.
+   - **Known limit:** live, Gemini read the bank statement's ₹590 bank-charges row with no counterparty, in both
+     runs of workflow B (`rows-in-the-ledger-once`). It's a true extraction miss and stays visible in the
+     report. The debit is still counted and explained by its amount; it is recorded in CHG-025.
    - In the ablation, the full system met every outcome; the drift rule and the rule checks were the
      knock-outs that cost outcomes. The bare harness's long chat history first ran past Gemini's deadline on
      several scenarios; with CHG-044's one timeout for every harness, its rerun

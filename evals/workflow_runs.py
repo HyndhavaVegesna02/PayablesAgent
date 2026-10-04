@@ -52,6 +52,18 @@ def plan(run: Run) -> dict[str, Any]:
             "summary_source": row["summary_source"]}
 
 
+def decision_by_amount(run: Run, amount_paise: int, due_date: str) -> str | None:
+    """The current plan's decision for the bill with no invoice number, found by its amount and due date, not
+    the vendor name a model read (CHG-045: live, the voice note's vendor read differently)."""
+    row = run.conn.execute(
+        "SELECT l.decision, l.pay_on FROM plan_line l JOIN payable p ON p.id = l.payable_id "
+        "JOIN plan_run r ON r.id = l.plan_run_id WHERE r.is_current = 1 AND p.invoice_number IS NULL "
+        "AND p.amount_paise = ? AND p.due_date = ?", (amount_paise, due_date)).fetchone()
+    if row is None:
+        return None
+    return f"{row[0]} {row[1]}" if row[0] == "PAY" else row[0]
+
+
 def bill(run: Run, invoice: str) -> str:
     return run.one("SELECT status FROM payable WHERE invoice_number = ?", (invoice,))
 
@@ -347,10 +359,11 @@ def run_a(run: Run) -> None:
         run.expect("bills-in-the-ledger", sorted(i or "" for (i,) in run.rows(
             "SELECT invoice_number FROM payable WHERE id > 5")), ["", "418", "AP/2610/131", "LT/2610/88"],
                    "AP/2610/131 (email), 418 (photo), the voice note's bill (no number said), LT/2610/88 (typed)")
-        run.expect("new-decisions", {k: p["lines"].get(k) for k in ("418", "AP/2610/131", "LT/2610/88",
-                                                                  "Sharma Packaging")},
+        run.expect("new-decisions", {**{k: p["lines"].get(k) for k in ("418", "AP/2610/131", "LT/2610/88")},
+                                     "voice bill (1,50,000, due 5 Nov)": decision_by_amount(
+                                         run, money("1,50,000"), "2026-11-05")},
                    {"418": "PAY 2026-10-22", "AP/2610/131": "PAY 2026-10-26", "LT/2610/88": "WAIT",
-                    "Sharma Packaging": "WAIT"},
+                    "voice bill (1,50,000, due 5 Nov)": "WAIT"},
                    "418 due Sat 24 Oct: paid Thu 22; AP/2610/131 due Wed 28: paid Mon 26; LT/2610/88 (due 2 Nov) "
                    "and Sharma (due 5 Nov) are after the horizon, Sat 17 to Fri 30 Oct")
         run.expect("prime-chem-still-thursday", p["lines"].get("PRIME-001"), "PAY 2026-10-22",

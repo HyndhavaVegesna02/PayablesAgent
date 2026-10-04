@@ -80,3 +80,22 @@ def test_no_matching_choice_fails_the_step_and_lists_what_was_offered():
                                          r"offered \['Salary/Wage', 'Loan'\]"):
         answer_by_choice(run, 11, "advance")
     assert run.owner.client.posted == []  # never guesses
+
+
+def test_a_bill_with_no_number_is_found_by_amount_and_due_date_not_the_vendor_name_read():
+    """CHG-045: live, workflow A's voice bill was planned under a vendor name read differently from
+    'Sharma Packaging', and the check keyed by name missed it."""
+    from evals.workflow_runs import decision_by_amount
+
+    run = _Run()
+    run.conn.executescript("""
+        CREATE TABLE plan_run (id INTEGER PRIMARY KEY, is_current INTEGER);
+        CREATE TABLE payable (id INTEGER PRIMARY KEY, invoice_number TEXT, amount_paise INTEGER, due_date TEXT);
+        CREATE TABLE plan_line (plan_run_id INTEGER, payable_id INTEGER, decision TEXT, pay_on TEXT);
+        INSERT INTO plan_run VALUES (1, 0), (2, 1);
+        INSERT INTO payable VALUES (6, NULL, 15000000, '2026-11-05'), (7, 'LT/2610/88', 1800000, '2026-11-02');
+        INSERT INTO plan_line VALUES (1, 6, 'PAY', '2026-10-15'), (2, 6, 'WAIT', NULL), (2, 7, 'WAIT', NULL);
+    """)
+    run.one = lambda sql, args=(): (run.conn.execute(sql, args).fetchone() or [None])[0]
+    assert decision_by_amount(run, 15000000, "2026-11-05") == "WAIT"  # the current plan's line
+    assert decision_by_amount(run, 15000000, "2026-11-06") is None
