@@ -9,17 +9,17 @@ interrupts: []
 changes:
   - id: CHG-053
     lane: direct
-    board: in_progress
-    start_commit: null
+    board: done
+    start_commit: c72435b
     blocked_question: null
     gate_evidence: []
-    prepatch: null
+    prepatch: "PASS at e28dc71: the new 402 and model-unavailable tests fail on the old tree"
     notes_resolved: false
   - id: CHG-054
     lane: direct
-    board: todo
-    start_commit: null
+    board: done
+    start_commit: e28dc71
     blocked_question: null
     gate_evidence: []
-    prepatch: null
+    prepatch: "PASS at 02e5ebd: the deep-folder trace test fails on the old tree (WinError 206)"
     notes_resolved: false
