@@ -125,13 +125,21 @@ def markdown(report: dict[str, Any]) -> str:
         f"every run; path checks held in {t['path'][0]} of the {t['path'][1]} runs that have them; "
         f"{t['ai_calls']} model calls; {t['cost_micro_usd']} micro-USD.",
         "",
+    ]
+    return "\n".join(out + _scenario_sections(report["scenarios"]))
+
+
+def _scenario_sections(rows: list[dict[str, Any]], *, source: bool = False) -> list[str]:
+    """The scenario table, its failures and path failures, and the column notes. `source` adds a From column
+    (a combined report: the report each row came from)."""
+    out = [
         "## Scenarios",
         "",
-        "| Scenario | Success | Path | Spread (checks met) | Worst run | Model calls | Tool calls | Wasted | Retries "
-        "| Escalations | Tokens in / out / thoughts | Cost µUSD mean / max |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "| Scenario | " + ("From | " if source else "") + "Success | Path | Spread (checks met) | Worst run "
+        "| Model calls | Tool calls | Wasted | Retries | Escalations | Tokens in / out / thoughts | Cost µUSD mean / max |",
+        "|---|" + ("---|" if source else "") + "---|---|---|---|---|---|---|---|---|---|---|",
     ]
-    for r in report["scenarios"]:
+    for r in rows:
         w = r["worst"]
         worst = "n/a" if w is None else ("all end-to-end checks met" if w["status"] == "PASSED" else
                                          f"run {w['run']}: {w['component']}, {len(w['failed_checks'])} failed")
@@ -141,11 +149,12 @@ def markdown(report: dict[str, Any]) -> str:
         success = f"{r['passed']}/{r['runs'] - r['errored']} ({_pct(r['success_rate'])}){errored}"
         path = "no path checks" if not r["path"][1] else f"{r['path'][0]}/{r['path'][1]}"
         out.append(
-            f"| {r['title']} | {success} | {path} | {spread} | {worst} | {r['mean']['ai_calls']} | {r['mean']['tool_calls']} "
+            f"| {r['title']} | " + (f"`{r['source']}` | " if source else "") +
+            f"{success} | {path} | {spread} | {worst} | {r['mean']['ai_calls']} | {r['mean']['tool_calls']} "
             f"| {r['mean']['wasted_calls']} | {r['mean']['retries']} | {', '.join(r['escalations']) or 'none'} "
             f"| {tok['input']:.0f} / {tok['output']:.0f} / {tok['thoughts']:.0f} "
             f"| {r['cost_micro_usd']['mean']:.0f} / {r['cost_micro_usd']['max']} |")
-    failures = [r for r in report["scenarios"] if r["worst"] and r["worst"]["status"] != "PASSED"]
+    failures = [r for r in rows if r["worst"] and r["worst"]["status"] != "PASSED"]
     if failures:
         out += ["", "## Failures (the worst run of each scenario that failed)", ""]
         for r in failures:
@@ -155,7 +164,7 @@ def markdown(report: dict[str, Any]) -> str:
             for c in w["failed_checks"]:
                 out.append(f"- `{c['id']}` ({c['component']}): got `{c['got']}`, wanted `{c['want']}`")
             out.append("")
-    path_failures = [r for r in report["scenarios"] if r["path_failures"]]
+    path_failures = [r for r in rows if r["path_failures"]]
     if path_failures:
         out += ["", "## Path failures (the first run of each scenario whose path checks failed)", ""]
         for r in path_failures:
@@ -177,7 +186,101 @@ def markdown(report: dict[str, Any]) -> str:
             "table (evals/metrics.py). Wasted = refused tool calls + replies that failed the schema + candidates "
             "that failed their checks.",
             "- **Escalations:** the escalation rules any run's trace recorded.", ""]
-    return "\n".join(out)
+    return out
+
+
+# --- one report from several invocations (batch 10, CHG-035) -----------------------------------------------------
+
+SOURCE_FIELDS = ("mode", "model", "prompt_version", "commit", "date", "status", "stopped_because", "runs_per_scenario")
+
+
+def combine(parts: list[tuple[str, dict[str, Any]]], label: str) -> dict[str, Any]:
+    """One report from several (oldest first), each given with the folder it
+    came from. For every scenario the latest report that ran it wins: its row
+    and its runs are this report's, and the row names its source. Totals are
+    counted from the winning runs; `spent` adds up every invocation's spend,
+    the runs that lost included. Nothing here is typed by hand."""
+    rows: dict[str, dict[str, Any]] = {}
+    runs: dict[str, list[dict[str, Any]]] = {}
+    for source, rep in parts:
+        for row in rep["scenarios"]:
+            rows[row["scenario"]] = {**row, "source": source}
+            runs[row["scenario"]] = [r for r in rep["runs"] if r["scenario"] == row["scenario"]]
+    chosen = [rows[name] for name in sorted(rows)]
+    won = [r for name in sorted(runs) for r in runs[name]]
+    scored = sum(r["runs"] - r["errored"] for r in chosen)
+    passed = sum(r["passed"] for r in chosen)
+    sources = [{"report": source, **{k: rep["meta"].get(k) for k in SOURCE_FIELDS},
+                "calls": (rep["meta"].get("budget") or {}).get("calls", rep["totals"]["ai_calls"]),
+                "micro_usd": (rep["meta"].get("budget") or {}).get("micro_usd", rep["totals"]["cost_micro_usd"])}
+               for source, rep in parts]
+    return {
+        "meta": {"kind": "combined", "label": label, "mode": parts[-1][1]["meta"]["mode"],
+                 "model": parts[-1][1]["meta"]["model"], "sources": sources},
+        "totals": {
+            "scenarios": len(chosen), "runs": sum(r["runs"] for r in chosen), "passed": passed,
+            "errored": sum(r["errored"] for r in chosen),
+            "success_rate": round(passed / scored, 3) if scored else None,
+            "scenarios_all_runs_passed": sum(r["passed"] == r["runs"] for r in chosen),
+            "path": [sum(r["path"][0] for r in chosen), sum(r["path"][1] for r in chosen)],
+            "ai_calls": sum(r["metrics"].get("ai_calls", 0) for r in won if r.get("metrics")),
+            "cost_micro_usd": sum(r["metrics"].get("cost_micro_usd", 0) for r in won if r.get("metrics")),
+            "spent": {"calls": sum(s["calls"] for s in sources), "micro_usd": sum(s["micro_usd"] for s in sources)},
+        },
+        "scenarios": chosen,
+    }
+
+
+def combined_markdown(report: dict[str, Any]) -> str:
+    m, t = report["meta"], report["totals"]
+    out = [f"# Eval report: {m['label']} (combined)", "",
+           f"One report from {len(m['sources'])} invocations, generated by `python -m evals.report combine` from "
+           "their report.json files. Each scenario's row is the latest invocation that ran it (the From column); "
+           "a scenario run again later replaces its earlier row here, and the earlier one stays in its own report.",
+           "", "| Report | Mode | Model | Prompt version | Commit | Date | Status | Runs per scenario | Model calls | "
+           "Cost µUSD |", "|---|---|---|---|---|---|---|---|---|---|"]
+    for s in m["sources"]:
+        status = s["status"] + (f" ({s['stopped_because']})" if s.get("stopped_because") else "")
+        out.append(f"| `{s['report']}` | {s['mode']} | {s['model']} | {s['prompt_version']} | {s['commit']} | "
+                   f"{s['date']} | {status} | {s['runs_per_scenario']} | {s['calls']} | {s['micro_usd']} |")
+    out += ["", f"**Totals:** {t['passed']} of {t['runs']} runs passed ({_pct(t['success_rate'])} of the runs that "
+            f"finished), {t['errored']} errored; {t['scenarios_all_runs_passed']} of {t['scenarios']} scenarios passed "
+            f"every run; path checks held in {t['path'][0]} of the {t['path'][1]} runs that have them; "
+            f"{t['ai_calls']} model calls; {t['cost_micro_usd']} micro-USD in the rows shown, "
+            f"{t['spent']['calls']} calls and {t['spent']['micro_usd']} micro-USD spent across the invocations.", ""]
+    return "\n".join(out + _scenario_sections(report["scenarios"], source=True))
+
+
+def write_combined(report: dict[str, Any], out_dir: Path) -> Path:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "report.json").write_text(json.dumps(report, indent=2, default=str) + "\n", encoding="utf-8")
+    (out_dir / "report.md").write_text(combined_markdown(report), encoding="utf-8")
+    return out_dir
+
+
+def load_parts(folders: list[Path]) -> list[tuple[str, dict[str, Any]]]:
+    """(folder name, report) for each report folder, in the order given."""
+    return [(f.name, json.loads((f / "report.json").read_text(encoding="utf-8"))) for f in folders]
+
+
+def main(argv: list[str] | None = None) -> int:
+    import argparse
+
+    p = argparse.ArgumentParser(prog="python -m evals.report",
+                                description="combine: one report from several report folders, oldest first.")
+    sub = p.add_subparsers(dest="command", required=True)
+    c = sub.add_parser("combine")
+    c.add_argument("folders", type=Path, nargs="+", help="report folders under docs/evals, oldest first")
+    c.add_argument("--label", required=True)
+    c.add_argument("--out", type=Path, default=ROOT / "docs" / "evals")
+    args = p.parse_args(argv)
+    parts = load_parts(args.folders)
+    report = combine(parts, args.label)
+    last = parts[-1][1]["meta"]
+    out = write_combined(report, args.out / f"{str(last['date'])[:10]}-{last['mode']}-{args.label}")
+    print(f"combined {len(parts)} reports: {out}")
+    return 0
+
 
 
 def write(report: dict[str, Any], out_dir: Path) -> Path:
@@ -185,3 +288,7 @@ def write(report: dict[str, Any], out_dir: Path) -> Path:
     (out_dir / "report.json").write_text(json.dumps(report, indent=2, default=str) + "\n", encoding="utf-8")
     (out_dir / "report.md").write_text(markdown(report), encoding="utf-8")
     return out_dir
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

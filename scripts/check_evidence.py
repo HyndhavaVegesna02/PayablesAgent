@@ -3,7 +3,9 @@ emits (CHG-032; batch 8 review, round 2). Each report under docs/evals/
 (not superseded/) whose meta says mode "fixtures" is regenerated in a
 temporary folder with the arguments its meta records, and each of its .md
 and .json files is compared with the committed one. Only the commit and date
-fields may differ. Live reports are not reproducible and are left alone.
+fields may differ. Live reports are not reproducible and are left alone, but
+a combined report (CHG-035), live or not, is re-derived from the reports it
+names and must match exactly.
 
     uv run python scripts/check_evidence.py      # make check-evidence; exit 1 on any difference
 
@@ -29,6 +31,9 @@ def committed() -> list[tuple[str, Path, dict]]:
     found = []
     for path in sorted(EVALS.glob("*/report.json")) + sorted(EVALS.glob("workflow-*.json")):
         meta = json.loads(path.read_text(encoding="utf-8"))["meta"]
+        if meta.get("kind") == "combined":  # derived from other reports: re-derived offline, whatever its mode
+            found.append(("combined", path, meta))
+            continue
         if meta.get("mode") != "fixtures":
             continue
         kind = "workflow" if path.name.startswith("workflow-") else (
@@ -39,9 +44,12 @@ def committed() -> list[tuple[str, Path, dict]]:
 
 def regenerate(kind: str, meta: dict, out: Path) -> Path:
     """Runs what made the report, into `out`; returns the fresh report.json."""
-    from evals import ablation, runner, workflow
+    from evals import ablation, report, runner, workflow
 
-    if kind == "suite":
+    if kind == "combined":
+        parts = report.load_parts([EVALS / s["report"] for s in meta["sources"]])
+        fresh = report.write_combined(report.combine(parts, meta["label"]), out / "combined") / "report.json"
+    elif kind == "suite":
         args = ["--ai", "fixtures", "--runs", str(meta["runs_per_scenario"]), "--label", meta["label"],
                 "--out", str(out)]
         if meta.get("variant"):
@@ -59,6 +67,8 @@ def regenerate(kind: str, meta: dict, out: Path) -> Path:
 
 
 def _blank(text: str, meta: dict) -> str:
+    if meta.get("kind") == "combined":  # its commits and dates are its sources', and must match exactly
+        return text
     return text.replace(str(meta["commit"]), "<commit>").replace(str(meta["date"]), "<date>")
 
 
