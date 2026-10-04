@@ -2,13 +2,13 @@
 
 | Mode | Model | Prompt version | Commit | Date | Repeats | Model calls | Cost µUSD |
 |---|---|---|---|---|---|---|---|
-| fixtures | gemini-3.8-flash | 2026-10-04.2 | 10d29b1 | 2026-10-04T16:00:31+05:30 | 1 | 56 | 0 |
+| fixtures | gemini-3.8-flash | 2026-10-04.2 | 2142c95 | 2026-10-04T04:14:17+05:30 | 1 | 56 | 0 |
 
 Fixture mode: every model reply is canned (fixtures/ai_replies.json), so the run is deterministic and costs nothing. It shows the system end to end, not the model.
 
 ## Repeat 1: PASS
 
-21 of 21 steps passed; 57 of 57 checks.
+21 of 21 steps passed; 56 of 56 checks.
 
 | # | When | Who | Step | Check | Expected | Actual | Result |
 |---|---|---|---|---|---|---|---|
@@ -39,8 +39,7 @@ Fixture mode: every model reply is canned (fixtures/ai_replies.json), so the run
 | | | | | `agent-tool-refused` | true | true | PASS |
 | | | | | `agent-text-shown-as-text` | [true, false] | [true, false] | PASS |
 | | | | | `balance` | 62491000 | 62491000 | PASS |
-| 11 | Wed 14 Oct 16:00 | owner | Answers the agent's question about the ₹12,500 debit: the offered choice that says 'advance' (the fixture agent offers 'An advance to a worker') | `choice-pressed` | An advance to a worker | An advance to a worker | PASS |
-| | | | | `case-resolved` | RESOLVED | RESOLVED | PASS |
+| 11 | Wed 14 Oct 16:00 | owner | Answers the agent's question about RAMESH K: 'An advance to a worker' | `case-resolved` | RESOLVED | RESOLVED | PASS |
 | 12 | Wed 14 Oct 16:00 | owner | Explains the ₹15,000 debit: not a bill payment | `no-question-left-on-its-case` | 0 | 0 | PASS |
 | 13 | Thu 15 Oct 09:00 | owner | Thu 09:00: approves Thursday's payments; PAPER-001's vendor has a bank change pending | `refused-without-the-tick` | [409, true, "PLANNED"] | [409, true, "PLANNED"] | PASS |
 | | | | | `approved-with-the-tick` | [303, "PAYMENT_EXPECTED", "PAYMENT_EXPECTED", "PAYMENT_EXPECTED"] | [303, "PAYMENT_EXPECTED", "PAYMENT_EXPECTED", "PAYMENT_EXPECTED"] | PASS |
@@ -65,7 +64,7 @@ Fixture mode: every model reply is canned (fixtures/ai_replies.json), so the run
 | | | | | `balance` | 19691000 | 19691000 | PASS |
 | 21 | Sun 25 Oct 18:00 | owner | Sun 25 18:00: the end of the bad fortnight | `ledger-matches-the-bank` | [19691000, 19691000, "OK"] | [19691000, 19691000, "OK"] | PASS |
 | | | | | `bills` | {"PAPER-001": "PAID", "PFESI-OCT26": "PAID", "ELEC-OCT26": "PAID", "GST-OCT26": "PAID", "PRIME-001": "SPLIT", "PRIME-001 part 1": "PAID", "PRIME-001 part 2": "P | {"PAPER-001": "PAID", "PFESI-OCT26": "PAID", "ELEC-OCT26": "PAID", "GST-OCT26": "PAID", "PRIME-001": "SPLIT", "PRIME-001 part 1": "PAID", "PRIME-001 part 2": "P | PASS |
-| | | | | `unmatched-debits-all-explained` | [[59000, "CLOSED_BY_OWNER"], [1500000, "CLOSED_BY_OWNER"], [1250000, "RESOLVED"], [2500000, "CLOSED_BY_OWNER"]] | [[59000, "CLOSED_BY_OWNER"], [1500000, "CLOSED_BY_OWNER"], [1250000, "RESOLVED"], [2500000, "CLOSED_BY_OWNER"]] | PASS |
+| | | | | `unmatched-debits-all-explained` | [["SMS AND ACCOUNT CHARGES", "CLOSED_BY_OWNER"], ["ASHIRWAD PAPER", "CLOSED_BY_OWNER"], ["RAMESH K", "RESOLVED"], ["SHREE TRANSPORT", "CLOSED_BY_OWNER"]] | [["SMS AND ACCOUNT CHARGES", "CLOSED_BY_OWNER"], ["ASHIRWAD PAPER", "CLOSED_BY_OWNER"], ["RAMESH K", "RESOLVED"], ["SHREE TRANSPORT", "CLOSED_BY_OWNER"]] | PASS |
 | | | | | `nothing-waits-for-the-owner` | [] | [] | PASS |
 | | | | | `audit-trail-of-the-returned-payment` | ["PAYABLE_CREATED by owner", "PAYABLE_CONFIRMED by owner", "PAYABLE_PLANNED by planner", "PAYABLE_PAYMENT_EXPECTED by owner", "PAYABLE_PAID by reconciler", "PAY | ["PAYABLE_CREATED by owner", "PAYABLE_CONFIRMED by owner", "PAYABLE_PLANNED by planner", "PAYABLE_PAYMENT_EXPECTED by owner", "PAYABLE_PAID by reconciler", "PAY | PASS |
 | | | | | `owner-alerts-sent` | {"money_received": 1, "payment_failed": 1, "unexpected_debit": 4} | {"money_received": 1, "payment_failed": 1, "unexpected_debit": 4} | PASS |
@@ -99,7 +98,6 @@ Fixture mode: every model reply is canned (fixtures/ai_replies.json), so the run
 - **10. `agent-tool-refused`:** the scripted agent, obeying the email, tried a tool it does not have (fixture mode only)
 - **10. `agent-text-shown-as-text`:** the agent's summary reaches the page HTML-escaped: its <b> shows as text, never as markup
 - **10. `balance`:** 4,72,410 + 1,80,000 returned - 15,000 - 12,500
-- **11. `choice-pressed`:** the step's rule: the one offered choice containing 'advance'; a live agent words its own
 - **11. `case-resolved`:** the agent ran again with the answer and closed the case
 - **12. `no-question-left-on-its-case`:** the owner's explanation settles the case's explain_txn and agent questions together
 - **13. `refused-without-the-tick`:** a payment to a vendor whose bank details are changing needs the owner's tick that they checked the account

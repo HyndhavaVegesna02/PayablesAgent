@@ -5,8 +5,8 @@
     "model": "gemini-3.8-flash",
     "prompt_version": "2026-10-04.2",
     "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
-    "commit": "10d29b1",
-    "date": "2026-10-04T16:00:31+05:30",
+    "commit": "2142c95",
+    "date": "2026-10-04T04:14:17+05:30",
     "budget": null
   },
   "repeats": [
@@ -409,16 +409,9 @@
           "n": 11,
           "at": "Wed 14 Oct 16:00",
           "actor": "owner",
-          "action": "Answers the agent's question about the ₹12,500 debit: the offered choice that says 'advance' (the fixture agent offers 'An advance to a worker')",
+          "action": "Answers the agent's question about RAMESH K: 'An advance to a worker'",
           "error": null,
           "checks": [
-            {
-              "id": "choice-pressed",
-              "expected": "An advance to a worker",
-              "actual": "An advance to a worker",
-              "ok": true,
-              "why": "the step's rule: the one offered choice containing 'advance'; a live agent words its own"
-            },
             {
               "id": "case-resolved",
               "expected": "RESOLVED",
@@ -840,37 +833,37 @@
               "id": "unmatched-debits-all-explained",
               "expected": [
                 [
-                  59000,
+                  "SMS AND ACCOUNT CHARGES",
                   "CLOSED_BY_OWNER"
                 ],
                 [
-                  1500000,
+                  "ASHIRWAD PAPER",
                   "CLOSED_BY_OWNER"
                 ],
                 [
-                  1250000,
+                  "RAMESH K",
                   "RESOLVED"
                 ],
                 [
-                  2500000,
+                  "SHREE TRANSPORT",
                   "CLOSED_BY_OWNER"
                 ]
               ],
               "actual": [
                 [
-                  59000,
+                  "SMS AND ACCOUNT CHARGES",
                   "CLOSED_BY_OWNER"
                 ],
                 [
-                  1500000,
+                  "ASHIRWAD PAPER",
                   "CLOSED_BY_OWNER"
                 ],
                 [
-                  1250000,
+                  "RAMESH K",
                   "RESOLVED"
                 ],
                 [
-                  2500000,
+                  "SHREE TRANSPORT",
                   "CLOSED_BY_OWNER"
                 ]
               ],
