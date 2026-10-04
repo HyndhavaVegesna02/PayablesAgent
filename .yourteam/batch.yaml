@@ -4,7 +4,7 @@ status: active      # none | active | review | closed | aborted
 goal: "The PO's batch 10 verdict: the voice amount check compares parsed paise, never a text substring (CHG-037); the ablation report's header says every harness's owner types the same values (CHG-038)."
 branch: batch-11
 start_tag: null
-started: "2026-10-04T10:05:00+05:30"
+started: "2026-10-04T09:55:00+05:30"
 interrupts: []
 changes:
   - id: CHG-037
@@ -20,8 +20,8 @@ changes:
   - id: CHG-038
     lane: direct
     board: in_progress
-    start_commit: null
+    start_commit: 4ed0587
     blocked_question: null
     gate_evidence: []
-    prepatch: null
+    prepatch: "PASS at 4ed0587: the header test fails by assertion on the old tree"
     notes_resolved: false
