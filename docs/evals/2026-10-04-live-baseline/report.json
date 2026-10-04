@@ -1,0 +1,3441 @@
+{
+  "meta": {
+    "label": "baseline",
+    "mode": "live",
+    "model": "gemini-3.8-flash",
+    "prompt_version": "2026-10-04.2",
+    "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
+    "variant": null,
+    "prompt_overrides": null,
+    "commit": "aba59bd",
+    "date": "2026-10-04T08:13:22+05:30",
+    "runs_per_scenario": 5,
+    "status": "ABORTED",
+    "stopped_because": "rate limited: a 429 outlasted 5 backoffs",
+    "budget": {
+      "calls": 254,
+      "micro_usd": 805565,
+      "rate_limited": 6,
+      "caps": {
+        "calls": 600,
+        "micro_usd": 5000000
+      },
+      "stopped": "rate limited: a 429 outlasted 5 backoffs"
+    }
+  },
+  "totals": {
+    "scenarios": 8,
+    "runs": 36,
+    "passed": 34,
+    "errored": 1,
+    "success_rate": 0.971,
+    "scenarios_all_runs_passed": 6,
+    "path": [
+      5,
+      5
+    ],
+    "ai_calls": 249,
+    "cost_micro_usd": 805565
+  },
+  "scenarios": [
+    {
+      "scenario": "01-debit-alert-for-a-planned-payment",
+      "title": "Bank debit alert for a planned payment",
+      "passes_when": "Transaction extracted and matched; payment moves to PAID",
+      "runs": 5,
+      "passed": 5,
+      "failed": 0,
+      "errored": 0,
+      "success_rate": 1.0,
+      "path": [
+        0,
+        0
+      ],
+      "path_failures": [],
+      "spread": [
+        1.0,
+        1.0
+      ],
+      "worst": {
+        "run": 1,
+        "status": "PASSED",
+        "component": null,
+        "error": null,
+        "failed_checks": []
+      },
+      "components_failed": [],
+      "mean": {
+        "ai_calls": 4.0,
+        "tool_calls": 0.0,
+        "refused": 0.0,
+        "loops": 0.0,
+        "wasted_calls": 0.0,
+        "retries": 0.0,
+        "schema_failures": 0.0,
+        "invalid_candidates": 0.0
+      },
+      "escalations": [],
+      "tokens_mean": {
+        "input": 1483.0,
+        "output": 276.4,
+        "thoughts": 238.4
+      },
+      "cost_micro_usd": {
+        "mean": 3044.0,
+        "max": 3517
+      }
+    },
+    {
+      "scenario": "02-password-protected-statement",
+      "title": "Password-protected statement PDF",
+      "passes_when": "Unlocked, rows extracted, statement arithmetic passes",
+      "runs": 5,
+      "passed": 5,
+      "failed": 0,
+      "errored": 0,
+      "success_rate": 1.0,
+      "path": [
+        0,
+        0
+      ],
+      "path_failures": [],
+      "spread": [
+        1.0,
+        1.0
+      ],
+      "worst": {
+        "run": 1,
+        "status": "PASSED",
+        "component": null,
+        "error": null,
+        "failed_checks": []
+      },
+      "components_failed": [],
+      "mean": {
+        "ai_calls": 13.4,
+        "tool_calls": 10.2,
+        "refused": 0.0,
+        "loops": 0.0,
+        "wasted_calls": 0.0,
+        "retries": 0.8,
+        "schema_failures": 0.0,
+        "invalid_candidates": 0.0
+      },
+      "escalations": [
+        "stake_above_escalation_amount"
+      ],
+      "tokens_mean": {
+        "input": 16569.0,
+        "output": 1607.8,
+        "thoughts": 14068.2
+      },
+      "cost_micro_usd": {
+        "mean": 71216.2,
+        "max": 101027
+      }
+    },
+    {
+      "scenario": "03-handwritten-bill-photo",
+      "title": "Handwritten bill photo",
+      "passes_when": "Fields extracted; GSTIN and totals checked",
+      "runs": 5,
+      "passed": 5,
+      "failed": 0,
+      "errored": 0,
+      "success_rate": 1.0,
+      "path": [
+        0,
+        0
+      ],
+      "path_failures": [],
+      "spread": [
+        1.0,
+        1.0
+      ],
+      "worst": {
+        "run": 1,
+        "status": "PASSED",
+        "component": null,
+        "error": null,
+        "failed_checks": []
+      },
+      "components_failed": [],
+      "mean": {
+        "ai_calls": 2.0,
+        "tool_calls": 0.0,
+        "refused": 0.0,
+        "loops": 0.0,
+        "wasted_calls": 0.0,
+        "retries": 0.0,
+        "schema_failures": 0.0,
+        "invalid_candidates": 0.0
+      },
+      "escalations": [],
+      "tokens_mean": {
+        "input": 2964.0,
+        "output": 231.4,
+        "thoughts": 452.0
+      },
+      "cost_micro_usd": {
+        "mean": 4786.4,
+        "max": 5388
+      }
+    },
+    {
+      "scenario": "04-hinglish-voice-note",
+      "title": "Hinglish voice note saying \"dedh lakh\"",
+      "passes_when": "Amount extracted as \u20b91,50,000 and shown with the transcript",
+      "runs": 5,
+      "passed": 4,
+      "failed": 1,
+      "errored": 0,
+      "success_rate": 0.8,
+      "path": [
+        0,
+        0
+      ],
+      "path_failures": [],
+      "spread": [
+        0.4,
+        1.0
+      ],
+      "worst": {
+        "run": 4,
+        "status": "FAILED",
+        "component": "extract",
+        "error": "the owner's form refused entry 1: amount: Enter the amount in rupees, like 1,20,000 or Rs.1,20,000.",
+        "failed_checks": [
+          {
+            "id": "bill-due-as-the-owner-said",
+            "component": "validate",
+            "got": null,
+            "want": "2026-11-05"
+          },
+          {
+            "id": "amount-is-150000",
+            "component": "extract",
+            "got": null,
+            "want": 15000000
+          },
+          {
+            "id": "amount-checked-against-the-words",
+            "component": "validate",
+            "got": "failed: 'dedh lakh rup' is not an amount this app can read from what was said: type it in",
+            "want": "passed"
+          }
+        ]
+      },
+      "components_failed": [
+        "extract"
+      ],
+      "mean": {
+        "ai_calls": 1.0,
+        "tool_calls": 0.0,
+        "refused": 0.0,
+        "loops": 0.0,
+        "wasted_calls": 0.0,
+        "retries": 0.0,
+        "schema_failures": 0.0,
+        "invalid_candidates": 0.0
+      },
+      "escalations": [],
+      "tokens_mean": {
+        "input": 498.0,
+        "output": 75.6,
+        "thoughts": 228.8
+      },
+      "cost_micro_usd": {
+        "mean": 1515.4,
+        "max": 2046
+      }
+    },
+    {
+      "scenario": "05-same-invoice-by-email-and-photo",
+      "title": "Same invoice by email and by photo",
+      "passes_when": "One payable, not two",
+      "runs": 5,
+      "passed": 5,
+      "failed": 0,
+      "errored": 0,
+      "success_rate": 1.0,
+      "path": [
+        0,
+        0
+      ],
+      "path_failures": [],
+      "spread": [
+        1.0,
+        1.0
+      ],
+      "worst": {
+        "run": 1,
+        "status": "PASSED",
+        "component": null,
+        "error": null,
+        "failed_checks": []
+      },
+      "components_failed": [],
+      "mean": {
+        "ai_calls": 4.0,
+        "tool_calls": 0.0,
+        "refused": 0.0,
+        "loops": 0.0,
+        "wasted_calls": 1.0,
+        "retries": 0.0,
+        "schema_failures": 0.0,
+        "invalid_candidates": 1.0
+      },
+      "escalations": [],
+      "tokens_mean": {
+        "input": 5028.0,
+        "output": 713.2,
+        "thoughts": 1060.4
+      },
+      "cost_micro_usd": {
+        "mean": 10422.8,
+        "max": 12243
+      }
+    },
+    {
+      "scenario": "06-payment-returned-by-the-bank",
+      "title": "Payment returned by the bank",
+      "passes_when": "Bill REOPENED, plan rebuilt, owner told",
+      "runs": 5,
+      "passed": 5,
+      "failed": 0,
+      "errored": 0,
+      "success_rate": 1.0,
+      "path": [
+        0,
+        0
+      ],
+      "path_failures": [],
+      "spread": [
+        1.0,
+        1.0
+      ],
+      "worst": {
+        "run": 1,
+        "status": "PASSED",
+        "component": null,
+        "error": null,
+        "failed_checks": []
+      },
+      "components_failed": [],
+      "mean": {
+        "ai_calls": 7.0,
+        "tool_calls": 0.0,
+        "refused": 0.0,
+        "loops": 0.0,
+        "wasted_calls": 0.0,
+        "retries": 0.0,
+        "schema_failures": 0.0,
+        "invalid_candidates": 0.0
+      },
+      "escalations": [],
+      "tokens_mean": {
+        "input": 2735.0,
+        "output": 522.0,
+        "thoughts": 456.2
+      },
+      "cost_micro_usd": {
+        "mean": 5722.4,
+        "max": 6371
+      }
+    },
+    {
+      "scenario": "07-missed-alert-causes-drift",
+      "title": "Missed alert causes drift",
+      "passes_when": "Gap found, transaction recovered from Gmail, gap closed",
+      "runs": 5,
+      "passed": 5,
+      "failed": 0,
+      "errored": 0,
+      "success_rate": 1.0,
+      "path": [
+        5,
+        5
+      ],
+      "path_failures": [],
+      "spread": [
+        1.0,
+        1.0
+      ],
+      "worst": {
+        "run": 1,
+        "status": "PASSED",
+        "component": null,
+        "error": null,
+        "failed_checks": []
+      },
+      "components_failed": [],
+      "mean": {
+        "ai_calls": 16.8,
+        "tool_calls": 11.8,
+        "refused": 0.0,
+        "loops": 0.0,
+        "wasted_calls": 0.0,
+        "retries": 0.0,
+        "schema_failures": 0.0,
+        "invalid_candidates": 0.0
+      },
+      "escalations": [],
+      "tokens_mean": {
+        "input": 22515.2,
+        "output": 2057.8,
+        "thoughts": 9625.6
+      },
+      "cost_micro_usd": {
+        "mean": 60705.2,
+        "max": 80636
+      }
+    },
+    {
+      "scenario": "08-drift-with-no-explanation",
+      "title": "Drift with no explanation",
+      "passes_when": "Owner asked; planner uses the lower balance meanwhile",
+      "runs": 1,
+      "passed": 0,
+      "failed": 0,
+      "errored": 1,
+      "success_rate": null,
+      "path": [
+        0,
+        0
+      ],
+      "path_failures": [],
+      "spread": null,
+      "worst": null,
+      "components_failed": [],
+      "mean": {
+        "ai_calls": 0.0,
+        "tool_calls": 0.0,
+        "refused": 0.0,
+        "loops": 0.0,
+        "wasted_calls": 0.0,
+        "retries": 0.0,
+        "schema_failures": 0.0,
+        "invalid_candidates": 0.0
+      },
+      "escalations": [],
+      "tokens_mean": {
+        "input": 0.0,
+        "output": 0.0,
+        "thoughts": 0.0
+      },
+      "cost_micro_usd": {
+        "mean": 0.0,
+        "max": 0
+      }
+    }
+  ],
+  "runs": [
+    {
+      "scenario": "01-debit-alert-for-a-planned-payment",
+      "run": 1,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "sorted-as-alert",
+          "component": "sort",
+          "ok": true,
+          "got": "bank_alert",
+          "want": "bank_alert",
+          "level": "end_to_end"
+        },
+        {
+          "id": "amount-and-date-read",
+          "component": "extract",
+          "ok": true,
+          "got": "18000000 2026-10-12",
+          "want": "18000000 2026-10-12",
+          "level": "end_to_end"
+        },
+        {
+          "id": "alert-passed-its-checks",
+          "component": "validate",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "debit-matched",
+          "component": "reconcile",
+          "ok": true,
+          "got": "MATCHED",
+          "want": "MATCHED",
+          "level": "end_to_end"
+        },
+        {
+          "id": "bill-paid",
+          "component": "reconcile",
+          "ok": true,
+          "got": "PAID",
+          "want": "PAID",
+          "level": "end_to_end"
+        },
+        {
+          "id": "plan-rebuilt-without-the-paid-bill",
+          "component": "planner",
+          "ok": true,
+          "got": 0,
+          "want": 0,
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 4,
+        "ai_calls_by_job": {
+          "explain": 2,
+          "sort": 1,
+          "extract:bank_alert": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 1483,
+          "output": 274,
+          "thoughts": 262
+        },
+        "cost_micro_usd": 3123
+      },
+      "outcomes": [
+        [
+          "paper-bill-paid",
+          true,
+          "PAID"
+        ],
+        [
+          "one-180000-debit-recorded",
+          true,
+          1
+        ]
+      ]
+    },
+    {
+      "scenario": "01-debit-alert-for-a-planned-payment",
+      "run": 2,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "sorted-as-alert",
+          "component": "sort",
+          "ok": true,
+          "got": "bank_alert",
+          "want": "bank_alert",
+          "level": "end_to_end"
+        },
+        {
+          "id": "amount-and-date-read",
+          "component": "extract",
+          "ok": true,
+          "got": "18000000 2026-10-12",
+          "want": "18000000 2026-10-12",
+          "level": "end_to_end"
+        },
+        {
+          "id": "alert-passed-its-checks",
+          "component": "validate",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "debit-matched",
+          "component": "reconcile",
+          "ok": true,
+          "got": "MATCHED",
+          "want": "MATCHED",
+          "level": "end_to_end"
+        },
+        {
+          "id": "bill-paid",
+          "component": "reconcile",
+          "ok": true,
+          "got": "PAID",
+          "want": "PAID",
+          "level": "end_to_end"
+        },
+        {
+          "id": "plan-rebuilt-without-the-paid-bill",
+          "component": "planner",
+          "ok": true,
+          "got": 0,
+          "want": 0,
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 4,
+        "ai_calls_by_job": {
+          "explain": 2,
+          "sort": 1,
+          "extract:bank_alert": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 1483,
+          "output": 285,
+          "thoughts": 152
+        },
+        "cost_micro_usd": 2753
+      },
+      "outcomes": [
+        [
+          "paper-bill-paid",
+          true,
+          "PAID"
+        ],
+        [
+          "one-180000-debit-recorded",
+          true,
+          1
+        ]
+      ]
+    },
+    {
+      "scenario": "01-debit-alert-for-a-planned-payment",
+      "run": 3,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "sorted-as-alert",
+          "component": "sort",
+          "ok": true,
+          "got": "bank_alert",
+          "want": "bank_alert",
+          "level": "end_to_end"
+        },
+        {
+          "id": "amount-and-date-read",
+          "component": "extract",
+          "ok": true,
+          "got": "18000000 2026-10-12",
+          "want": "18000000 2026-10-12",
+          "level": "end_to_end"
+        },
+        {
+          "id": "alert-passed-its-checks",
+          "component": "validate",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "debit-matched",
+          "component": "reconcile",
+          "ok": true,
+          "got": "MATCHED",
+          "want": "MATCHED",
+          "level": "end_to_end"
+        },
+        {
+          "id": "bill-paid",
+          "component": "reconcile",
+          "ok": true,
+          "got": "PAID",
+          "want": "PAID",
+          "level": "end_to_end"
+        },
+        {
+          "id": "plan-rebuilt-without-the-paid-bill",
+          "component": "planner",
+          "ok": true,
+          "got": 0,
+          "want": 0,
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 4,
+        "ai_calls_by_job": {
+          "explain": 2,
+          "sort": 1,
+          "extract:bank_alert": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 1483,
+          "output": 261,
+          "thoughts": 380
+        },
+        "cost_micro_usd": 3517
+      },
+      "outcomes": [
+        [
+          "paper-bill-paid",
+          true,
+          "PAID"
+        ],
+        [
+          "one-180000-debit-recorded",
+          true,
+          1
+        ]
+      ]
+    },
+    {
+      "scenario": "01-debit-alert-for-a-planned-payment",
+      "run": 4,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "sorted-as-alert",
+          "component": "sort",
+          "ok": true,
+          "got": "bank_alert",
+          "want": "bank_alert",
+          "level": "end_to_end"
+        },
+        {
+          "id": "amount-and-date-read",
+          "component": "extract",
+          "ok": true,
+          "got": "18000000 2026-10-12",
+          "want": "18000000 2026-10-12",
+          "level": "end_to_end"
+        },
+        {
+          "id": "alert-passed-its-checks",
+          "component": "validate",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "debit-matched",
+          "component": "reconcile",
+          "ok": true,
+          "got": "MATCHED",
+          "want": "MATCHED",
+          "level": "end_to_end"
+        },
+        {
+          "id": "bill-paid",
+          "component": "reconcile",
+          "ok": true,
+          "got": "PAID",
+          "want": "PAID",
+          "level": "end_to_end"
+        },
+        {
+          "id": "plan-rebuilt-without-the-paid-bill",
+          "component": "planner",
+          "ok": true,
+          "got": 0,
+          "want": 0,
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 4,
+        "ai_calls_by_job": {
+          "explain": 2,
+          "sort": 1,
+          "extract:bank_alert": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 1483,
+          "output": 271,
+          "thoughts": 159
+        },
+        "cost_micro_usd": 2726
+      },
+      "outcomes": [
+        [
+          "paper-bill-paid",
+          true,
+          "PAID"
+        ],
+        [
+          "one-180000-debit-recorded",
+          true,
+          1
+        ]
+      ]
+    },
+    {
+      "scenario": "01-debit-alert-for-a-planned-payment",
+      "run": 5,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "sorted-as-alert",
+          "component": "sort",
+          "ok": true,
+          "got": "bank_alert",
+          "want": "bank_alert",
+          "level": "end_to_end"
+        },
+        {
+          "id": "amount-and-date-read",
+          "component": "extract",
+          "ok": true,
+          "got": "18000000 2026-10-12",
+          "want": "18000000 2026-10-12",
+          "level": "end_to_end"
+        },
+        {
+          "id": "alert-passed-its-checks",
+          "component": "validate",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "debit-matched",
+          "component": "reconcile",
+          "ok": true,
+          "got": "MATCHED",
+          "want": "MATCHED",
+          "level": "end_to_end"
+        },
+        {
+          "id": "bill-paid",
+          "component": "reconcile",
+          "ok": true,
+          "got": "PAID",
+          "want": "PAID",
+          "level": "end_to_end"
+        },
+        {
+          "id": "plan-rebuilt-without-the-paid-bill",
+          "component": "planner",
+          "ok": true,
+          "got": 0,
+          "want": 0,
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 4,
+        "ai_calls_by_job": {
+          "explain": 2,
+          "sort": 1,
+          "extract:bank_alert": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 1483,
+          "output": 291,
+          "thoughts": 239
+        },
+        "cost_micro_usd": 3101
+      },
+      "outcomes": [
+        [
+          "paper-bill-paid",
+          true,
+          "PAID"
+        ],
+        [
+          "one-180000-debit-recorded",
+          true,
+          1
+        ]
+      ]
+    },
+    {
+      "scenario": "02-password-protected-statement",
+      "run": 1,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "sorted-as-statement",
+          "component": "sort",
+          "ok": true,
+          "got": "statement",
+          "want": "statement",
+          "level": "end_to_end"
+        },
+        {
+          "id": "rows-read",
+          "component": "extract",
+          "ok": true,
+          "got": 3,
+          "want": 3,
+          "level": "end_to_end"
+        },
+        {
+          "id": "statement-arithmetic-passes",
+          "component": "validate",
+          "ok": true,
+          "got": "passed",
+          "want": "passed",
+          "level": "end_to_end"
+        },
+        {
+          "id": "ledger-agrees-with-the-bank",
+          "component": "reconcile",
+          "ok": true,
+          "got": "47241000 OK",
+          "want": "47241000 OK",
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 12,
+        "ai_calls_by_job": {
+          "exception": 10,
+          "sort": 1,
+          "extract:statement": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 10,
+        "tool_calls_by_tool": {
+          "search_gmail": 5,
+          "get_ledger": 3,
+          "ask_owner": 2
+        },
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [
+          "stake_above_escalation_amount"
+        ],
+        "tokens": {
+          "input": 16002,
+          "output": 1562,
+          "thoughts": 22177
+        },
+        "cost_micro_usd": 101027
+      },
+      "outcomes": [
+        [
+          "three-statement-rows-recorded",
+          true,
+          3
+        ]
+      ]
+    },
+    {
+      "scenario": "02-password-protected-statement",
+      "run": 2,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "sorted-as-statement",
+          "component": "sort",
+          "ok": true,
+          "got": "statement",
+          "want": "statement",
+          "level": "end_to_end"
+        },
+        {
+          "id": "rows-read",
+          "component": "extract",
+          "ok": true,
+          "got": 3,
+          "want": 3,
+          "level": "end_to_end"
+        },
+        {
+          "id": "statement-arithmetic-passes",
+          "component": "validate",
+          "ok": true,
+          "got": "passed",
+          "want": "passed",
+          "level": "end_to_end"
+        },
+        {
+          "id": "ledger-agrees-with-the-bank",
+          "component": "reconcile",
+          "ok": true,
+          "got": "47241000 OK",
+          "want": "47241000 OK",
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 12,
+        "ai_calls_by_job": {
+          "exception": 10,
+          "sort": 1,
+          "extract:statement": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 10,
+        "tool_calls_by_tool": {
+          "search_gmail": 6,
+          "get_ledger": 2,
+          "ask_owner": 2
+        },
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [
+          "stake_above_escalation_amount"
+        ],
+        "tokens": {
+          "input": 15964,
+          "output": 1636,
+          "thoughts": 9099
+        },
+        "cost_micro_usd": 52233
+      },
+      "outcomes": [
+        [
+          "three-statement-rows-recorded",
+          true,
+          3
+        ]
+      ]
+    },
+    {
+      "scenario": "02-password-protected-statement",
+      "run": 3,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "sorted-as-statement",
+          "component": "sort",
+          "ok": true,
+          "got": "statement",
+          "want": "statement",
+          "level": "end_to_end"
+        },
+        {
+          "id": "rows-read",
+          "component": "extract",
+          "ok": true,
+          "got": 3,
+          "want": 3,
+          "level": "end_to_end"
+        },
+        {
+          "id": "statement-arithmetic-passes",
+          "component": "validate",
+          "ok": true,
+          "got": "passed",
+          "want": "passed",
+          "level": "end_to_end"
+        },
+        {
+          "id": "ledger-agrees-with-the-bank",
+          "component": "reconcile",
+          "ok": true,
+          "got": "47241000 OK",
+          "want": "47241000 OK",
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 12,
+        "ai_calls_by_job": {
+          "exception": 10,
+          "sort": 1,
+          "extract:statement": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 10,
+        "tool_calls_by_tool": {
+          "search_gmail": 5,
+          "get_ledger": 3,
+          "ask_owner": 2
+        },
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [
+          "stake_above_escalation_amount"
+        ],
+        "tokens": {
+          "input": 16106,
+          "output": 1506,
+          "thoughts": 8459
+        },
+        "cost_micro_usd": 49453
+      },
+      "outcomes": [
+        [
+          "three-statement-rows-recorded",
+          true,
+          3
+        ]
+      ]
+    },
+    {
+      "scenario": "02-password-protected-statement",
+      "run": 4,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "sorted-as-statement",
+          "component": "sort",
+          "ok": true,
+          "got": "statement",
+          "want": "statement",
+          "level": "end_to_end"
+        },
+        {
+          "id": "rows-read",
+          "component": "extract",
+          "ok": true,
+          "got": 3,
+          "want": 3,
+          "level": "end_to_end"
+        },
+        {
+          "id": "statement-arithmetic-passes",
+          "component": "validate",
+          "ok": true,
+          "got": "passed",
+          "want": "passed",
+          "level": "end_to_end"
+        },
+        {
+          "id": "ledger-agrees-with-the-bank",
+          "component": "reconcile",
+          "ok": true,
+          "got": "47241000 OK",
+          "want": "47241000 OK",
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 18,
+        "ai_calls_by_job": {
+          "exception": 16,
+          "sort": 1,
+          "extract:statement": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 10,
+        "tool_calls_by_tool": {
+          "search_gmail": 5,
+          "get_ledger": 4,
+          "ask_owner": 1
+        },
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 4,
+        "dead_jobs": 1,
+        "escalations": [
+          "stake_above_escalation_amount"
+        ],
+        "tokens": {
+          "input": 17720,
+          "output": 1645,
+          "thoughts": 14132
+        },
+        "cost_micro_usd": 72459
+      },
+      "outcomes": [
+        [
+          "three-statement-rows-recorded",
+          true,
+          3
+        ]
+      ]
+    },
+    {
+      "scenario": "02-password-protected-statement",
+      "run": 5,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "sorted-as-statement",
+          "component": "sort",
+          "ok": true,
+          "got": "statement",
+          "want": "statement",
+          "level": "end_to_end"
+        },
+        {
+          "id": "rows-read",
+          "component": "extract",
+          "ok": true,
+          "got": 3,
+          "want": 3,
+          "level": "end_to_end"
+        },
+        {
+          "id": "statement-arithmetic-passes",
+          "component": "validate",
+          "ok": true,
+          "got": "passed",
+          "want": "passed",
+          "level": "end_to_end"
+        },
+        {
+          "id": "ledger-agrees-with-the-bank",
+          "component": "reconcile",
+          "ok": true,
+          "got": "47241000 OK",
+          "want": "47241000 OK",
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 13,
+        "ai_calls_by_job": {
+          "exception": 11,
+          "sort": 1,
+          "extract:statement": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 11,
+        "tool_calls_by_tool": {
+          "search_gmail": 6,
+          "get_ledger": 3,
+          "ask_owner": 2
+        },
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [
+          "stake_above_escalation_amount"
+        ],
+        "tokens": {
+          "input": 17053,
+          "output": 1690,
+          "thoughts": 16474
+        },
+        "cost_micro_usd": 80909
+      },
+      "outcomes": [
+        [
+          "three-statement-rows-recorded",
+          true,
+          3
+        ]
+      ]
+    },
+    {
+      "scenario": "03-handwritten-bill-photo",
+      "run": 1,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "sorted-as-invoice",
+          "component": "sort",
+          "ok": true,
+          "got": "invoice",
+          "want": "invoice",
+          "level": "end_to_end"
+        },
+        {
+          "id": "fields-read",
+          "component": "extract",
+          "ok": true,
+          "got": "418 1239000 Shree Ganesh Hardware",
+          "want": "418 1239000 Shree Ganesh Hardware",
+          "level": "end_to_end"
+        },
+        {
+          "id": "gstin-checked",
+          "component": "validate",
+          "ok": true,
+          "got": "passed",
+          "want": "passed",
+          "level": "end_to_end"
+        },
+        {
+          "id": "totals-checked",
+          "component": "validate",
+          "ok": true,
+          "got": "passed",
+          "want": "passed",
+          "level": "end_to_end"
+        },
+        {
+          "id": "bill-in-the-plan",
+          "component": "planner",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 2,
+        "ai_calls_by_job": {
+          "sort": 1,
+          "extract:invoice": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 2964,
+          "output": 218,
+          "thoughts": 544
+        },
+        "cost_micro_usd": 5081
+      },
+      "outcomes": [
+        [
+          "bill-418-recorded-once",
+          true,
+          1
+        ]
+      ]
+    },
+    {
+      "scenario": "03-handwritten-bill-photo",
+      "run": 2,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "sorted-as-invoice",
+          "component": "sort",
+          "ok": true,
+          "got": "invoice",
+          "want": "invoice",
+          "level": "end_to_end"
+        },
+        {
+          "id": "fields-read",
+          "component": "extract",
+          "ok": true,
+          "got": "418 1239000 Shree Ganesh Hardware",
+          "want": "418 1239000 Shree Ganesh Hardware",
+          "level": "end_to_end"
+        },
+        {
+          "id": "gstin-checked",
+          "component": "validate",
+          "ok": true,
+          "got": "passed",
+          "want": "passed",
+          "level": "end_to_end"
+        },
+        {
+          "id": "totals-checked",
+          "component": "validate",
+          "ok": true,
+          "got": "passed",
+          "want": "passed",
+          "level": "end_to_end"
+        },
+        {
+          "id": "bill-in-the-plan",
+          "component": "planner",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 2,
+        "ai_calls_by_job": {
+          "sort": 1,
+          "extract:invoice": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 2964,
+          "output": 219,
+          "thoughts": 486
+        },
+        "cost_micro_usd": 4868
+      },
+      "outcomes": [
+        [
+          "bill-418-recorded-once",
+          true,
+          1
+        ]
+      ]
+    },
+    {
+      "scenario": "03-handwritten-bill-photo",
+      "run": 3,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "sorted-as-invoice",
+          "component": "sort",
+          "ok": true,
+          "got": "invoice",
+          "want": "invoice",
+          "level": "end_to_end"
+        },
+        {
+          "id": "fields-read",
+          "component": "extract",
+          "ok": true,
+          "got": "418 1239000 Shree Ganesh Hardware",
+          "want": "418 1239000 Shree Ganesh Hardware",
+          "level": "end_to_end"
+        },
+        {
+          "id": "gstin-checked",
+          "component": "validate",
+          "ok": true,
+          "got": "passed",
+          "want": "passed",
+          "level": "end_to_end"
+        },
+        {
+          "id": "totals-checked",
+          "component": "validate",
+          "ok": true,
+          "got": "passed",
+          "want": "passed",
+          "level": "end_to_end"
+        },
+        {
+          "id": "bill-in-the-plan",
+          "component": "planner",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 2,
+        "ai_calls_by_job": {
+          "sort": 1,
+          "extract:invoice": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 2964,
+          "output": 209,
+          "thoughts": 375
+        },
+        "cost_micro_usd": 4414
+      },
+      "outcomes": [
+        [
+          "bill-418-recorded-once",
+          true,
+          1
+        ]
+      ]
+    },
+    {
+      "scenario": "03-handwritten-bill-photo",
+      "run": 4,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "sorted-as-invoice",
+          "component": "sort",
+          "ok": true,
+          "got": "invoice",
+          "want": "invoice",
+          "level": "end_to_end"
+        },
+        {
+          "id": "fields-read",
+          "component": "extract",
+          "ok": true,
+          "got": "418 1239000 Shree Ganesh Hardware",
+          "want": "418 1239000 Shree Ganesh Hardware",
+          "level": "end_to_end"
+        },
+        {
+          "id": "gstin-checked",
+          "component": "validate",
+          "ok": true,
+          "got": "passed",
+          "want": "passed",
+          "level": "end_to_end"
+        },
+        {
+          "id": "totals-checked",
+          "component": "validate",
+          "ok": true,
+          "got": "passed",
+          "want": "passed",
+          "level": "end_to_end"
+        },
+        {
+          "id": "bill-in-the-plan",
+          "component": "planner",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 2,
+        "ai_calls_by_job": {
+          "sort": 1,
+          "extract:invoice": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 2964,
+          "output": 297,
+          "thoughts": 547
+        },
+        "cost_micro_usd": 5388
+      },
+      "outcomes": [
+        [
+          "bill-418-recorded-once",
+          true,
+          1
+        ]
+      ]
+    },
+    {
+      "scenario": "03-handwritten-bill-photo",
+      "run": 5,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "sorted-as-invoice",
+          "component": "sort",
+          "ok": true,
+          "got": "invoice",
+          "want": "invoice",
+          "level": "end_to_end"
+        },
+        {
+          "id": "fields-read",
+          "component": "extract",
+          "ok": true,
+          "got": "418 1239000 Shree Ganesh Hardware",
+          "want": "418 1239000 Shree Ganesh Hardware",
+          "level": "end_to_end"
+        },
+        {
+          "id": "gstin-checked",
+          "component": "validate",
+          "ok": true,
+          "got": "passed",
+          "want": "passed",
+          "level": "end_to_end"
+        },
+        {
+          "id": "totals-checked",
+          "component": "validate",
+          "ok": true,
+          "got": "passed",
+          "want": "passed",
+          "level": "end_to_end"
+        },
+        {
+          "id": "bill-in-the-plan",
+          "component": "planner",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 2,
+        "ai_calls_by_job": {
+          "sort": 1,
+          "extract:invoice": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 2964,
+          "output": 214,
+          "thoughts": 308
+        },
+        "cost_micro_usd": 4181
+      },
+      "outcomes": [
+        [
+          "bill-418-recorded-once",
+          true,
+          1
+        ]
+      ]
+    },
+    {
+      "scenario": "04-hinglish-voice-note",
+      "run": 1,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "missing-due-date-flagged-not-guessed",
+          "component": "extract",
+          "ok": true,
+          "got": "failed: no due date was given: fill it in",
+          "want": "failed: no due date was given: fill it in",
+          "level": "end_to_end"
+        },
+        {
+          "id": "bill-due-as-the-owner-said",
+          "component": "validate",
+          "ok": true,
+          "got": "2026-11-05",
+          "want": "2026-11-05",
+          "level": "end_to_end"
+        },
+        {
+          "id": "amount-is-150000",
+          "component": "extract",
+          "ok": true,
+          "got": 15000000,
+          "want": 15000000,
+          "level": "end_to_end"
+        },
+        {
+          "id": "transcript-kept-for-the-owner",
+          "component": "extract",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "amount-checked-against-the-words",
+          "component": "validate",
+          "ok": true,
+          "got": "passed",
+          "want": "passed",
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 1,
+        "ai_calls_by_job": {
+          "extract:voice_note": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 498,
+          "output": 76,
+          "thoughts": 165
+        },
+        "cost_micro_usd": 1278
+      },
+      "outcomes": [
+        [
+          "bill-150000-recorded",
+          true,
+          1
+        ]
+      ]
+    },
+    {
+      "scenario": "04-hinglish-voice-note",
+      "run": 2,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "missing-due-date-flagged-not-guessed",
+          "component": "extract",
+          "ok": true,
+          "got": "failed: no due date was given: fill it in",
+          "want": "failed: no due date was given: fill it in",
+          "level": "end_to_end"
+        },
+        {
+          "id": "bill-due-as-the-owner-said",
+          "component": "validate",
+          "ok": true,
+          "got": "2026-11-05",
+          "want": "2026-11-05",
+          "level": "end_to_end"
+        },
+        {
+          "id": "amount-is-150000",
+          "component": "extract",
+          "ok": true,
+          "got": 15000000,
+          "want": 15000000,
+          "level": "end_to_end"
+        },
+        {
+          "id": "transcript-kept-for-the-owner",
+          "component": "extract",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "amount-checked-against-the-words",
+          "component": "validate",
+          "ok": true,
+          "got": "passed",
+          "want": "passed",
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 1,
+        "ai_calls_by_job": {
+          "extract:voice_note": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 498,
+          "output": 76,
+          "thoughts": 370
+        },
+        "cost_micro_usd": 2046
+      },
+      "outcomes": [
+        [
+          "bill-150000-recorded",
+          true,
+          1
+        ]
+      ]
+    },
+    {
+      "scenario": "04-hinglish-voice-note",
+      "run": 3,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "missing-due-date-flagged-not-guessed",
+          "component": "extract",
+          "ok": true,
+          "got": "failed: no due date was given: fill it in",
+          "want": "failed: no due date was given: fill it in",
+          "level": "end_to_end"
+        },
+        {
+          "id": "bill-due-as-the-owner-said",
+          "component": "validate",
+          "ok": true,
+          "got": "2026-11-05",
+          "want": "2026-11-05",
+          "level": "end_to_end"
+        },
+        {
+          "id": "amount-is-150000",
+          "component": "extract",
+          "ok": true,
+          "got": 15000000,
+          "want": 15000000,
+          "level": "end_to_end"
+        },
+        {
+          "id": "transcript-kept-for-the-owner",
+          "component": "extract",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "amount-checked-against-the-words",
+          "component": "validate",
+          "ok": true,
+          "got": "passed",
+          "want": "passed",
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 1,
+        "ai_calls_by_job": {
+          "extract:voice_note": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 498,
+          "output": 76,
+          "thoughts": 177
+        },
+        "cost_micro_usd": 1323
+      },
+      "outcomes": [
+        [
+          "bill-150000-recorded",
+          true,
+          1
+        ]
+      ]
+    },
+    {
+      "scenario": "04-hinglish-voice-note",
+      "run": 4,
+      "status": "FAILED",
+      "checks": [
+        {
+          "id": "missing-due-date-flagged-not-guessed",
+          "component": "extract",
+          "ok": true,
+          "got": "failed: no due date was given: fill it in",
+          "want": "failed: no due date was given: fill it in",
+          "level": "end_to_end"
+        },
+        {
+          "id": "bill-due-as-the-owner-said",
+          "component": "validate",
+          "ok": false,
+          "got": null,
+          "want": "2026-11-05",
+          "level": "end_to_end"
+        },
+        {
+          "id": "amount-is-150000",
+          "component": "extract",
+          "ok": false,
+          "got": null,
+          "want": 15000000,
+          "level": "end_to_end"
+        },
+        {
+          "id": "transcript-kept-for-the-owner",
+          "component": "extract",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "amount-checked-against-the-words",
+          "component": "validate",
+          "ok": false,
+          "got": "failed: 'dedh lakh rup' is not an amount this app can read from what was said: type it in",
+          "want": "passed",
+          "level": "end_to_end"
+        }
+      ],
+      "component": "extract",
+      "error": "the owner's form refused entry 1: amount: Enter the amount in rupees, like 1,20,000 or Rs.1,20,000.",
+      "metrics": {
+        "ai_calls": 1,
+        "ai_calls_by_job": {
+          "extract:voice_note": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 498,
+          "output": 74,
+          "thoughts": 261
+        },
+        "cost_micro_usd": 1630
+      },
+      "outcomes": [
+        [
+          "bill-150000-recorded",
+          false,
+          0
+        ]
+      ]
+    },
+    {
+      "scenario": "04-hinglish-voice-note",
+      "run": 5,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "missing-due-date-flagged-not-guessed",
+          "component": "extract",
+          "ok": true,
+          "got": "failed: no due date was given: fill it in",
+          "want": "failed: no due date was given: fill it in",
+          "level": "end_to_end"
+        },
+        {
+          "id": "bill-due-as-the-owner-said",
+          "component": "validate",
+          "ok": true,
+          "got": "2026-11-05",
+          "want": "2026-11-05",
+          "level": "end_to_end"
+        },
+        {
+          "id": "amount-is-150000",
+          "component": "extract",
+          "ok": true,
+          "got": 15000000,
+          "want": 15000000,
+          "level": "end_to_end"
+        },
+        {
+          "id": "transcript-kept-for-the-owner",
+          "component": "extract",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "amount-checked-against-the-words",
+          "component": "validate",
+          "ok": true,
+          "got": "passed",
+          "want": "passed",
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 1,
+        "ai_calls_by_job": {
+          "extract:voice_note": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 498,
+          "output": 76,
+          "thoughts": 171
+        },
+        "cost_micro_usd": 1300
+      },
+      "outcomes": [
+        [
+          "bill-150000-recorded",
+          true,
+          1
+        ]
+      ]
+    },
+    {
+      "scenario": "05-same-invoice-by-email-and-photo",
+      "run": 1,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "both-read-as-invoices",
+          "component": "sort",
+          "ok": true,
+          "got": 2,
+          "want": 2,
+          "level": "end_to_end"
+        },
+        {
+          "id": "same-invoice-number-read-twice",
+          "component": "extract",
+          "ok": true,
+          "got": 2,
+          "want": 2,
+          "level": "end_to_end"
+        },
+        {
+          "id": "second-copy-is-a-duplicate",
+          "component": "validate",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "one-payable",
+          "component": "validate",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 4,
+        "ai_calls_by_job": {
+          "sort": 2,
+          "extract:invoice": 2
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 1,
+        "wasted_calls": 1,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 5028,
+          "output": 682,
+          "thoughts": 1014
+        },
+        "cost_micro_usd": 10131
+      },
+      "outcomes": [
+        [
+          "one-payable-not-two",
+          true,
+          1
+        ]
+      ]
+    },
+    {
+      "scenario": "05-same-invoice-by-email-and-photo",
+      "run": 2,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "both-read-as-invoices",
+          "component": "sort",
+          "ok": true,
+          "got": 2,
+          "want": 2,
+          "level": "end_to_end"
+        },
+        {
+          "id": "same-invoice-number-read-twice",
+          "component": "extract",
+          "ok": true,
+          "got": 2,
+          "want": 2,
+          "level": "end_to_end"
+        },
+        {
+          "id": "second-copy-is-a-duplicate",
+          "component": "validate",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "one-payable",
+          "component": "validate",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 4,
+        "ai_calls_by_job": {
+          "sort": 2,
+          "extract:invoice": 2
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 1,
+        "wasted_calls": 1,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 5028,
+          "output": 778,
+          "thoughts": 1481
+        },
+        "cost_micro_usd": 12243
+      },
+      "outcomes": [
+        [
+          "one-payable-not-two",
+          true,
+          1
+        ]
+      ]
+    },
+    {
+      "scenario": "05-same-invoice-by-email-and-photo",
+      "run": 3,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "both-read-as-invoices",
+          "component": "sort",
+          "ok": true,
+          "got": 2,
+          "want": 2,
+          "level": "end_to_end"
+        },
+        {
+          "id": "same-invoice-number-read-twice",
+          "component": "extract",
+          "ok": true,
+          "got": 2,
+          "want": 2,
+          "level": "end_to_end"
+        },
+        {
+          "id": "second-copy-is-a-duplicate",
+          "component": "validate",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "one-payable",
+          "component": "validate",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 4,
+        "ai_calls_by_job": {
+          "sort": 2,
+          "extract:invoice": 2
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 1,
+        "wasted_calls": 1,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 5028,
+          "output": 664,
+          "thoughts": 885
+        },
+        "cost_micro_usd": 9581
+      },
+      "outcomes": [
+        [
+          "one-payable-not-two",
+          true,
+          1
+        ]
+      ]
+    },
+    {
+      "scenario": "05-same-invoice-by-email-and-photo",
+      "run": 4,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "both-read-as-invoices",
+          "component": "sort",
+          "ok": true,
+          "got": 2,
+          "want": 2,
+          "level": "end_to_end"
+        },
+        {
+          "id": "same-invoice-number-read-twice",
+          "component": "extract",
+          "ok": true,
+          "got": 2,
+          "want": 2,
+          "level": "end_to_end"
+        },
+        {
+          "id": "second-copy-is-a-duplicate",
+          "component": "validate",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "one-payable",
+          "component": "validate",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 4,
+        "ai_calls_by_job": {
+          "sort": 2,
+          "extract:invoice": 2
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 1,
+        "wasted_calls": 1,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 5028,
+          "output": 754,
+          "thoughts": 891
+        },
+        "cost_micro_usd": 9941
+      },
+      "outcomes": [
+        [
+          "one-payable-not-two",
+          true,
+          1
+        ]
+      ]
+    },
+    {
+      "scenario": "05-same-invoice-by-email-and-photo",
+      "run": 5,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "both-read-as-invoices",
+          "component": "sort",
+          "ok": true,
+          "got": 2,
+          "want": 2,
+          "level": "end_to_end"
+        },
+        {
+          "id": "same-invoice-number-read-twice",
+          "component": "extract",
+          "ok": true,
+          "got": 2,
+          "want": 2,
+          "level": "end_to_end"
+        },
+        {
+          "id": "second-copy-is-a-duplicate",
+          "component": "validate",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "one-payable",
+          "component": "validate",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 4,
+        "ai_calls_by_job": {
+          "sort": 2,
+          "extract:invoice": 2
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 1,
+        "wasted_calls": 1,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 5028,
+          "output": 688,
+          "thoughts": 1031
+        },
+        "cost_micro_usd": 10218
+      },
+      "outcomes": [
+        [
+          "one-payable-not-two",
+          true,
+          1
+        ]
+      ]
+    },
+    {
+      "scenario": "06-payment-returned-by-the-bank",
+      "run": 1,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "return-read-as-a-failure",
+          "component": "sort",
+          "ok": true,
+          "got": "failure_notice",
+          "want": "failure_notice",
+          "level": "end_to_end"
+        },
+        {
+          "id": "debit-reversed",
+          "component": "reconcile",
+          "ok": true,
+          "got": "REVERSED",
+          "want": "REVERSED",
+          "level": "end_to_end"
+        },
+        {
+          "id": "bill-reopened",
+          "component": "reconcile",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "plan-rebuilt-paying-it-thursday",
+          "component": "planner",
+          "ok": true,
+          "got": "PAY 2026-10-15",
+          "want": "PAY 2026-10-15",
+          "level": "end_to_end"
+        },
+        {
+          "id": "owner-told",
+          "component": "reconcile",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 7,
+        "ai_calls_by_job": {
+          "explain": 3,
+          "sort": 2,
+          "extract:bank_alert": 1,
+          "extract:failure_notice": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 2735,
+          "output": 505,
+          "thoughts": 350
+        },
+        "cost_micro_usd": 5261
+      },
+      "outcomes": [
+        [
+          "paper-bill-not-paid",
+          true,
+          1
+        ],
+        [
+          "returned-debit-not-counted",
+          true,
+          0
+        ]
+      ]
+    },
+    {
+      "scenario": "06-payment-returned-by-the-bank",
+      "run": 2,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "return-read-as-a-failure",
+          "component": "sort",
+          "ok": true,
+          "got": "failure_notice",
+          "want": "failure_notice",
+          "level": "end_to_end"
+        },
+        {
+          "id": "debit-reversed",
+          "component": "reconcile",
+          "ok": true,
+          "got": "REVERSED",
+          "want": "REVERSED",
+          "level": "end_to_end"
+        },
+        {
+          "id": "bill-reopened",
+          "component": "reconcile",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "plan-rebuilt-paying-it-thursday",
+          "component": "planner",
+          "ok": true,
+          "got": "PAY 2026-10-15",
+          "want": "PAY 2026-10-15",
+          "level": "end_to_end"
+        },
+        {
+          "id": "owner-told",
+          "component": "reconcile",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 7,
+        "ai_calls_by_job": {
+          "explain": 3,
+          "sort": 2,
+          "extract:bank_alert": 1,
+          "extract:failure_notice": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 2735,
+          "output": 510,
+          "thoughts": 423
+        },
+        "cost_micro_usd": 5553
+      },
+      "outcomes": [
+        [
+          "paper-bill-not-paid",
+          true,
+          1
+        ],
+        [
+          "returned-debit-not-counted",
+          true,
+          0
+        ]
+      ]
+    },
+    {
+      "scenario": "06-payment-returned-by-the-bank",
+      "run": 3,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "return-read-as-a-failure",
+          "component": "sort",
+          "ok": true,
+          "got": "failure_notice",
+          "want": "failure_notice",
+          "level": "end_to_end"
+        },
+        {
+          "id": "debit-reversed",
+          "component": "reconcile",
+          "ok": true,
+          "got": "REVERSED",
+          "want": "REVERSED",
+          "level": "end_to_end"
+        },
+        {
+          "id": "bill-reopened",
+          "component": "reconcile",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "plan-rebuilt-paying-it-thursday",
+          "component": "planner",
+          "ok": true,
+          "got": "PAY 2026-10-15",
+          "want": "PAY 2026-10-15",
+          "level": "end_to_end"
+        },
+        {
+          "id": "owner-told",
+          "component": "reconcile",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 7,
+        "ai_calls_by_job": {
+          "explain": 3,
+          "sort": 2,
+          "extract:bank_alert": 1,
+          "extract:failure_notice": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 2735,
+          "output": 546,
+          "thoughts": 374
+        },
+        "cost_micro_usd": 5504
+      },
+      "outcomes": [
+        [
+          "paper-bill-not-paid",
+          true,
+          1
+        ],
+        [
+          "returned-debit-not-counted",
+          true,
+          0
+        ]
+      ]
+    },
+    {
+      "scenario": "06-payment-returned-by-the-bank",
+      "run": 4,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "return-read-as-a-failure",
+          "component": "sort",
+          "ok": true,
+          "got": "failure_notice",
+          "want": "failure_notice",
+          "level": "end_to_end"
+        },
+        {
+          "id": "debit-reversed",
+          "component": "reconcile",
+          "ok": true,
+          "got": "REVERSED",
+          "want": "REVERSED",
+          "level": "end_to_end"
+        },
+        {
+          "id": "bill-reopened",
+          "component": "reconcile",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "plan-rebuilt-paying-it-thursday",
+          "component": "planner",
+          "ok": true,
+          "got": "PAY 2026-10-15",
+          "want": "PAY 2026-10-15",
+          "level": "end_to_end"
+        },
+        {
+          "id": "owner-told",
+          "component": "reconcile",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 7,
+        "ai_calls_by_job": {
+          "explain": 3,
+          "sort": 2,
+          "extract:bank_alert": 1,
+          "extract:failure_notice": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 2735,
+          "output": 543,
+          "thoughts": 489
+        },
+        "cost_micro_usd": 5923
+      },
+      "outcomes": [
+        [
+          "paper-bill-not-paid",
+          true,
+          1
+        ],
+        [
+          "returned-debit-not-counted",
+          true,
+          0
+        ]
+      ]
+    },
+    {
+      "scenario": "06-payment-returned-by-the-bank",
+      "run": 5,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "return-read-as-a-failure",
+          "component": "sort",
+          "ok": true,
+          "got": "failure_notice",
+          "want": "failure_notice",
+          "level": "end_to_end"
+        },
+        {
+          "id": "debit-reversed",
+          "component": "reconcile",
+          "ok": true,
+          "got": "REVERSED",
+          "want": "REVERSED",
+          "level": "end_to_end"
+        },
+        {
+          "id": "bill-reopened",
+          "component": "reconcile",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "plan-rebuilt-paying-it-thursday",
+          "component": "planner",
+          "ok": true,
+          "got": "PAY 2026-10-15",
+          "want": "PAY 2026-10-15",
+          "level": "end_to_end"
+        },
+        {
+          "id": "owner-told",
+          "component": "reconcile",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 7,
+        "ai_calls_by_job": {
+          "explain": 3,
+          "sort": 2,
+          "extract:bank_alert": 1,
+          "extract:failure_notice": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 2735,
+          "output": 506,
+          "thoughts": 645
+        },
+        "cost_micro_usd": 6371
+      },
+      "outcomes": [
+        [
+          "paper-bill-not-paid",
+          true,
+          1
+        ],
+        [
+          "returned-debit-not-counted",
+          true,
+          0
+        ]
+      ]
+    },
+    {
+      "scenario": "07-missed-alert-causes-drift",
+      "run": 1,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "missed-alert-not-polled",
+          "component": "sort",
+          "ok": true,
+          "got": 0,
+          "want": 0,
+          "level": "end_to_end"
+        },
+        {
+          "id": "gap-found",
+          "component": "reconcile",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "alert-recovered-from-mail",
+          "component": "agent",
+          "ok": true,
+          "got": "2000000 2026-10-13",
+          "want": "2000000 2026-10-13",
+          "level": "end_to_end"
+        },
+        {
+          "id": "written-as-the-pipeline-with-the-case-as-source",
+          "component": "agent",
+          "ok": true,
+          "got": "pipeline agent:case:",
+          "want": "pipeline agent:case:",
+          "level": "end_to_end"
+        },
+        {
+          "id": "drift-case-resolved",
+          "component": "agent",
+          "ok": true,
+          "got": "RESOLVED",
+          "want": "RESOLVED",
+          "level": "end_to_end"
+        },
+        {
+          "id": "drift-resolved-in-its-first-run",
+          "component": "agent",
+          "ok": true,
+          "got": "medium none",
+          "want": "medium none",
+          "level": "trajectory"
+        },
+        {
+          "id": "gap-closed",
+          "component": "reconcile",
+          "ok": true,
+          "got": "OK",
+          "want": "OK",
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 19,
+        "ai_calls_by_job": {
+          "exception": 16,
+          "explain": 1,
+          "sort": 1,
+          "extract:bank_alert": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 14,
+        "tool_calls_by_tool": {
+          "search_gmail": 9,
+          "add_candidate": 1,
+          "get_ledger": 3,
+          "ask_owner": 1
+        },
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 26702,
+          "output": 2288,
+          "thoughts": 8065
+        },
+        "cost_micro_usd": 58857
+      },
+      "outcomes": [
+        [
+          "missed-20000-debit-recorded",
+          true,
+          1
+        ]
+      ]
+    },
+    {
+      "scenario": "07-missed-alert-causes-drift",
+      "run": 2,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "missed-alert-not-polled",
+          "component": "sort",
+          "ok": true,
+          "got": 0,
+          "want": 0,
+          "level": "end_to_end"
+        },
+        {
+          "id": "gap-found",
+          "component": "reconcile",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "alert-recovered-from-mail",
+          "component": "agent",
+          "ok": true,
+          "got": "2000000 2026-10-13",
+          "want": "2000000 2026-10-13",
+          "level": "end_to_end"
+        },
+        {
+          "id": "written-as-the-pipeline-with-the-case-as-source",
+          "component": "agent",
+          "ok": true,
+          "got": "pipeline agent:case:",
+          "want": "pipeline agent:case:",
+          "level": "end_to_end"
+        },
+        {
+          "id": "drift-case-resolved",
+          "component": "agent",
+          "ok": true,
+          "got": "RESOLVED",
+          "want": "RESOLVED",
+          "level": "end_to_end"
+        },
+        {
+          "id": "drift-resolved-in-its-first-run",
+          "component": "agent",
+          "ok": true,
+          "got": "medium none",
+          "want": "medium none",
+          "level": "trajectory"
+        },
+        {
+          "id": "gap-closed",
+          "component": "reconcile",
+          "ok": true,
+          "got": "OK",
+          "want": "OK",
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 16,
+        "ai_calls_by_job": {
+          "exception": 13,
+          "explain": 1,
+          "sort": 1,
+          "extract:bank_alert": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 11,
+        "tool_calls_by_tool": {
+          "search_gmail": 6,
+          "add_candidate": 1,
+          "get_ledger": 3,
+          "ask_owner": 1
+        },
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 20314,
+          "output": 1931,
+          "thoughts": 8848
+        },
+        "cost_micro_usd": 55661
+      },
+      "outcomes": [
+        [
+          "missed-20000-debit-recorded",
+          true,
+          1
+        ]
+      ]
+    },
+    {
+      "scenario": "07-missed-alert-causes-drift",
+      "run": 3,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "missed-alert-not-polled",
+          "component": "sort",
+          "ok": true,
+          "got": 0,
+          "want": 0,
+          "level": "end_to_end"
+        },
+        {
+          "id": "gap-found",
+          "component": "reconcile",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "alert-recovered-from-mail",
+          "component": "agent",
+          "ok": true,
+          "got": "2000000 2026-10-13",
+          "want": "2000000 2026-10-13",
+          "level": "end_to_end"
+        },
+        {
+          "id": "written-as-the-pipeline-with-the-case-as-source",
+          "component": "agent",
+          "ok": true,
+          "got": "pipeline agent:case:",
+          "want": "pipeline agent:case:",
+          "level": "end_to_end"
+        },
+        {
+          "id": "drift-case-resolved",
+          "component": "agent",
+          "ok": true,
+          "got": "RESOLVED",
+          "want": "RESOLVED",
+          "level": "end_to_end"
+        },
+        {
+          "id": "drift-resolved-in-its-first-run",
+          "component": "agent",
+          "ok": true,
+          "got": "medium none",
+          "want": "medium none",
+          "level": "trajectory"
+        },
+        {
+          "id": "gap-closed",
+          "component": "reconcile",
+          "ok": true,
+          "got": "OK",
+          "want": "OK",
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 16,
+        "ai_calls_by_job": {
+          "exception": 13,
+          "explain": 1,
+          "sort": 1,
+          "extract:bank_alert": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 11,
+        "tool_calls_by_tool": {
+          "search_gmail": 6,
+          "add_candidate": 1,
+          "get_ledger": 2,
+          "ask_owner": 2
+        },
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 21070,
+          "output": 1994,
+          "thoughts": 15293
+        },
+        "cost_micro_usd": 80636
+      },
+      "outcomes": [
+        [
+          "missed-20000-debit-recorded",
+          true,
+          1
+        ]
+      ]
+    },
+    {
+      "scenario": "07-missed-alert-causes-drift",
+      "run": 4,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "missed-alert-not-polled",
+          "component": "sort",
+          "ok": true,
+          "got": 0,
+          "want": 0,
+          "level": "end_to_end"
+        },
+        {
+          "id": "gap-found",
+          "component": "reconcile",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "alert-recovered-from-mail",
+          "component": "agent",
+          "ok": true,
+          "got": "2000000 2026-10-13",
+          "want": "2000000 2026-10-13",
+          "level": "end_to_end"
+        },
+        {
+          "id": "written-as-the-pipeline-with-the-case-as-source",
+          "component": "agent",
+          "ok": true,
+          "got": "pipeline agent:case:",
+          "want": "pipeline agent:case:",
+          "level": "end_to_end"
+        },
+        {
+          "id": "drift-case-resolved",
+          "component": "agent",
+          "ok": true,
+          "got": "RESOLVED",
+          "want": "RESOLVED",
+          "level": "end_to_end"
+        },
+        {
+          "id": "drift-resolved-in-its-first-run",
+          "component": "agent",
+          "ok": true,
+          "got": "medium none",
+          "want": "medium none",
+          "level": "trajectory"
+        },
+        {
+          "id": "gap-closed",
+          "component": "reconcile",
+          "ok": true,
+          "got": "OK",
+          "want": "OK",
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 17,
+        "ai_calls_by_job": {
+          "exception": 14,
+          "explain": 1,
+          "sort": 1,
+          "extract:bank_alert": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 12,
+        "tool_calls_by_tool": {
+          "search_gmail": 7,
+          "add_candidate": 1,
+          "get_ledger": 3,
+          "ask_owner": 1
+        },
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 22519,
+          "output": 2117,
+          "thoughts": 7167
+        },
+        "cost_micro_usd": 51710
+      },
+      "outcomes": [
+        [
+          "missed-20000-debit-recorded",
+          true,
+          1
+        ]
+      ]
+    },
+    {
+      "scenario": "07-missed-alert-causes-drift",
+      "run": 5,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "missed-alert-not-polled",
+          "component": "sort",
+          "ok": true,
+          "got": 0,
+          "want": 0,
+          "level": "end_to_end"
+        },
+        {
+          "id": "gap-found",
+          "component": "reconcile",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "alert-recovered-from-mail",
+          "component": "agent",
+          "ok": true,
+          "got": "2000000 2026-10-13",
+          "want": "2000000 2026-10-13",
+          "level": "end_to_end"
+        },
+        {
+          "id": "written-as-the-pipeline-with-the-case-as-source",
+          "component": "agent",
+          "ok": true,
+          "got": "pipeline agent:case:",
+          "want": "pipeline agent:case:",
+          "level": "end_to_end"
+        },
+        {
+          "id": "drift-case-resolved",
+          "component": "agent",
+          "ok": true,
+          "got": "RESOLVED",
+          "want": "RESOLVED",
+          "level": "end_to_end"
+        },
+        {
+          "id": "drift-resolved-in-its-first-run",
+          "component": "agent",
+          "ok": true,
+          "got": "medium none",
+          "want": "medium none",
+          "level": "trajectory"
+        },
+        {
+          "id": "gap-closed",
+          "component": "reconcile",
+          "ok": true,
+          "got": "OK",
+          "want": "OK",
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 16,
+        "ai_calls_by_job": {
+          "exception": 13,
+          "explain": 1,
+          "sort": 1,
+          "extract:bank_alert": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 11,
+        "tool_calls_by_tool": {
+          "search_gmail": 7,
+          "add_candidate": 1,
+          "get_ledger": 2,
+          "ask_owner": 1
+        },
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 21971,
+          "output": 1959,
+          "thoughts": 8755
+        },
+        "cost_micro_usd": 56662
+      },
+      "outcomes": [
+        [
+          "missed-20000-debit-recorded",
+          true,
+          1
+        ]
+      ]
+    },
+    {
+      "scenario": "08-drift-with-no-explanation",
+      "run": 1,
+      "status": "ERRORED",
+      "checks": [],
+      "component": null,
+      "error": "rate limited: a 429 outlasted 5 backoffs",
+      "metrics": {
+        "ai_calls": 8,
+        "ai_calls_by_job": {
+          "exception": 6,
+          "sort": 1,
+          "extract:bank_alert": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 4,
+        "tool_calls_by_tool": {
+          "search_gmail": 3,
+          "get_ledger": 1
+        },
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 1,
+        "escalations": [],
+        "tokens": {
+          "input": 7782,
+          "output": 772,
+          "thoughts": 2605
+        },
+        "cost_micro_usd": 18503
+      },
+      "outcomes": []
+    }
+  ]
+}
