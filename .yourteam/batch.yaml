@@ -10,8 +10,8 @@ changes:
   - id: CHG-045
     lane: direct
     board: in_progress
-    start_commit: null
+    start_commit: c0617f6
     blocked_question: null
     gate_evidence: []
-    prepatch: null
+    prepatch: "PASS at c0617f6: the new test cannot import decision_by_amount on the old tree"
     notes_resolved: false
