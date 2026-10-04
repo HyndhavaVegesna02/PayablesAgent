@@ -1,28 +1,22 @@
 """The checks for a bill told in a voice note (batch 5 plan, S6). The model
 writes down what was said; code turns the spoken amount into paise
-(parse_spoken_inr), so no stored number comes from the model. An amount the
-code can't read is a failed check: the owner types it, with the transcript
-beside the form (Q8). Pure, like every check here."""
+(parse_spoken_inr), so no stored number comes from the model. That amount
+passes only when it equals, in paise, an amount code reads in full from the
+transcript (amounts_said; CHG-037): never on the words alone. An amount the
+code can't read, or one the transcript doesn't say, is a failed check: the
+owner types it, with the transcript beside the form (Q8). Pure, like every
+check here."""
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
 from pydantic import BaseModel
 
-from app.domain.money import parse_spoken_inr, without_currency_word
+from app.domain.money import amounts_said, parse_spoken_inr
 from app.validate import CHECK_NAMES, NO_DUE_DATE, NOT_APPLICABLE, PASSED, failed, skipped
 from app.validate.duplicates import normalise_invoice_number
 from app.validate.invoice import ExistingInvoice, InvoiceKey, InvoiceRecord
-
-
-def _words(text: str) -> str:
-    """The words, lower case, with digit groups joined and other punctuation
-    dropped, padded so a match falls on word boundaries: "Rs. 1,50,000" and
-    "rs 150000" hold the same words, and "50,000" is not inside "1,50,000"."""
-    joined = re.sub(r"(?<=\d)[,.](?=\d)", "", text.lower())
-    return " " + " ".join("".join(ch if ch.isalnum() else " " for ch in joined).split()) + " "
 
 
 def check_voice(
@@ -44,13 +38,17 @@ def check_voice(
         checks["amount"] = failed("no amount was said")
     else:
         try:
-            if _words(without_currency_word(x.amount_spoken)) not in _words(x.transcript):
-                raise ValueError("not said")  # the words must be the ones said, not the model's own figure
-            amount = parse_spoken_inr(x.amount_spoken)
-            checks["amount"] = PASSED
+            spoken = parse_spoken_inr(x.amount_spoken)
         except ValueError:
             checks["amount"] = failed(f"{x.amount_spoken!r} is not an amount this app can read from what was "
                                       "said: type it in")
+        else:
+            if spoken in amounts_said(x.transcript):  # equal paise, never the model's words alone
+                amount = spoken
+                checks["amount"] = PASSED
+            else:
+                checks["amount"] = failed(f"{x.amount_spoken!r} is not an amount said in the voice note, read in "
+                                          "full: type it in")
     checks["dates"] = PASSED if x.due_date is not None else failed(NO_DUE_DATE)
     if amount is not None and x.vendor_name:
         dup = existing(InvoiceKey(x.vendor_name, None, normalise_invoice_number(x.invoice_number), amount, None))

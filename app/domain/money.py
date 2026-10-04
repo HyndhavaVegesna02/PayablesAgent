@@ -184,3 +184,36 @@ def parse_spoken_inr(text: str) -> int:
     if paise.denominator != 1 or paise <= 0:
         raise ValueError(f"{text!r} is not a whole number of paise above zero")
     return int(paise)
+
+
+_LONGEST_SAID = 16  # words: longer than any amount people say
+
+
+def amounts_said(text: str) -> list[int]:
+    """Every amount a transcript says, in paise, in order, each read in full
+    (CHG-037): from each word, the longest run of words parse_spoken_inr
+    reads, so "do lakh pachaas hazaar" is one amount, ₹2,50,000, never
+    "do lakh". A comma doesn't end an amount ("ek lakh, pachaas hazaar" is
+    one); a currency word after it does, and so does the end of a sentence.
+    Digit groups ("1,50,000") and decimals ("1.5 lakh") stay whole. Words
+    that read as no amount are skipped."""
+    joined = re.sub(r"(?<=\d),(?=\d)", "", text.lower())
+    found: list[int] = []
+    for sentence in re.split(r"(?<!\d)\.|\.(?!\d)|[!?;:\n]", joined):
+        words, i = re.sub(r"[^\w\s.₹/-]", " ", sentence).split(), 0
+        while i < len(words):
+            unit = next((k + 1 for k in range(i + 1, len(words)) if _is_currency_word(words[k])), len(words))
+            longest = None
+            for j in range(min(unit, i + _LONGEST_SAID), i, -1):
+                try:
+                    longest = (parse_spoken_inr(" ".join(words[i:j])), j)
+                    break
+                except ValueError:
+                    continue
+            if longest is None:
+                i += 1
+            else:
+                found.append(longest[0])
+                i = longest[1]
+    return found
+

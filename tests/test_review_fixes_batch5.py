@@ -180,11 +180,14 @@ def test_doc_m2_a_bare_tail_after_hazaar_or_sau_still_reads():
     assert parse_spoken_inr("ek lakh pachaas hazaar paanch sau") == 15_050_000
 
 
-def test_doc_minor_a_voice_amount_must_be_words_the_transcript_holds(web):
+def test_doc_minor_a_voice_amount_must_be_an_amount_the_transcript_holds(web):
+    """Was: the words must be the transcript's. Since CHG-037 (PO, batch 10 verdict) the check compares paise:
+    code reads the transcript's own amount, so a figure equal to it stores that same number, and one the
+    transcript doesn't say goes to the owner."""
     env, _ = web
     from tests.test_voice import NOTE, WAV
 
-    upload(env, reads({**NOTE, "amount_spoken": "1,50,000"}, "VoiceBillExtract"), WAV, kind="voice")
+    upload(env, reads({**NOTE, "amount_spoken": "1,25,000"}, "VoiceBillExtract"), WAV, kind="voice")
     cand = next(c for c in repo.waiting_candidates(env.conn, 1) if c["document_kind"] == "voice")
     assert cand["status"] == "AWAITING_OWNER" and cand["record"]["amount_paise"] is None
 
