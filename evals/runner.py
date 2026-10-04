@@ -384,6 +384,11 @@ def run_once(scenario: Scenario, backend: Backend, app_config: AppConfig, run: i
         except Exception as e:  # noqa: BLE001 - a crash is the system failing the scenario
             result.status, result.error, result.component = "FAILED", f"{type(e).__name__}: {e}", "crash"
             result.checks = [check(env.conn, e2) for e2 in scored_expectations(scenario, live=live)]
+        from evals import metrics
+
+        gone = metrics.model_unavailable(tmp / "traces") if result.status != "ERRORED" else None
+        if gone:  # the model, not the harness, failed the run (CHG-053): never scored as FAILED
+            result.status, result.error, result.component = "ERRORED", f"the model was unavailable: {gone[:300]}", None
         try:
             if result.status != "ERRORED":
                 from evals import outcomes

@@ -67,6 +67,8 @@ def agent_step(scripts: list[dict[str, Any]], case_file: str) -> dict[str, Any]:
     return NO_SCRIPT
 
 
+NO_CANNED_REPLY = "the demo fixture AI has no canned"  # a gap in the script, not a model that was down
+
 class FixtureBackend:
     def __init__(self) -> None:
         emails = {**load_replies("test_inbox"), **load_replies("agent_inbox")}
@@ -102,5 +104,4 @@ class FixtureBackend:
         for replies in self._replies_for(contents):
             if title in replies:
                 return RawAIResponse(json.dumps(replies[title]), 0, 0, 0)
-        raise AIUnavailable(f"the demo fixture AI has no canned {title or 'reply'} for this document",
-                            retryable=False)
+        raise AIUnavailable(f"{NO_CANNED_REPLY} {title or 'reply'} for this document", retryable=False)

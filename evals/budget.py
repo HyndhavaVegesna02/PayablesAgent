@@ -11,8 +11,10 @@ ablation, and refuses any call that would go past either cap.
 - **Pacing:** calls are sequential, with `delay_s` between them.
 - **Rate limits:** a 429 waits 5, 10, 20, 40 and then 60 seconds and tries the
   same call again. One that outlasts all of that stops the invocation.
-- **Spend cap:** a permanent 429 (Google's spending cap or prepayment, CHG-040)
-  stops the invocation at once, with no backoff: waiting can't lift it.
+- **Spend cap and credits:** a refusal only the account's owner can lift stops
+  the invocation at once, with no backoff: a permanent 429 (Google's spending
+  cap or prepayment, CHG-040) or a 402 (the prepaid credits are used up,
+  CHG-053).
 
 Once stopped, every later call is refused as a permanent AIUnavailable and
 `should_stop()` names the reason. The runner then ends the run as ERRORED,
@@ -26,13 +28,25 @@ import time
 from collections.abc import Callable
 from typing import Any
 
-from app.ai.client import AIUnavailable, Backend, RawAIResponse, cost_micro_usd
+from app.ai.client import AIUnavailable, Backend, RawAIResponse, cost_micro_usd, spend_cap
 from app.config import AppConfig
 
 MAX_CALLS = 600
 MAX_MICRO_USD = 5_000_000
 DELAY_S = 1.0
 BACKOFF_S = (5, 10, 20, 40, 60)
+
+
+def billing_refusal(e: AIUnavailable) -> str | None:
+    """Why a refusal can't pass with time, or None: a 402 (the prepaid credits are used up, CHG-053), or a
+    permanent 429 or other refusal in Google's spending-cap or prepayment words (CHG-040)."""
+    if e.retryable:
+        return None
+    if e.code == 402:
+        return "credits depleted: Google refused the call (402)"
+    if e.code == 429 or spend_cap(e.detail or str(e), None):
+        return f"spend cap: Google refused the call ({e.code})"
+    return None
 
 
 class BudgetGuard:
@@ -76,9 +90,9 @@ class BudgetGuard:
             try:
                 raw = self.backend.generate(**kwargs)
             except AIUnavailable as e:
-                if e.code == 429 and not e.retryable:
-                    raise self._stop(f"spend cap: Google refused the call (429) and waiting can't help: "
-                                     f"{(e.detail or str(e))[:200]}") from None
+                why = billing_refusal(e)
+                if why:
+                    raise self._stop(f"{why} and waiting can't help: {(e.detail or str(e))[:200]}") from None
                 if e.code != 429:
                     raise
                 self.rate_limited += 1

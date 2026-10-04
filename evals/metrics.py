@@ -12,14 +12,20 @@ the run wrote.
 - wasted_calls: refused + schema_failures + invalid_candidates
 - retries: failed job attempts that were retried; dead_jobs: jobs given up
 - escalations: escalation steps that name a rule (stake, max steps, max failures)
-- tokens and cost_micro_usd: summed from the `ai.call` steps"""
+- tokens and cost_micro_usd: summed from the `ai.call` steps
+
+`model_unavailable` says whether the model was unavailable to the run
+(CHG-053): the runner then scores it ERRORED, never FAILED."""
 
 from __future__ import annotations
 
 import json
+import re
 from collections import Counter
 from pathlib import Path
 from typing import Any
+
+from app.ai.fixture_backend import NO_CANNED_REPLY
 
 # The trace fields read here (tests/test_evals.py pins them against app.ai.client and app.agent.loop).
 FIELDS = ("tool", "validation", "result", "escalation_rule", "tokens", "cost_micro_usd")
@@ -28,6 +34,34 @@ FIELDS = ("tool", "validation", "result", "escalation_rule", "tokens", "cost_mic
 def trace_steps(trace_dir: str | Path) -> list[dict[str, Any]]:
     return [json.loads(line) for f in sorted(Path(trace_dir).rglob("*.jsonl"))
             for line in f.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+_JOB_ATTEMPT = re.compile(r"^(job-\d+)-attempt-(\d+)\.jsonl$")
+UNAVAILABLE = "not run: AI unavailable"  # app.ai.client's validation when the model did not answer
+
+
+def model_unavailable(trace_dir: str | Path) -> str | None:
+    """The first model call that went unanswered for good, or None. A job counts
+    by its last attempt: a retryable failure a later attempt recovered from is
+    not unavailability, but a permanent one, or one on the last attempt, is. A
+    trace that isn't a job's (a knock-out's, the bare harness's) counts whole.
+    The fixture AI's "no canned reply" is not counted: it is a gap in the demo's
+    script (the plan's "what changed" note has none, by design, D15), not a
+    model that was down."""
+    last: dict[str, tuple[int, Path]] = {}
+    for f in sorted(Path(trace_dir).rglob("*.jsonl")):
+        m = _JOB_ATTEMPT.match(f.name)
+        key, attempt = (m.group(1), int(m.group(2))) if m else (str(f), 0)
+        if key not in last or attempt >= last[key][0]:
+            last[key] = (attempt, f)
+    for _, f in sorted(last.values(), key=lambda af: str(af[1])):
+        for line in f.read_text(encoding="utf-8").splitlines():
+            step = json.loads(line) if line.strip() else {}
+            v = str(step.get("validation") or "")
+            unanswered = v.startswith(UNAVAILABLE) and NO_CANNED_REPLY not in v
+            if str(step.get("tool", "")).startswith("ai.call") and unanswered:
+                return v
+    return None
 
 
 def collect(steps: list[dict[str, Any]], conn) -> dict[str, Any]:
