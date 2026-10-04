@@ -164,6 +164,8 @@ def parse_spoken_inr(text: str) -> int:
     text = without_currency_word(text)
     if _after_currency(text).startswith(("-", "\u2212", "minus")):
         raise ValueError(f"a negative amount is not a bill: {text!r}")
+    if any(w.startswith(("-", "\u2212")) for w in text.split()[1:]) or re.search(r"[a-z][-\u2212]\d", text.lower()):
+        raise ValueError(f"a minus inside an amount is not a bill: {text!r}")  # "do lakh -50,000": never added
     words = re.sub(r"[,/-]", " ", text.lower().replace("₹", " ")).split()
     tokens = [w.strip(".") if not _DECIMAL.match(w) else w for w in words]
     tokens = [t for t in tokens if t and t not in _SAID_NOISE]
@@ -256,6 +258,8 @@ def _number_like(word: str) -> bool:
     if (_digits(w) or w in _SAID_NUMBERS or w in _SAID_SCALES or w in _SAID_WHOLE or w in _SAID_SHIFT
             or w == "sawa" or w in _NUMBER_LIKE):
         return True
+    if w.rstrip("-/=") != w and w.rstrip("-/="):
+        return _number_like(w.rstrip("-/="))  # "lakh-": a mark after a number word
     parts = [p for p in re.split(r"[-/]", w) if p]
     return len(parts) > 1 and (all(_number_like(p) for p in parts) or any(p in _SCALE_LIKE for p in parts))
 
@@ -271,6 +275,8 @@ def _money_shaped(word: str) -> bool:
     if _digits(w) and (w.endswith(("/", "-", "=")) or any(r in _ON_DIGITS or _is_currency_word(r)
                                                           for r in re.findall(r"[a-z]+", w))):
         return True
+    if w.rstrip("-/=") != w and w.rstrip("-/="):
+        return _money_shaped(w.rstrip("-/="))
     parts = [p for p in re.split(r"[-/]", w) if p]
     return len(parts) > 1 and any(_money_shaped(p) for p in parts)
 

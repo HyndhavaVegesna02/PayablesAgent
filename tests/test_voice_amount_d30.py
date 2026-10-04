@@ -23,6 +23,16 @@ from tests.test_voice_amount_said import _check, _flagged
     ("Bill 25 -- 30 lakh", "30 lakh", [None]),
     ("Bill 25 & 30 lakh", "30 lakh", [None]),
     ("Bill 25 − 30 lakh", "30 lakh", [None]),
+    # a minus inside an amount, or a mark after a scale word, never adds or drops (batch 12 review, critical)
+    ("Bill do lakh −50,000 advance.", "2,50,000", [None]),
+    ("Bill do lakh −50,000 advance.", "dhai lakh", [None]),
+    ("Bill 2 lakh −50,000 advance.", "2,50,000", [None]),
+    ("Bill do lakh -50,000 advance.", "2,50,000", [None]),
+    ("Bill do lakh -50 hazaar.", "dhai lakh", [None]),
+    ("Bill do lakh−50 hazaar.", "dhai lakh", [None]),
+    ("Bill do lakh− advance 50,000.", "50,000", [20_000_000, 5_000_000]),
+    ("Bill do lakh−, advance 50,000.", "50,000", [20_000_000, 5_000_000]),
+    ("Bill do lakh- advance 50,000.", "50,000", [20_000_000, 5_000_000]),
 ])
 def test_d30_and_the_last_forms_go_to_the_owner(transcript, spoken, said):
     assert money_said(transcript) == said
@@ -40,7 +50,7 @@ def test_a_sign_after_a_currency_word_is_still_a_negative_amount(said):
     ("Dedh lakh rupaye ka bill, 2026 mein dena hai, invoice 4182.", "dedh lakh", 15_000_000),  # a year is not
     ("Sharma & Sons ka bill, dedh lakh rupaye.", "dedh lakh", 15_000_000),  # "&" between words, not numbers
 ])
-def test_a_year_and_short_numbers_stay_bare(transcript, spoken, paise):
+def test_bare_digits_alone_are_the_amount_and_a_year_stays_bare(transcript, spoken, paise):
     checks, _, reading = _check(transcript, spoken)
     assert checks["amount"] == "passed" and reading["amount_paise"] == paise
 
