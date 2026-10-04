@@ -1,0 +1,40 @@
+name: 14-noisy-statement-row
+title: A statement row with a noisy narration (fixture-only, not yet run live)
+passes_when: The payment is recorded once, and the bill is matched or sent to review, never paid twice
+live: false   # a harder variant (CHG-051): scored in fixture mode, not yet run on Gemini
+steps:
+  - monday_plan: true                  # PAPER-001: PAY on Mon 12 Oct
+  - approve: true                      # PAYMENT_EXPECTED
+  - at: "2026-10-13T08:00"
+  - deliver: [44-statement-hdfc-noisy.eml]   # one row, PAPER-001's payment under a noisy narration
+  - poll: true
+expect:
+  - id: read-as-a-statement
+    component: sort
+    sql: SELECT doc_type FROM source_document WHERE external_ref = '<fixture-44@example.test>'
+    equals: statement
+  - id: one-row-recorded
+    component: validate
+    sql: SELECT COUNT(*) FROM bank_txn
+    equals: 1
+  - id: owner-asked-which-bill-it-paid      # the narration names no payee code can trust: no guess
+    component: reconcile
+    sql: SELECT (SELECT status FROM payable WHERE invoice_number = 'PAPER-001') || ' ' || (SELECT COUNT(*) FROM owner_question WHERE kind = 'explain_txn' AND status = 'OPEN')
+    equals: REVIEW 1
+  - id: path-budget-steps   # path budget (CHG-050): the ambiguous-match case at the owner within 3 steps; applies live too
+    component: agent
+    level: trajectory
+    sql: SELECT COALESCE(MAX(json_extract(state_json, '$.steps_total')), 0) <= 3 FROM agent_case
+    equals: 1
+  - id: path-budget-refused   # path budget (CHG-050): at most 3 calls refused by code; applies live too
+    component: agent
+    level: trajectory
+    sql: SELECT COALESCE(SUM((length(state_json) - length(replace(state_json, 'refused', ''))) / 7), 0) <= 3 FROM agent_case
+    equals: 1
+outcome:
+  - id: payment-recorded-once
+    sql: SELECT COUNT(*) FROM bank_txn WHERE amount_paise = 18000000
+    equals: 1
+  - id: paper-bill-paid-at-most-once
+    sql: SELECT COUNT(*) FROM payable WHERE invoice_number = 'PAPER-001' AND status IN ('PAID', 'REVIEW')
+    equals: 1

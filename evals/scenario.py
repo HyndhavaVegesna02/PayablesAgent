@@ -94,6 +94,8 @@ class Scenario(BaseModel):
     # The ablation's checks: business outcomes any harness can be scored on (the
     # full system's `expect` reads its own tables, which a naive loop never writes).
     outcome: list[Outcome] = Field(default_factory=list)
+    # A harder variant not yet run live (CHG-051): scored in fixture mode, and left out of a live run unless named.
+    live: bool = True
     folder: Path | None = None
 
     @model_validator(mode="after")
@@ -112,3 +114,8 @@ def load(name: str) -> Scenario:
 
 def names() -> list[str]:
     return sorted(p.parent.name for p in SCENARIOS.glob("*/expected.yaml"))
+
+
+def live_names() -> list[str]:
+    """The scenarios a live run takes by default: all but the fixture-only ones (CHG-051)."""
+    return [n for n in names() if load(n).live]

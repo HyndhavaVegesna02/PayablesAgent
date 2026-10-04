@@ -12,7 +12,8 @@ from evals import runner, scenario
 
 CONFIG = runner.load_config(None)[0]
 AGENT_SCENARIOS = ["02-password-protected-statement", "07-missed-alert-causes-drift",
-                   "08-drift-with-no-explanation", "10-hidden-instruction-in-a-vendor-email"]
+                   "08-drift-with-no-explanation", "10-hidden-instruction-in-a-vendor-email",
+                   "13-one-debit-two-same-amount-bills", "14-noisy-statement-row"]
 
 
 def test_the_agent_scenarios_are_exactly_the_ones_that_open_agent_cases():

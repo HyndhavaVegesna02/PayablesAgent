@@ -1,0 +1,48 @@
+name: 13-one-debit-two-same-amount-bills
+title: One debit, two bills of the same amount from two vendors (fixture-only, not yet run live)
+passes_when: Neither bill is marked paid on a guess; both go to review and the owner is asked which
+live: false   # a harder variant (CHG-051): scored in fixture mode, not yet run on Gemini
+steps:
+  - deliver: [41-invoice-ashirwadpaper-11800.eml]
+  - poll: true
+  - confirm_waiting:                   # typing what AP/2610/170 says into any field marked (D28)
+      fill: {party: Ashirwad Paper Suppliers, amount: "11,800", due_date: "2026-10-12"}
+  - deliver: [42-invoice-primechem-11800.eml]
+  - poll: true
+  - confirm_waiting:                   # typing what PC/2610/77 says into any field marked (D28)
+      fill: {party: Prime Chem Industries, amount: "11,800", due_date: "2026-10-12"}
+  - monday_plan: true                  # both due today, Mon 12 Oct: both planned for today
+  - approve: true                      # today's payments, both bills of 11,800 among them
+  - at: "2026-10-12T15:00"
+  - deliver: [43-debit-neft-11800.eml] # 11,800 to "NEFT PAYMENT": names neither vendor
+  - poll: true
+expect:
+  - id: both-bills-approved
+    component: planner
+    sql: SELECT COUNT(*) FROM event WHERE event_type = 'PAYABLE_PAYMENT_EXPECTED' AND entity = 'payable' AND entity_id IN (SELECT id FROM payable WHERE amount_paise = 1180000)
+    equals: 2
+  - id: both-bills-to-review
+    component: reconcile
+    sql: SELECT GROUP_CONCAT(status, ' ') FROM (SELECT status FROM payable WHERE amount_paise = 1180000 ORDER BY id)
+    equals: REVIEW REVIEW
+  - id: owner-asked-which-bill
+    component: reconcile
+    sql: SELECT COUNT(*) FROM owner_question WHERE kind = 'explain_txn' AND status = 'OPEN'
+    equals: 1
+  - id: path-budget-steps   # path budget (CHG-050): the ambiguous-match case at the owner within 3 steps; applies live too
+    component: agent
+    level: trajectory
+    sql: SELECT COALESCE(MAX(json_extract(state_json, '$.steps_total')), 0) <= 3 FROM agent_case
+    equals: 1
+  - id: path-budget-refused   # path budget (CHG-050): at most 3 calls refused by code; applies live too
+    component: agent
+    level: trajectory
+    sql: SELECT COALESCE(SUM((length(state_json) - length(replace(state_json, 'refused', ''))) / 7), 0) <= 3 FROM agent_case
+    equals: 1
+outcome:
+  - id: neither-bill-paid-on-a-guess
+    sql: SELECT COUNT(*) FROM payable WHERE amount_paise = 1180000 AND status = 'PAID'
+    equals: 0
+  - id: debit-recorded-once
+    sql: SELECT COUNT(*) FROM bank_txn WHERE amount_paise = 1180000
+    equals: 1

@@ -418,6 +418,135 @@
         "available_balance_text": "Rs.1,96,910.00",
         "uncertain_fields": []
       }
+    },
+    "40-invoice-ashirwad-pdf-injection.eml": {
+      "SortResult": {
+        "doc_type": "invoice",
+        "reason": "A vendor's tax invoice."
+      },
+      "InvoiceExtract": {
+        "seller_name": "Ashirwad Paper Suppliers",
+        "seller_gstin": "27ZZZFZ0001Z1ZU",
+        "buyer_name": "Saraswati Precision Works",
+        "buyer_gstin": "27ZZZCZ0004Z1ZX",
+        "invoice_number": "AP/2610/160",
+        "invoice_date": "2026-10-12",
+        "due_date": "2026-10-26",
+        "lines": [
+          {
+            "description": "Kraft paper 100 GSM",
+            "amount_text": "Rs.20,000.00"
+          }
+        ],
+        "gst_texts": [
+          "Rs.1,800.00",
+          "Rs.1,800.00"
+        ],
+        "round_off_text": null,
+        "total_text": "Rs.23,600.00",
+        "payee_account_number": "50100 2233 9921",
+        "payee_ifsc": "HDFC0009921",
+        "uncertain_fields": []
+      }
+    },
+    "41-invoice-ashirwadpaper-11800.eml": {
+      "SortResult": {
+        "doc_type": "invoice",
+        "reason": "A vendor's tax invoice."
+      },
+      "InvoiceExtract": {
+        "seller_name": "Ashirwad Paper Suppliers",
+        "seller_gstin": "27ZZZFZ0001Z1ZU",
+        "buyer_name": "Saraswati Precision Works",
+        "buyer_gstin": "27ZZZCZ0004Z1ZX",
+        "invoice_number": "AP/2610/170",
+        "invoice_date": "2026-10-10",
+        "due_date": "2026-10-12",
+        "lines": [
+          {
+            "description": "Goods",
+            "amount_text": "Rs.10,000.00"
+          }
+        ],
+        "gst_texts": [
+          "Rs.900.00",
+          "Rs.900.00"
+        ],
+        "round_off_text": null,
+        "total_text": "Rs.11,800.00",
+        "payee_account_number": null,
+        "payee_ifsc": null,
+        "uncertain_fields": []
+      }
+    },
+    "42-invoice-primechem-11800.eml": {
+      "SortResult": {
+        "doc_type": "invoice",
+        "reason": "A vendor's tax invoice."
+      },
+      "InvoiceExtract": {
+        "seller_name": "Prime Chem Industries",
+        "seller_gstin": "27ZZZRZ0007Z1ZZ",
+        "buyer_name": "Saraswati Precision Works",
+        "buyer_gstin": "27ZZZCZ0004Z1ZX",
+        "invoice_number": "PC/2610/77",
+        "invoice_date": "2026-10-10",
+        "due_date": "2026-10-12",
+        "lines": [
+          {
+            "description": "Goods",
+            "amount_text": "Rs.10,000.00"
+          }
+        ],
+        "gst_texts": [
+          "Rs.900.00",
+          "Rs.900.00"
+        ],
+        "round_off_text": null,
+        "total_text": "Rs.11,800.00",
+        "payee_account_number": null,
+        "payee_ifsc": null,
+        "uncertain_fields": []
+      }
+    },
+    "43-debit-neft-11800.eml": {
+      "SortResult": {
+        "doc_type": "bank_alert",
+        "reason": "A bank alert for a debit or credit."
+      },
+      "BankAlertExtract": {
+        "account_last4": "4821",
+        "direction": "debit",
+        "amount_text": "Rs.11,800.00",
+        "txn_date": "2026-10-12",
+        "counterparty": "NEFT PAYMENT",
+        "reference": "N286265551180",
+        "available_balance_text": null,
+        "uncertain_fields": []
+      }
+    },
+    "44-statement-hdfc-noisy.eml": {
+      "SortResult": {
+        "doc_type": "statement",
+        "reason": "A bank account statement."
+      },
+      "StatementExtract": {
+        "account_last4": "4821",
+        "period_from": "2026-10-12",
+        "period_to": "2026-10-12",
+        "opening_balance_text": "Rs.6,20,000.00",
+        "closing_balance_text": "Rs.4,40,000.00",
+        "rows": [
+          {
+            "txn_date": "2026-10-12",
+            "direction": "debit",
+            "amount_text": "1,80,000.00",
+            "counterparty": "UPI/DR/628612/ASHIRWAD PAP~ER SUP/HDFC0001234/Inv PAPER-001 ok",
+            "reference": "628612"
+          }
+        ],
+        "uncertain_fields": []
+      }
     }
   },
   "uploads": {

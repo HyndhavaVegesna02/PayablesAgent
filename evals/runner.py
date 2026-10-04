@@ -504,7 +504,8 @@ def main(argv: list[str] | None = None) -> int:
     args = p.parse_args(argv)
 
     config, config_hash = load_config(args.config)
-    chosen = [scenarios.load(n) for n in (args.scenario or scenarios.names())]
+    default = scenarios.live_names() if args.ai == "live" else scenarios.names()  # fixture-only ones stay offline
+    chosen = [scenarios.load(n) for n in (args.scenario or default)]
     today = SystemClock().now()
     out_dir = args.out / f"{today.date().isoformat()}-{args.ai}-{args.label}"
     should_stop: Callable[[], str | None] = never

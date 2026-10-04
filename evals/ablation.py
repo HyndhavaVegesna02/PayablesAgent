@@ -217,7 +217,8 @@ def main(argv: list[str] | None = None) -> int:
     args = p.parse_args(argv)
 
     config, config_hash = runner.load_config()
-    chosen = [scenario_files.load(n) for n in (args.scenario or scenario_files.names())]
+    default = scenario_files.live_names() if args.ai == "live" else scenario_files.names()  # fixture-only stay offline
+    chosen = [scenario_files.load(n) for n in (args.scenario or default)]
     harnesses = args.harness or list(HARNESSES)
     today = SystemClock().now()
     out_dir = args.out / f"{today.date().isoformat()}-{args.ai}-{args.label}"

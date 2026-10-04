@@ -1,0 +1,19 @@
+X-Fixture-Note: fictional data; a debit for an amount two bills share, naming neither (scenario 13)
+From: HDFC Bank InstaAlerts <alerts@hdfcbank.example>
+To: owner@example.test
+Subject: Debit alert: Rs.11,800.00 debited from your account ending 4821
+Date: Mon, 12 Oct 2026 14:05:00 +0530
+Message-ID: <fixture-43@example.test>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+
+Dear Customer,
+
+Rs.11,800.00 has been debited from account **4821 towards NEFT PAYMENT on 12-10-26.
+
+Reference Number: N286265551180
+
+Warm Regards,
+HDFC Bank
+
+(This is a fictional fixture. No real business, bank, account or person is described.)

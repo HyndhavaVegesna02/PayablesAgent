@@ -1,0 +1,50 @@
+X-Fixture-Note: fictional data; one of two invoices for the same amount from two vendors (scenario 13)
+From: Prime Chem Industries <billing@primechem.example>
+To: owner@example.test
+Subject: Invoice PC/2610/77
+Date: Mon, 12 Oct 2026 08:30:00 +0530
+Message-ID: <fixture-42@example.test>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="==fixture-42=="
+
+--==fixture-42==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+Dear Sir,
+
+Please find attached our invoice PC/2610/77 for Rs.11,800.00, due 12-10-2026.
+
+Regards,
+Accounts, Prime Chem Industries
+
+(This is a fictional fixture. No real business, bank, account or person is described.)
+
+--==fixture-42==
+Content-Type: application/pdf
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="PC-2610-77.pdf"
+
+JVBERi0xLjcKJcK1wrYKJSBXcml0dGVuIGJ5IE11UERGIDEuMjguMgoKMSAwIG9iago8PC9UeXBl
+L0NhdGFsb2cvUGFnZXMgMiAwIFIvSW5mbzw8L1Byb2R1Y2VyKE11UERGIDEuMjguMik+Pj4+CmVu
+ZG9iagoKMiAwIG9iago8PC9UeXBlL1BhZ2VzL0NvdW50IDEvS2lkc1s0IDAgUl0+PgplbmRvYmoK
+CjMgMCBvYmoKPDwvRm9udDw8L2hlbHYgNSAwIFI+Pj4+CmVuZG9iagoKNCAwIG9iago8PC9UeXBl
+L1BhZ2UvTWVkaWFCb3hbMCAwIDU5NSA0MjBdL1JvdGF0ZSAwL1Jlc291cmNlcyAzIDAgUi9QYXJl
+bnQgMiAwIFIvQ29udGVudHNbNiAwIFJdPj4KZW5kb2JqCgo1IDAgb2JqCjw8L1R5cGUvRm9udC9T
+dWJ0eXBlL1R5cGUxL0Jhc2VGb250L0hlbHZldGljYS9FbmNvZGluZy9XaW5BbnNpRW5jb2Rpbmc+
+PgplbmRvYmoKCjYgMCBvYmoKPDwvTGVuZ3RoIDI3Mi9GaWx0ZXIvRmxhdGVEZWNvZGU+PgpzdHJl
+YW0KeNqFUbtOxDAQ7P0VrpGA9b58lk4UCBo6pHQnipDEugIKGr6fsRPuTichtMpmszuZGa/DV3gc
+QoqESFEpSqY4fIb74/LxHRPqGg97U022Y9Kii7lWvEWNiclIhauwuCQhVFly67dJZi8+O3AqvnPz
+uTH44poNMO1zVCseTYEOFJjAl23swTYK9UBHUus9vA0vgeJtkrusRJTi8BQOe210k09MWb3KCAvi
+CSIJYhlZvWy2zMVLxuPVIWfZK7rvJyva0TDeDzVvmaUZ819Mtg3B14hucLjB4hTMCO3Myx9Bxpgv
+nWNaD4sv5AseWdcDvcJ2+qOcsdvS/8WdObHs2i5WpwsHCQ52V+jnIbyGHwIJe7EKZW5kc3RyZWFt
+CmVuZG9iagoKNyAwIG9iago8PC9Qcm9kdWNlcihmaXh0dXJlcykvQ3JlYXRvcihzY3JpcHRzL21h
+a2VfaGFyZGVyX2ZpeHR1cmVzLnB5KS9DcmVhdGlvbkRhdGUoRDoyMDI2MTAxMjAwMDAwMCkvTW9k
+RGF0ZShEOjIwMjYxMDEyMDAwMDAwKT4+CmVuZG9iagoKeHJlZgowIDgKMDAwMDAwMDAwMCA2NTUz
+NSBmIAowMDAwMDAwMDQyIDAwMDAwIG4gCjAwMDAwMDAxMjAgMDAwMDAgbiAKMDAwMDAwMDE3MiAw
+MDAwMCBuIAowMDAwMDAwMjEzIDAwMDAwIG4gCjAwMDAwMDAzMjAgMDAwMDAgbiAKMDAwMDAwMDQw
+OSAwMDAwMCBuIAowMDAwMDAwNzUwIDAwMDAwIG4gCgp0cmFpbGVyCjw8L1NpemUgOC9JbmZvIDcg
+MCBSL1Jvb3QgMSAwIFIvSURbPDc0MTAwNTFCMzRDMkIwMDFDMkE5MDQ1RDVEMEJDMjlDPjwzN0U4
+QzI2MjFFRjYzRTE3Q0YxN0QzNjdDQUY5OUFGOT5dPj4Kc3RhcnR4cmVmCjg4OAolJUVPRgo=
+
+--==fixture-42==--

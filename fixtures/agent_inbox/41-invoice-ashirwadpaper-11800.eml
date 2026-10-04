@@ -1,0 +1,50 @@
+X-Fixture-Note: fictional data; one of two invoices for the same amount from two vendors (scenario 13)
+From: Ashirwad Paper Suppliers <accounts@ashirwadpaper.example>
+To: owner@example.test
+Subject: Invoice AP/2610/170
+Date: Mon, 12 Oct 2026 08:30:00 +0530
+Message-ID: <fixture-41@example.test>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="==fixture-41=="
+
+--==fixture-41==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+Dear Sir,
+
+Please find attached our invoice AP/2610/170 for Rs.11,800.00, due 12-10-2026.
+
+Regards,
+Accounts, Ashirwad Paper Suppliers
+
+(This is a fictional fixture. No real business, bank, account or person is described.)
+
+--==fixture-41==
+Content-Type: application/pdf
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="AP-2610-170.pdf"
+
+JVBERi0xLjcKJcK1wrYKJSBXcml0dGVuIGJ5IE11UERGIDEuMjguMgoKMSAwIG9iago8PC9UeXBl
+L0NhdGFsb2cvUGFnZXMgMiAwIFIvSW5mbzw8L1Byb2R1Y2VyKE11UERGIDEuMjguMik+Pj4+CmVu
+ZG9iagoKMiAwIG9iago8PC9UeXBlL1BhZ2VzL0NvdW50IDEvS2lkc1s0IDAgUl0+PgplbmRvYmoK
+CjMgMCBvYmoKPDwvRm9udDw8L2hlbHYgNSAwIFI+Pj4+CmVuZG9iagoKNCAwIG9iago8PC9UeXBl
+L1BhZ2UvTWVkaWFCb3hbMCAwIDU5NSA0MjBdL1JvdGF0ZSAwL1Jlc291cmNlcyAzIDAgUi9QYXJl
+bnQgMiAwIFIvQ29udGVudHNbNiAwIFJdPj4KZW5kb2JqCgo1IDAgb2JqCjw8L1R5cGUvRm9udC9T
+dWJ0eXBlL1R5cGUxL0Jhc2VGb250L0hlbHZldGljYS9FbmNvZGluZy9XaW5BbnNpRW5jb2Rpbmc+
+PgplbmRvYmoKCjYgMCBvYmoKPDwvTGVuZ3RoIDI3Ni9GaWx0ZXIvRmxhdGVEZWNvZGU+PgpzdHJl
+YW0KeNqFUbtOAzEQ7P0VrpGAfW9OiigQNHRI10UU4TiLAgoavp/xXUiiSAit1l7vjWfGe+Wr3I+F
+KyG4GlVNquNnuX2fP74ro251t3Uz9o2QDTZ7WMOu5kLosJM0FQ1l7RVrYqf1W2psYkjJDA4TcgpO
+Ck9BrelJOE0x9E7q4Va6Qg9KQuBN3/ew8L3SEowK6X73Mj4VqtesN2lExHV8KLutCQinmITSoum+
+S0FWkNqNoDt0K+h4KOwhowXkPKOh+3q0YgsaD10e93ZYRbux+MWkHxByiVgMjlcYoIEZYQvz/EeQ
+9yHMC8e0PhYnrGc8uo4HeoP48cZwwq6u/F/ciRPDbv0H23TmgOFgc4F+HMtz+QFzKnykCmVuZHN0
+cmVhbQplbmRvYmoKCjcgMCBvYmoKPDwvUHJvZHVjZXIoZml4dHVyZXMpL0NyZWF0b3Ioc2NyaXB0
+cy9tYWtlX2hhcmRlcl9maXh0dXJlcy5weSkvQ3JlYXRpb25EYXRlKEQ6MjAyNjEwMTIwMDAwMDAp
+L01vZERhdGUoRDoyMDI2MTAxMjAwMDAwMCk+PgplbmRvYmoKCnhyZWYKMCA4CjAwMDAwMDAwMDAg
+NjU1MzUgZiAKMDAwMDAwMDA0MiAwMDAwMCBuIAowMDAwMDAwMTIwIDAwMDAwIG4gCjAwMDAwMDAx
+NzIgMDAwMDAgbiAKMDAwMDAwMDIxMyAwMDAwMCBuIAowMDAwMDAwMzIwIDAwMDAwIG4gCjAwMDAw
+MDA0MDkgMDAwMDAgbiAKMDAwMDAwMDc1NCAwMDAwMCBuIAoKdHJhaWxlcgo8PC9TaXplIDgvSW5m
+byA3IDAgUi9Sb290IDEgMCBSL0lEWzxDM0E1MDJDMjgwQzM5NkMzOTEwRjY2NTZDM0I1NjYwOD48
+QzVDNUU4OEIyQUZDQzBCNEVFN0U1N0ZEQTIxMTk0N0M+XT4+CnN0YXJ0eHJlZgo4OTIKJSVFT0YK
+
+--==fixture-41==--

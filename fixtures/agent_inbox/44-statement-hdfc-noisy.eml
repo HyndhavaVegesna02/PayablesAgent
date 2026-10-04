@@ -1,0 +1,50 @@
+X-Fixture-Note: fictional data; a statement row with a noisy narration (scenario 14)
+From: HDFC Bank InstaAlerts <alerts@hdfcbank.example>
+To: owner@example.test
+Subject: Your account statement for XXXX4821
+Date: Tue, 13 Oct 2026 07:00:00 +0530
+Message-ID: <fixture-44@example.test>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="==fixture-44=="
+
+--==fixture-44==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+Dear Customer,
+
+Your statement for account XXXX4821 is attached.
+
+Warm Regards,
+HDFC Bank
+
+(This is a fictional fixture. No real business, bank, account or person is described.)
+
+--==fixture-44==
+Content-Type: application/pdf
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="statement-4821-12oct.pdf"
+
+JVBERi0xLjcKJcK1wrYKJSBXcml0dGVuIGJ5IE11UERGIDEuMjguMgoKMSAwIG9iago8PC9UeXBl
+L0NhdGFsb2cvUGFnZXMgMiAwIFIvSW5mbzw8L1Byb2R1Y2VyKE11UERGIDEuMjguMik+Pj4+CmVu
+ZG9iagoKMiAwIG9iago8PC9UeXBlL1BhZ2VzL0NvdW50IDEvS2lkc1s0IDAgUl0+PgplbmRvYmoK
+CjMgMCBvYmoKPDwvRm9udDw8L2hlbHYgNSAwIFI+Pj4+CmVuZG9iagoKNCAwIG9iago8PC9UeXBl
+L1BhZ2UvTWVkaWFCb3hbMCAwIDU5NSA0MjBdL1JvdGF0ZSAwL1Jlc291cmNlcyAzIDAgUi9QYXJl
+bnQgMiAwIFIvQ29udGVudHNbNiAwIFJdPj4KZW5kb2JqCgo1IDAgb2JqCjw8L1R5cGUvRm9udC9T
+dWJ0eXBlL1R5cGUxL0Jhc2VGb250L0hlbHZldGljYS9FbmNvZGluZy9XaW5BbnNpRW5jb2Rpbmc+
+PgplbmRvYmoKCjYgMCBvYmoKPDwvTGVuZ3RoIDI1OC9GaWx0ZXIvRmxhdGVEZWNvZGU+PgpzdHJl
+YW0KeNqFUD1LBUEM7PdXbC2o+Zjd3IFYiDZ2wnZi897d8gotbPz9zt49q6dISAghk5lM+kwPLWkW
+hmZI9pDcPtLtaX3/ysq+59c7TAAq3AQGxYqDiUnxQFVmqQtzDZjUXiurVmf0OE/LtIfDJzfXgTZx
+dbOFVVjNieOtfjm/f2vPSfK1+k1ARDS3x0RRPWTQ1pkZJDXSHpkrqQtJLdxWnj3yiLDKCE5Yt5Pt
+iq9diiCyFMFsHShmnZ8YZddts0OL0465WAlaMZ4TziRWFG7TlIHm3tmynXVg3R2cU23UH9SGWfaN
+zbzDbg0QNoyg6ulv7XD+28P/cQDE49crTy29pG95qHIGCmVuZHN0cmVhbQplbmRvYmoKCjcgMCBv
+YmoKPDwvUHJvZHVjZXIoZml4dHVyZXMpL0NyZWF0b3Ioc2NyaXB0cy9tYWtlX2hhcmRlcl9maXh0
+dXJlcy5weSkvQ3JlYXRpb25EYXRlKEQ6MjAyNjEwMTIwMDAwMDApL01vZERhdGUoRDoyMDI2MTAx
+MjAwMDAwMCk+PgplbmRvYmoKCnhyZWYKMCA4CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDA0
+MiAwMDAwMCBuIAowMDAwMDAwMTIwIDAwMDAwIG4gCjAwMDAwMDAxNzIgMDAwMDAgbiAKMDAwMDAw
+MDIxMyAwMDAwMCBuIAowMDAwMDAwMzIwIDAwMDAwIG4gCjAwMDAwMDA0MDkgMDAwMDAgbiAKMDAw
+MDAwMDczNiAwMDAwMCBuIAoKdHJhaWxlcgo8PC9TaXplIDgvSW5mbyA3IDAgUi9Sb290IDEgMCBS
+L0lEWzxDM0I3NzFDMkE4NTZDMkI3QzJCQjI4QzNCRkMyODVDMz48MzlFRkUzMTA2QzBDMTI3RkZE
+MEMxQjRBRDgwNkNCMkE+XT4+CnN0YXJ0eHJlZgo4NzQKJSVFT0YK
+
+--==fixture-44==--

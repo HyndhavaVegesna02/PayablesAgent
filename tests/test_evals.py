@@ -87,7 +87,10 @@ TDD_SCENARIOS = [  # TDD Part 1, "Scenario suite (test inbox and uploads)", in i
 
 
 def test_the_suite_has_the_tdd_scenarios():
-    assert scenario.names() == TDD_SCENARIOS
+    """The TDD's eleven are what a live run takes; the harder fixture-only ones follow them (CHG-051)."""
+    assert scenario.live_names() == TDD_SCENARIOS
+    assert scenario.names()[:len(TDD_SCENARIOS)] == TDD_SCENARIOS
+    assert all(not scenario.load(n).live for n in scenario.names()[len(TDD_SCENARIOS):])
 
 
 # --- S4: metrics and the report ----------------------------------------------------------------
