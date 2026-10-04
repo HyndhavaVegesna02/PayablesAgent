@@ -35,3 +35,40 @@ instruction, with no coverage lost.
   list, plus the same amount said twice (passes).
 - The two known false flags (no unit or full stop before the next number word) are tests too.
 - The stale prose, the prepatch note and the blank line are fixed.
+
+## Round 2: FIX_REQUIRED
+
+Re-review of 65b82ef and c3fa72d. The round-1 minors were resolved and D29 was recorded accurately.
+
+**Critical.** The same class as round 1's critical, reached another way: money_said treated only the
+parser's own vocabulary as part of a number. A number word the parser doesn't read acted as a boundary, so
+the readable fragment beside it passed as the whole amount:
+- "ek lakh dus hazaar" and "ek lakh baees hazaar" passed as "ek lakh" (Hindi 21-99 and "dus" are missing
+  from the parser);
+- "sava do lakh" passed as "do lakh", "ek laakh pachaas hazaar" as "pachaas hazaar", "minus pachaas hazaar"
+  as "pachaas hazaar", and "a hundred and fifty thousand" as "fifty thousand";
+- "Teen sau bori aayi, baees hazaar ka bill" left the count, ₹300, as the one amount;
+- a tail after the unit or a full stop was dropped ("ek lakh rupaye pachaas", "Bill ek lakh. Pachaas.").
+
+Minor: "ek lakh rupaye pachaas paise" dropped the paise.
+
+**Fixes:**
+- money_said reads clusters whole, never greedily. A cluster is a run of number words, with connectors,
+  commas and an Rs or rupee word before it inside. It is read whole by parse_spoken_inr or, if money-shaped,
+  is None.
+- A list of number words the parser doesn't read is used for membership only, never for a value. A gap in
+  it can't create a wrong amount through it, and an extra word can only flag. It covers Hindi 11-99
+  spellings, sava, saare, laakh, minus, paise and others; hyphenated numbers count as number words.
+- After a rupee word or a sentence end that closed an amount, a number word (with only connectors between)
+  makes that amount None. A comma after a rupee word is a clean end, so "dedh lakh rupaye, paanch November"
+  still passes.
+- Every round-2 input is a table row with its exact money_said list. New pass rows: "Rupees ... only", digits
+  inside spoken words ("do lakh 21 hazaar"), and "dus din" after the amount. New known false flag: a number
+  word right after a full stop ("pachaas hazaar. Paanch November tak.").
+
+**Left for the PO** (the reviewer asked for an explicit acceptance):
+- a spelling that is in neither list, next to a readable part, still passes that part;
+- a single amount that isn't the bill's total, by meaning not by form ("baaki dedh lakh", "dono dedh lakh
+  ke"), passes. Code can't tell what the words mean; the owner confirms every voice bill with the transcript
+  beside it.
+
