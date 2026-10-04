@@ -10,8 +10,8 @@ changes:
   - id: CHG-041
     lane: direct
     board: in_progress
-    start_commit: null
+    start_commit: 420398a
     blocked_question: null
     gate_evidence: []
-    prepatch: null
+    prepatch: "PASS at 420398a: tests/test_max_usd.py cannot import usd_cap on the old tree"
     notes_resolved: false
