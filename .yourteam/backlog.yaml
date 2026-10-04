@@ -560,7 +560,7 @@ changes:
   - id: CHG-040
     title: A 429 for Gemini's spending cap is permanent, and the eval guard stops at once on it (PO)
     file: docs/changes/CHG-040-spend-cap-429.md
-    status: ready
+    status: done
     priority: 40
     type: defect
     lane: direct
