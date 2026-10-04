@@ -1,6 +1,6 @@
 # Every change, ever. Entries are never deleted -- done and rejected are history.
 # Status is a field, never a folder.
-next_id: 40
+next_id: 41
 changes:
   - id: CHG-001
     title: Repo skeleton — layout, config, schema, Clock, tracer, job table, CI
@@ -557,6 +557,16 @@ changes:
     expected_paths: ['app/domain/money.py', 'tests/test_voice_amount_said.py', 'README.md']
     depends_on: null
     batch: 12
+  - id: CHG-040
+    title: A 429 for Gemini's spending cap is permanent, and the eval guard stops at once on it (PO)
+    file: docs/changes/CHG-040-spend-cap-429.md
+    status: ready
+    priority: 40
+    type: defect
+    lane: direct
+    expected_paths: ['app/ai/client.py', 'evals/budget.py', 'tests/test_spend_cap.py']
+    depends_on: null
+    batch: 13
 
 # Shape of an entry:
 #   - id: CHG-001
