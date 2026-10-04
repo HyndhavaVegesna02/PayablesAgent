@@ -570,7 +570,7 @@ changes:
   - id: CHG-041
     title: A per-invocation cost cap flag (--max-usd) for the live evals, below the hard $5 cap (user)
     file: docs/changes/CHG-041-max-usd-flag.md
-    status: ready
+    status: done
     priority: 41
     type: feature
     lane: direct
