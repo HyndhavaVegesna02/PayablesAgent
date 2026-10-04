@@ -374,6 +374,15 @@ def test_the_ablation_report_states_the_fair_comparison_and_names_the_biggest_dr
     assert "abc1234" in md and "`app.jobs.replan.build_snapshot`" in md
 
 
+def test_the_ablation_header_says_every_harness_owner_types_the_same_values():
+    """PO, batch 10 verdict (CHG-038): the scripted owner types the document's values into a field the page
+    marks (CHG-034), and the bare harness hears the same values as sentences; the header says so, and the
+    committed fixture report carries it."""
+    assert "every harness's owner fills it with the same value from the scenario" in ablation.FAIRNESS
+    committed = runner.ROOT / "docs" / "evals" / "2026-10-04-fixtures-ablation" / "report.md"
+    assert ablation.FAIRNESS in committed.read_text(encoding="utf-8")
+
+
 def test_make_ablation_is_no_longer_a_stub():
     text = (runner.ROOT / "Makefile").read_text(encoding="utf-8")
     assert "python -m evals.ablation" in text and "not yet implemented" not in text.split("ablation:")[-1]
