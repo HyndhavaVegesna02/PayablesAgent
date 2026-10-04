@@ -1,14 +1,14 @@
 {
   "meta": {
-    "label": "regress-max-steps",
+    "label": "baseline",
     "mode": "fixtures",
     "model": "gemini-3.8-flash",
     "prompt_version": "2026-10-04.2",
-    "config_sha256": "c64090a2e1223a12c72179086c53941d93df9dc6499fc63563b9f84db70fc095",
-    "variant": "evals/variants/regress-max-steps.yaml",
+    "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
+    "variant": null,
     "prompt_overrides": null,
-    "commit": "e424841",
-    "date": "2026-10-04T09:35:00+05:30",
+    "commit": "2142c95",
+    "date": "2026-10-04T04:13:49+05:30",
     "runs_per_scenario": 5,
     "status": "COMPLETE",
     "stopped_because": null,
@@ -22,10 +22,10 @@
     "success_rate": 1.0,
     "scenarios_all_runs_passed": 11,
     "path": [
-      10,
+      15,
       15
     ],
-    "ai_calls": 285,
+    "ai_calls": 350,
     "cost_micro_usd": 0
   },
   "scenarios": [
@@ -323,21 +323,10 @@
       "errored": 0,
       "success_rate": 1.0,
       "path": [
-        0,
+        5,
         5
       ],
-      "path_failures": [
-        {
-          "run": 1,
-          "checks": [
-            {
-              "id": "drift-resolved-in-its-first-run",
-              "got": "high max_steps",
-              "want": "medium none"
-            }
-          ]
-        }
-      ],
+      "path_failures": [],
       "spread": [
         1.0,
         1.0
@@ -351,17 +340,18 @@
       },
       "components_failed": [],
       "mean": {
-        "ai_calls": 11.0,
-        "tool_calls": 6.0,
+        "ai_calls": 16.0,
+        "tool_calls": 11.0,
         "refused": 0.0,
         "loops": 0.0,
-        "wasted_calls": 1.0,
+        "wasted_calls": 2.0,
         "retries": 0.0,
         "schema_failures": 0.0,
-        "invalid_candidates": 1.0
+        "invalid_candidates": 2.0
       },
       "escalations": [
-        "max_steps"
+        "max_steps",
+        "max_validation_failures"
       ],
       "tokens_mean": {
         "input": 0.0,
@@ -400,8 +390,8 @@
       },
       "components_failed": [],
       "mean": {
-        "ai_calls": 8.0,
-        "tool_calls": 4.0,
+        "ai_calls": 16.0,
+        "tool_calls": 12.0,
         "refused": 0.0,
         "loops": 0.0,
         "wasted_calls": 0.0,
@@ -505,9 +495,7 @@
         "schema_failures": 0.0,
         "invalid_candidates": 0.0
       },
-      "escalations": [
-        "max_steps"
-      ],
+      "escalations": [],
       "tokens_mean": {
         "input": 0.0,
         "output": 0.0,
@@ -1429,8 +1417,8 @@
           "id": "fields-read",
           "component": "extract",
           "ok": true,
-          "got": "418 1239000 Shree Ganesh Hardware 2026-10-24",
-          "want": "418 1239000 Shree Ganesh Hardware 2026-10-24",
+          "got": "418 1239000 Shree Ganesh Hardware",
+          "want": "418 1239000 Shree Ganesh Hardware",
           "level": "end_to_end"
         },
         {
@@ -1509,8 +1497,8 @@
           "id": "fields-read",
           "component": "extract",
           "ok": true,
-          "got": "418 1239000 Shree Ganesh Hardware 2026-10-24",
-          "want": "418 1239000 Shree Ganesh Hardware 2026-10-24",
+          "got": "418 1239000 Shree Ganesh Hardware",
+          "want": "418 1239000 Shree Ganesh Hardware",
           "level": "end_to_end"
         },
         {
@@ -1589,8 +1577,8 @@
           "id": "fields-read",
           "component": "extract",
           "ok": true,
-          "got": "418 1239000 Shree Ganesh Hardware 2026-10-24",
-          "want": "418 1239000 Shree Ganesh Hardware 2026-10-24",
+          "got": "418 1239000 Shree Ganesh Hardware",
+          "want": "418 1239000 Shree Ganesh Hardware",
           "level": "end_to_end"
         },
         {
@@ -1669,8 +1657,8 @@
           "id": "fields-read",
           "component": "extract",
           "ok": true,
-          "got": "418 1239000 Shree Ganesh Hardware 2026-10-24",
-          "want": "418 1239000 Shree Ganesh Hardware 2026-10-24",
+          "got": "418 1239000 Shree Ganesh Hardware",
+          "want": "418 1239000 Shree Ganesh Hardware",
           "level": "end_to_end"
         },
         {
@@ -1749,8 +1737,8 @@
           "id": "fields-read",
           "component": "extract",
           "ok": true,
-          "got": "418 1239000 Shree Ganesh Hardware 2026-10-24",
-          "want": "418 1239000 Shree Ganesh Hardware 2026-10-24",
+          "got": "418 1239000 Shree Ganesh Hardware",
+          "want": "418 1239000 Shree Ganesh Hardware",
           "level": "end_to_end"
         },
         {
@@ -3050,8 +3038,8 @@
         {
           "id": "drift-resolved-in-its-first-run",
           "component": "agent",
-          "ok": false,
-          "got": "high max_steps",
+          "ok": true,
+          "got": "medium none",
           "want": "medium none",
           "level": "trajectory"
         },
@@ -3067,29 +3055,28 @@
       "component": null,
       "error": null,
       "metrics": {
-        "ai_calls": 11,
+        "ai_calls": 16,
         "ai_calls_by_job": {
-          "exception": 8,
+          "exception": 13,
           "explain": 1,
           "sort": 1,
           "extract:bank_alert": 1
         },
         "schema_failures": 0,
-        "tool_calls": 6,
+        "tool_calls": 11,
         "tool_calls_by_tool": {
-          "search_gmail": 4,
-          "add_candidate": 2
+          "search_gmail": 8,
+          "add_candidate": 3
         },
         "refused": 0,
         "loops": 0,
         "tool_errors": 0,
-        "invalid_candidates": 1,
-        "wasted_calls": 1,
+        "invalid_candidates": 2,
+        "wasted_calls": 2,
         "retries": 0,
         "dead_jobs": 0,
         "escalations": [
-          "max_steps",
-          "max_steps",
+          "max_validation_failures",
           "max_steps"
         ],
         "tokens": {
@@ -3155,8 +3142,8 @@
         {
           "id": "drift-resolved-in-its-first-run",
           "component": "agent",
-          "ok": false,
-          "got": "high max_steps",
+          "ok": true,
+          "got": "medium none",
           "want": "medium none",
           "level": "trajectory"
         },
@@ -3172,29 +3159,28 @@
       "component": null,
       "error": null,
       "metrics": {
-        "ai_calls": 11,
+        "ai_calls": 16,
         "ai_calls_by_job": {
-          "exception": 8,
+          "exception": 13,
           "explain": 1,
           "sort": 1,
           "extract:bank_alert": 1
         },
         "schema_failures": 0,
-        "tool_calls": 6,
+        "tool_calls": 11,
         "tool_calls_by_tool": {
-          "search_gmail": 4,
-          "add_candidate": 2
+          "search_gmail": 8,
+          "add_candidate": 3
         },
         "refused": 0,
         "loops": 0,
         "tool_errors": 0,
-        "invalid_candidates": 1,
-        "wasted_calls": 1,
+        "invalid_candidates": 2,
+        "wasted_calls": 2,
         "retries": 0,
         "dead_jobs": 0,
         "escalations": [
-          "max_steps",
-          "max_steps",
+          "max_validation_failures",
           "max_steps"
         ],
         "tokens": {
@@ -3260,8 +3246,8 @@
         {
           "id": "drift-resolved-in-its-first-run",
           "component": "agent",
-          "ok": false,
-          "got": "high max_steps",
+          "ok": true,
+          "got": "medium none",
           "want": "medium none",
           "level": "trajectory"
         },
@@ -3277,29 +3263,28 @@
       "component": null,
       "error": null,
       "metrics": {
-        "ai_calls": 11,
+        "ai_calls": 16,
         "ai_calls_by_job": {
-          "exception": 8,
+          "exception": 13,
           "explain": 1,
           "sort": 1,
           "extract:bank_alert": 1
         },
         "schema_failures": 0,
-        "tool_calls": 6,
+        "tool_calls": 11,
         "tool_calls_by_tool": {
-          "search_gmail": 4,
-          "add_candidate": 2
+          "search_gmail": 8,
+          "add_candidate": 3
         },
         "refused": 0,
         "loops": 0,
         "tool_errors": 0,
-        "invalid_candidates": 1,
-        "wasted_calls": 1,
+        "invalid_candidates": 2,
+        "wasted_calls": 2,
         "retries": 0,
         "dead_jobs": 0,
         "escalations": [
-          "max_steps",
-          "max_steps",
+          "max_validation_failures",
           "max_steps"
         ],
         "tokens": {
@@ -3365,8 +3350,8 @@
         {
           "id": "drift-resolved-in-its-first-run",
           "component": "agent",
-          "ok": false,
-          "got": "high max_steps",
+          "ok": true,
+          "got": "medium none",
           "want": "medium none",
           "level": "trajectory"
         },
@@ -3382,29 +3367,28 @@
       "component": null,
       "error": null,
       "metrics": {
-        "ai_calls": 11,
+        "ai_calls": 16,
         "ai_calls_by_job": {
-          "exception": 8,
+          "exception": 13,
           "explain": 1,
           "sort": 1,
           "extract:bank_alert": 1
         },
         "schema_failures": 0,
-        "tool_calls": 6,
+        "tool_calls": 11,
         "tool_calls_by_tool": {
-          "search_gmail": 4,
-          "add_candidate": 2
+          "search_gmail": 8,
+          "add_candidate": 3
         },
         "refused": 0,
         "loops": 0,
         "tool_errors": 0,
-        "invalid_candidates": 1,
-        "wasted_calls": 1,
+        "invalid_candidates": 2,
+        "wasted_calls": 2,
         "retries": 0,
         "dead_jobs": 0,
         "escalations": [
-          "max_steps",
-          "max_steps",
+          "max_validation_failures",
           "max_steps"
         ],
         "tokens": {
@@ -3470,8 +3454,8 @@
         {
           "id": "drift-resolved-in-its-first-run",
           "component": "agent",
-          "ok": false,
-          "got": "high max_steps",
+          "ok": true,
+          "got": "medium none",
           "want": "medium none",
           "level": "trajectory"
         },
@@ -3487,29 +3471,28 @@
       "component": null,
       "error": null,
       "metrics": {
-        "ai_calls": 11,
+        "ai_calls": 16,
         "ai_calls_by_job": {
-          "exception": 8,
+          "exception": 13,
           "explain": 1,
           "sort": 1,
           "extract:bank_alert": 1
         },
         "schema_failures": 0,
-        "tool_calls": 6,
+        "tool_calls": 11,
         "tool_calls_by_tool": {
-          "search_gmail": 4,
-          "add_candidate": 2
+          "search_gmail": 8,
+          "add_candidate": 3
         },
         "refused": 0,
         "loops": 0,
         "tool_errors": 0,
-        "invalid_candidates": 1,
-        "wasted_calls": 1,
+        "invalid_candidates": 2,
+        "wasted_calls": 2,
         "retries": 0,
         "dead_jobs": 0,
         "escalations": [
-          "max_steps",
-          "max_steps",
+          "max_validation_failures",
           "max_steps"
         ],
         "tokens": {
@@ -3568,17 +3551,17 @@
       "component": null,
       "error": null,
       "metrics": {
-        "ai_calls": 8,
+        "ai_calls": 16,
         "ai_calls_by_job": {
-          "exception": 5,
+          "exception": 13,
           "explain": 1,
           "sort": 1,
           "extract:bank_alert": 1
         },
         "schema_failures": 0,
-        "tool_calls": 4,
+        "tool_calls": 12,
         "tool_calls_by_tool": {
-          "search_gmail": 4
+          "search_gmail": 12
         },
         "refused": 0,
         "loops": 0,
@@ -3662,17 +3645,17 @@
       "component": null,
       "error": null,
       "metrics": {
-        "ai_calls": 8,
+        "ai_calls": 16,
         "ai_calls_by_job": {
-          "exception": 5,
+          "exception": 13,
           "explain": 1,
           "sort": 1,
           "extract:bank_alert": 1
         },
         "schema_failures": 0,
-        "tool_calls": 4,
+        "tool_calls": 12,
         "tool_calls_by_tool": {
-          "search_gmail": 4
+          "search_gmail": 12
         },
         "refused": 0,
         "loops": 0,
@@ -3756,17 +3739,17 @@
       "component": null,
       "error": null,
       "metrics": {
-        "ai_calls": 8,
+        "ai_calls": 16,
         "ai_calls_by_job": {
-          "exception": 5,
+          "exception": 13,
           "explain": 1,
           "sort": 1,
           "extract:bank_alert": 1
         },
         "schema_failures": 0,
-        "tool_calls": 4,
+        "tool_calls": 12,
         "tool_calls_by_tool": {
-          "search_gmail": 4
+          "search_gmail": 12
         },
         "refused": 0,
         "loops": 0,
@@ -3850,17 +3833,17 @@
       "component": null,
       "error": null,
       "metrics": {
-        "ai_calls": 8,
+        "ai_calls": 16,
         "ai_calls_by_job": {
-          "exception": 5,
+          "exception": 13,
           "explain": 1,
           "sort": 1,
           "extract:bank_alert": 1
         },
         "schema_failures": 0,
-        "tool_calls": 4,
+        "tool_calls": 12,
         "tool_calls_by_tool": {
-          "search_gmail": 4
+          "search_gmail": 12
         },
         "refused": 0,
         "loops": 0,
@@ -3944,17 +3927,17 @@
       "component": null,
       "error": null,
       "metrics": {
-        "ai_calls": 8,
+        "ai_calls": 16,
         "ai_calls_by_job": {
-          "exception": 5,
+          "exception": 13,
           "explain": 1,
           "sort": 1,
           "extract:bank_alert": 1
         },
         "schema_failures": 0,
-        "tool_calls": 4,
+        "tool_calls": 12,
         "tool_calls_by_tool": {
-          "search_gmail": 4
+          "search_gmail": 12
         },
         "refused": 0,
         "loops": 0,
@@ -4483,9 +4466,7 @@
         "wasted_calls": 1,
         "retries": 0,
         "dead_jobs": 0,
-        "escalations": [
-          "max_steps"
-        ],
+        "escalations": [],
         "tokens": {
           "input": 0,
           "output": 0,
@@ -4592,9 +4573,7 @@
         "wasted_calls": 1,
         "retries": 0,
         "dead_jobs": 0,
-        "escalations": [
-          "max_steps"
-        ],
+        "escalations": [],
         "tokens": {
           "input": 0,
           "output": 0,
@@ -4701,9 +4680,7 @@
         "wasted_calls": 1,
         "retries": 0,
         "dead_jobs": 0,
-        "escalations": [
-          "max_steps"
-        ],
+        "escalations": [],
         "tokens": {
           "input": 0,
           "output": 0,
@@ -4810,9 +4787,7 @@
         "wasted_calls": 1,
         "retries": 0,
         "dead_jobs": 0,
-        "escalations": [
-          "max_steps"
-        ],
+        "escalations": [],
         "tokens": {
           "input": 0,
           "output": 0,
@@ -4919,9 +4894,7 @@
         "wasted_calls": 1,
         "retries": 0,
         "dead_jobs": 0,
-        "escalations": [
-          "max_steps"
-        ],
+        "escalations": [],
         "tokens": {
           "input": 0,
           "output": 0,

@@ -2,7 +2,7 @@
 
 | Mode | Model | Prompt version | Config | Commit | Date | Runs per scenario | Variant |
 |---|---|---|---|---|---|---|---|
-| fixtures | gemini-3.8-flash | 2026-10-04.2 | c64090a2e122 | e424841 | 2026-10-04T09:35:00+05:30 | 5 | evals/variants/regress-max-steps.yaml |
+| fixtures | gemini-3.8-flash | 2026-10-04.2 | c64090a2e122 | 2142c95 | 2026-10-04T04:13:57+05:30 | 5 | evals/variants/regress-max-steps.yaml |
 
 Fixture mode: every model reply is canned (fixtures/ai_replies.json), so runs are deterministic and the tokens and cost are zero. It shows the harness and the code paths, not the model.
 

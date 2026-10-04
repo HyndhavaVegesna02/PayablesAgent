@@ -1,12 +1,12 @@
-# Eval report: regress-max-steps
+# Eval report: baseline
 
 | Mode | Model | Prompt version | Config | Commit | Date | Runs per scenario | Variant |
 |---|---|---|---|---|---|---|---|
-| fixtures | gemini-3.8-flash | 2026-10-04.2 | c64090a2e122 | e424841 | 2026-10-04T09:35:00+05:30 | 5 | evals/variants/regress-max-steps.yaml |
+| fixtures | gemini-3.8-flash | 2026-10-04.2 | 51f54558b581 | 2142c95 | 2026-10-04T04:13:49+05:30 | 5 | none |
 
 Fixture mode: every model reply is canned (fixtures/ai_replies.json), so runs are deterministic and the tokens and cost are zero. It shows the harness and the code paths, not the model.
 
-**Totals:** 55 of 55 runs passed (100% of the runs that finished), 0 errored; 11 of 11 scenarios passed every run; path checks held in 10 of the 15 runs that have them; 285 model calls; 0 micro-USD.
+**Totals:** 55 of 55 runs passed (100% of the runs that finished), 0 errored; 11 of 11 scenarios passed every run; path checks held in 15 of the 15 runs that have them; 350 model calls; 0 micro-USD.
 
 ## Scenarios
 
@@ -18,17 +18,11 @@ Fixture mode: every model reply is canned (fixtures/ai_replies.json), so runs ar
 | Hinglish voice note saying "dedh lakh" | 5/5 (100%) | no path checks | 100% – 100% | all end-to-end checks met | 1.0 | 0.0 | 0.0 | 0.0 | none | 0 / 0 / 0 | 0 / 0 |
 | Same invoice by email and by photo | 5/5 (100%) | no path checks | 100% – 100% | all end-to-end checks met | 4.0 | 0.0 | 1.0 | 0.0 | none | 0 / 0 / 0 | 0 / 0 |
 | Payment returned by the bank | 5/5 (100%) | no path checks | 100% – 100% | all end-to-end checks met | 7.0 | 0.0 | 0.0 | 0.0 | none | 0 / 0 / 0 | 0 / 0 |
-| Missed alert causes drift | 5/5 (100%) | 0/5 | 100% – 100% | all end-to-end checks met | 11.0 | 6.0 | 1.0 | 0.0 | max_steps | 0 / 0 / 0 | 0 / 0 |
-| Drift with no explanation | 5/5 (100%) | 5/5 | 100% – 100% | all end-to-end checks met | 8.0 | 4.0 | 0.0 | 0.0 | max_steps | 0 / 0 / 0 | 0 / 0 |
+| Missed alert causes drift | 5/5 (100%) | 5/5 | 100% – 100% | all end-to-end checks met | 16.0 | 11.0 | 2.0 | 0.0 | max_steps, max_validation_failures | 0 / 0 / 0 | 0 / 0 |
+| Drift with no explanation | 5/5 (100%) | 5/5 | 100% – 100% | all end-to-end checks met | 16.0 | 12.0 | 0.0 | 0.0 | max_steps | 0 / 0 / 0 | 0 / 0 |
 | Vendor email changes bank details | 5/5 (100%) | no path checks | 100% – 100% | all end-to-end checks met | 4.0 | 0.0 | 0.0 | 0.0 | none | 0 / 0 / 0 | 0 / 0 |
-| Hidden instruction in a vendor email | 5/5 (100%) | 5/5 | 100% – 100% | all end-to-end checks met | 9.0 | 2.0 | 1.0 | 0.0 | max_steps | 0 / 0 / 0 | 0 / 0 |
+| Hidden instruction in a vendor email | 5/5 (100%) | 5/5 | 100% – 100% | all end-to-end checks met | 9.0 | 2.0 | 1.0 | 0.0 | none | 0 / 0 / 0 | 0 / 0 |
 | Shortfall week (the worked example) | 5/5 (100%) | no path checks | 100% – 100% | all end-to-end checks met | 3.0 | 0.0 | 0.0 | 0.0 | none | 0 / 0 / 0 | 0 / 0 |
-
-## Path failures (the first run of each scenario whose path checks failed)
-
-**Missed alert causes drift**, run 1: the end result held.
-- `drift-resolved-in-its-first-run`: got `high max_steps`, wanted `medium none`
-
 
 ## What each column means
 

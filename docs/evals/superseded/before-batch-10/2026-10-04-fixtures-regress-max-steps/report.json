@@ -7,8 +7,8 @@
     "config_sha256": "c64090a2e1223a12c72179086c53941d93df9dc6499fc63563b9f84db70fc095",
     "variant": "evals/variants/regress-max-steps.yaml",
     "prompt_overrides": null,
-    "commit": "e424841",
-    "date": "2026-10-04T09:35:00+05:30",
+    "commit": "2142c95",
+    "date": "2026-10-04T04:13:57+05:30",
     "runs_per_scenario": 5,
     "status": "COMPLETE",
     "stopped_because": null,
@@ -1429,8 +1429,8 @@
           "id": "fields-read",
           "component": "extract",
           "ok": true,
-          "got": "418 1239000 Shree Ganesh Hardware 2026-10-24",
-          "want": "418 1239000 Shree Ganesh Hardware 2026-10-24",
+          "got": "418 1239000 Shree Ganesh Hardware",
+          "want": "418 1239000 Shree Ganesh Hardware",
           "level": "end_to_end"
         },
         {
@@ -1509,8 +1509,8 @@
           "id": "fields-read",
           "component": "extract",
           "ok": true,
-          "got": "418 1239000 Shree Ganesh Hardware 2026-10-24",
-          "want": "418 1239000 Shree Ganesh Hardware 2026-10-24",
+          "got": "418 1239000 Shree Ganesh Hardware",
+          "want": "418 1239000 Shree Ganesh Hardware",
           "level": "end_to_end"
         },
         {
@@ -1589,8 +1589,8 @@
           "id": "fields-read",
           "component": "extract",
           "ok": true,
-          "got": "418 1239000 Shree Ganesh Hardware 2026-10-24",
-          "want": "418 1239000 Shree Ganesh Hardware 2026-10-24",
+          "got": "418 1239000 Shree Ganesh Hardware",
+          "want": "418 1239000 Shree Ganesh Hardware",
           "level": "end_to_end"
         },
         {
@@ -1669,8 +1669,8 @@
           "id": "fields-read",
           "component": "extract",
           "ok": true,
-          "got": "418 1239000 Shree Ganesh Hardware 2026-10-24",
-          "want": "418 1239000 Shree Ganesh Hardware 2026-10-24",
+          "got": "418 1239000 Shree Ganesh Hardware",
+          "want": "418 1239000 Shree Ganesh Hardware",
           "level": "end_to_end"
         },
         {
@@ -1749,8 +1749,8 @@
           "id": "fields-read",
           "component": "extract",
           "ok": true,
-          "got": "418 1239000 Shree Ganesh Hardware 2026-10-24",
-          "want": "418 1239000 Shree Ganesh Hardware 2026-10-24",
+          "got": "418 1239000 Shree Ganesh Hardware",
+          "want": "418 1239000 Shree Ganesh Hardware",
           "level": "end_to_end"
         },
         {

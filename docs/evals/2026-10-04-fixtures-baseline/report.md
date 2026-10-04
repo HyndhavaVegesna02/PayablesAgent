@@ -2,7 +2,7 @@
 
 | Mode | Model | Prompt version | Config | Commit | Date | Runs per scenario | Variant |
 |---|---|---|---|---|---|---|---|
-| fixtures | gemini-3.8-flash | 2026-10-04.2 | 51f54558b581 | 2142c95 | 2026-10-04T04:13:49+05:30 | 5 | none |
+| fixtures | gemini-3.8-flash | 2026-10-04.2 | 51f54558b581 | e424841 | 2026-10-04T09:34:52+05:30 | 5 | none |
 
 Fixture mode: every model reply is canned (fixtures/ai_replies.json), so runs are deterministic and the tokens and cost are zero. It shows the harness and the code paths, not the model.
 
