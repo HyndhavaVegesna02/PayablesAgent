@@ -173,3 +173,12 @@ money would close it, at the cost of false flags on long invoice numbers.
 
 Every voice bill is still confirmed by the owner with the transcript beside it.
 
+## PO verdict
+
+ACCEPT for CHG-037 and CHG-038 (2026-10-04, payablesagent-ac). The PO checked 47b8e75 independently (1461
+passed). D30 rules on the residue:
+- items 1-5 are accepted as known limits, to be listed briefly in the README;
+- item 6: a bare run of five or more digits counts as money.
+Item 6 and CHG-039's minors go into one direct-lane change in batch 12, with one review round. The voice
+amount check is then done: further spelling edge cases go to the backlog as known limits.
+

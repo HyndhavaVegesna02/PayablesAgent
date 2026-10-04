@@ -27,6 +27,17 @@ invoice number, an advance). The PO ruled:
 3. the bill passes only when the paise exactly equal that single amount.
 Extra false flags are the right trade: a flag costs the owner seconds, a wrong amount costs money.
 
+## PO D30 (batch 11 verdict): known limits
+Accepted as known limits; code can't tell them by form, and every voice bill is confirmed by the owner with
+the transcript beside the amount:
+1. a tail after an ordinary word or a comma ("Bill ek lakh hai, pachaas");
+2. an amount that isn't the total by meaning ("baaki dedh lakh");
+3. spellings in neither word list;
+4. guesses or ranges in unlisted words ("ke aas paas");
+5. a comma merge only the model could share ("do lakh, 50 hazaar advance").
+Item 6 (bare digits aren't money) is not a limit: a bare run of five or more digits counts as money, in
+CHG-039 (batch 12). Further spelling edge cases go to the backlog as known limits, not fix rounds.
+
 ## Acceptance Criteria
 - [ ] AC1: `app/domain/money.py::money_said(transcript)` returns every money-shaped amount the transcript says.
   The transcript is cut into clusters of number words, and each cluster is read whole or not at all, never
@@ -57,3 +68,4 @@ Extra false flags are the right trade: a flag costs the owner seconds, a wrong a
   amounts were dropped or read in part (critical) -> fixed; ranges and guesses are None
 - 2026-10-04: batch 11 review round 4: written amounts outside an allow-list were dropped (critical) -> any
   word with a digit is a number, money-shaped by form; guesses after a closed amount, "+", "₹-" fixed
+- 2026-10-04: batch 11 round 5 APPROVE; PO ACCEPT, with D30 (known limits; bare 5+ digits to CHG-039)

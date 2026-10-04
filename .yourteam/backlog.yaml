@@ -530,7 +530,7 @@ changes:
   - id: CHG-037
     title: The voice amount check compares parsed paise, never a text substring (PO, batch 10 verdict)
     file: docs/changes/CHG-037-voice-said-words-boundary.md
-    status: ready
+    status: done
     priority: 37
     type: defect
     lane: direct
@@ -540,7 +540,7 @@ changes:
   - id: CHG-038
     title: The ablation report's header says the bare harness hears the same owner-typed values (PO, batch 10 verdict)
     file: docs/changes/CHG-038-ablation-header-owner-typing.md
-    status: ready
+    status: done
     priority: 38
     type: docs
     lane: direct
