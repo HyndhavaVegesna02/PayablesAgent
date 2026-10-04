@@ -160,7 +160,34 @@ invocation at 600 model calls or 5,000,000 micro-USD (US$5), whichever comes
 first. It writes a partial report marked ABORTED, runs one call at a time, and
 backs off on rate limits. Reports go to `docs/evals/<date>-<mode>-<label>/`.
 
-## A reusable component: `app/validate`
+## Reusable components
+
+Two pieces here are built to be lifted: the **eval harness**, which fits any agent that calls a model through
+one backend interface, and **`app/validate`**, the domain rule checks for Indian business finance.
+
+### The eval harness
+
+- **The runner with component-tagged checks** (`evals/runner.py`, `evals/scenario.py`). A scenario is a folder
+  with an `expected.yaml`: steps (deliver an email, upload a file, move the clock, press a button the page
+  shows) and checks. Each check is a `SELECT` on the run's own database, tagged with the component it judges
+  (`sort`, `extract`, `validate`, `reconcile`, `planner`, `agent`) and its level (`end_to_end`, or
+  `trajectory` for the path: steps, refusals, escalations). A failed run names its first failing component,
+  so a report says where the system broke, not just that it did.
+- **Knock-out seams** (`evals/knockouts.py`). Each knock-out removes one control by patching named functions
+  for one run (`applied(name, binding)`, always restored), never by a flag in app code; the report lists the
+  seams it patched. Add one with a function returning `(module, attribute, replacement)` triples and an
+  outcome check that detects it.
+- **The budget guard** (`evals/budget.py::BudgetGuard`). It wraps the model backend for a whole invocation:
+  a hard call cap and cost cap (`--max-usd` lowers it), pacing, backoff on a rate limit, an immediate stop on
+  a spending cap, and a reason the report records.
+
+**How to lift it.** Copy `evals/` and give it four things of yours: a `Backend` with one `generate(...)`
+method (`app/ai/client.py`'s protocol), a function that builds a fresh world for one run (here
+`evals/runner.py::fresh_world`: a migrated, seeded database), the step handlers your scenarios need
+(the `STEPS` table in `evals/runner.py`), and your seams. The report writers (`evals/report.py`) and `make check-evidence`'s
+re-derivation work unchanged on what they produce.
+
+### `app/validate`
 
 `app/validate` holds the rule checks for Indian business finance. They are pure
 functions over integer paise: no I/O, no clock, no database, and nothing from
