@@ -9,4 +9,8 @@ Batch 15 fixed what live phase 2 found.
   question by amount and to answer the agent by a stated rule, so two steps' text and checks changed
   (`choice-pressed`; `unmatched-debits-all-explained` keyed by amount). Every result is still PASS.
 
+- `workflow-A-2026-10-04-live.*`, `workflow-B-2026-10-04-live.*` (live, at 035ba69 and 79c838d): the
+  first live runs of the two fortnights, before CHG-042 (A's voice step) and CHG-043 (B's scripted owner).
+  They are the BEFORE for the live reruns now in ../../.
+
 Kept as they were, for comparison. The current reports are in ../../.
