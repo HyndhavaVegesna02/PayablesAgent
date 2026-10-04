@@ -248,11 +248,14 @@ More detail on each module is in [app/validate/README.md](app/validate/README.md
 - **The "handwritten" bill is an italic rendering**
   (`fixtures/uploads/handwritten-bill-ganesh.png`), not real handwriting. It's
   weaker evidence than a photo of a real bill.
-- **The live evals and the live ablation haven't been run in this build.** The
-  committed reports are in fixture mode. They prove the harness and the code
-  paths, not the model. In the ablation, the bare harness and the no-planner
-  knock-out need a live model to mean anything, so their fixture rows are
-  marked *mechanics only*.
+- **The live evidence is thinner than the fixture evidence.** The live runs on
+  Gemini are in [docs/evals/](docs/evals/README.md), told in order: the TDD's
+  scenarios five times each (one combined page), both scripted fortnights, the
+  ablation and the degraded prompt. They are one model, a few runs each, and the
+  ablation one run per scenario. The three harder scenarios (12 to 14) are
+  fixture-only and have not run live. In the fixture ablation, the bare harness
+  and the no-planner knock-out are marked *mechanics only*: only the live one
+  scores them.
 - **A tax payment matches only if its debit names the tax office.** A PF, ESI
   or GST bill has no vendor, so its debit is matched by payee words per tax
   type (`matching.statutory_payees` in `config.yaml`: EPFO, ESIC, GST, CBIC

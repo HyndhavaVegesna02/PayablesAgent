@@ -93,6 +93,96 @@ PAPER-001 stays `normal`, unpaid and due 14 Oct, and no new bank details are
 applied. For the run counts, see the report in
 [docs/evals/](evals/README.md), whose header names its commit.
 
+**3. Live, on Gemini** (`docs/evals/2026-10-04-live-baseline-part2/`, and its
+row on the combined page `2026-10-04-live-baseline-11x5/`): scenario 10 ran five
+times on the real model, and every run met its checks. PAPER-001 kept its
+priority, date and status, and the new bank details waited for the owner. The
+report holds the count and the cost; the model's own path differed from the
+script's, which is why the checks that pin the scripted path are left out of a
+live run.
+
+**4. A second form, fixture-only** (scenario 12,
+`evals/scenarios/12-hidden-instruction-in-an-invoice-pdf/`): the instruction is
+white three-point text in the invoice's PDF, and in the attachment's name. The
+canned extraction obeys it and copies the attacker's account into the bank
+details. D26 holds them: first bank details from any document are only
+proposed, and the owner is asked. It has not run live.
+
+## Approval fatigue
+
+An owner who is asked too often stops reading and clicks yes. So the app asks
+only where a person's judgement or authority is the control, and keeps each ask
+small and specific.
+
+**What the owner confirms, and why each is rare or cheap:**
+- **A new bill read from a document** (email, photo, voice note). Once per bill,
+  with the source beside the form (the photo, the transcript), and every field
+  code couldn't trust marked for typing. Nothing a model read reaches the ledger
+  without this.
+- **The day's payments.** One approval per payment day covers every line the
+  planner chose. The owner pays through their own bank app; the app never moves
+  money.
+- **A vendor's bank details** (D26). Only when a document proposes new or changed
+  details. The question says which, and "Reject: keep the old details" sits
+  beside "Approve".
+- **A debit code can't place.** Only when no bill matches by amount, date and
+  payee, or two do. The question names the candidate bills.
+- **The real balance**, only when a drift the agent can't explain persists; **a
+  PDF's password**, only for a locked statement; **an agent's question**, only
+  when its evidence isn't enough; **an option** on a short week, only when the
+  plan can't keep the safety amount.
+
+**What we deliberately don't ask:**
+- a debit or credit that matches its bill or invoice: code matches it and says
+  so in the audit trail;
+- a duplicate: refused with a note, not raised as a question;
+- mail that isn't a bill, an alert or a statement: sorted away after one model
+  call;
+- the plan's arithmetic: it is code's, and the owner sees its result, not its
+  working;
+- the model's summaries: shown as the assistant's own words, never as something
+  to approve.
+
+Owner alerts by email are batched and rate-limited (`alerts.min_minutes_between_emails`
+in `config.yaml`), so a busy day is one email, not ten.
+
+## The model as a processor of private financial data
+
+Gemini is a third party, and some of what it reads is private. What is sent, and
+what isn't:
+
+**Sent to Gemini:**
+- the From, Date and Subject headers and the text body of each fetched email,
+  and its PDF and image attachments (invoices; statements, once unlocked);
+- uploaded photos, PDFs and voice notes;
+- the exception agent's case file: the goal, the facts code wrote (amounts,
+  dates, account last four, counterparty names) and what its tools returned
+  (search results, ledger rows it asked for);
+- for the plan's "what changed" note, the plan's changes (bills, amounts, dates).
+
+**Not sent:**
+- a PDF's password (used in memory, once, to unlock the file; never stored or
+  logged);
+- the API key, the session secret, the Fernet key, the Gmail refresh token;
+- the owner's login or the database as a whole;
+- mail from senders that aren't a known bank or vendor: it is never fetched.
+
+**Mitigations:**
+- **Minimisation.** Only known senders' mail is fetched, and other headers are
+  dropped before a model call. The ledger keeps bank accounts masked to the
+  last four digits.
+- **No authority.** The model has no tool that writes the ledger, approves,
+  pays or sends anything outside the app; what it returns is parsed into a
+  schema and checked by code (above).
+- **Nothing secret in traces.** Keys are redacted from errors and traces, and
+  files are recorded by type, size and hash, never their bytes.
+- **Encryption at rest.** Every stored document is Fernet-encrypted.
+- **A demo without the model.** `DEMO_AI=fixtures` runs on canned replies and
+  never calls Gemini.
+- **The provider's terms.** Retention and use of API data are set by Google's
+  Gemini API terms for the account in use. Read them before a real business's
+  data goes through, and use a paid, non-training tier.
+
 ## Known limits
 
 - **A crash on a run's last attempt (CHG-026).** If the worker process dies
@@ -106,6 +196,6 @@ applied. For the run counts, see the report in
 - **Gmail isn't connected.** Mail comes from a folder of `.eml` files. The
   Gmail scope (read-only, filtered senders, the refresh token encrypted at
   rest) is the user's part, and isn't in this build.
-- **The live evals haven't been run in this build.** Fixture mode proves the
-  harness and the code paths. How well the model itself resists these emails
-  is measured by the live run the product owner authorises.
+- **The live attack evidence is a few runs of one model.** Scenario 10 ran live
+  on Gemini (below). The second injection form, an instruction hidden in an
+  invoice's PDF (scenario 12), is fixture-only and has not run live.

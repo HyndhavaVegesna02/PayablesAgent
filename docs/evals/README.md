@@ -143,8 +143,10 @@ another path.
 
 `evals/variants/prompt-degraded.yaml` swaps a "simplified" bank-alert prompt in
 for a suite. Canned replies ignore prompts, so only a live run can say whether
-the suite catches it. The live reports will sit beside these ones when the
-product owner authorises the run (under the budget guard's caps).
+the suite catches it. It ran live on scenarios 01, 07 and 08, once each
+(`2026-10-04-live-prompt-degraded/`), and didn't catch the regression: the live
+model still copied the amounts exactly. That's a result, reported as it is; a
+run of more than one per scenario is what would say how often it slips.
 
 ## Fixture mode, and what it does not show
 
@@ -153,4 +155,4 @@ tokens and cost are zero. The reports show that the harness and the code paths
 work, not how good the model is. In the ablation, the bare harness and the
 no_planner knock-out need replies that no fixture has. They run on a stand-in
 that plans nothing, are marked *mechanics only*, and are left out of the
-comparison until the live run.
+fixture comparison. The live ablation scores them (`2026-10-04-live-ablation-v1/`).
