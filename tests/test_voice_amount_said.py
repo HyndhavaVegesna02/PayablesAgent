@@ -200,10 +200,10 @@ def test_what_code_cannot_tell_by_form_is_left_to_the_owner():
 def test_the_known_false_flags_fail_safe():
     """D29's trade: with no unit or full stop after it, an amount runs into the next number word; and a
     number word just after a full stop may be more of the amount before it. The owner types it. Never a
-    wrong amount passed."""
-    assert money_said("Sharma ka bill pachaas hazaar. Paanch November tak.") == [None]
-    _flagged("Sharma ka bill pachaas hazaar. Paanch November tak.", "pachaas hazaar")
-    assert money_said("Sharma ka bill, 1.5 lakh, paanch November tak.") == [None]
-    _flagged("Sharma ka bill, 1.5 lakh, paanch November tak.", "dedh lakh")
-    assert money_said("Sharma ka bill pachaas hazaar paanch November tak") == [5_000_500]
-    _flagged("Sharma ka bill pachaas hazaar paanch November tak", "pachaas hazaar")
+    wrong amount passed. (A day before a month name is a date since CHG-042; without the month, it isn't.)"""
+    assert money_said("Sharma ka bill pachaas hazaar. Paanch ko dena hai.") == [None]
+    _flagged("Sharma ka bill pachaas hazaar. Paanch ko dena hai.", "pachaas hazaar")
+    assert money_said("Sharma ka bill, 1.5 lakh, paanch ko dena hai.") == [None]
+    _flagged("Sharma ka bill, 1.5 lakh, paanch ko dena hai.", "dedh lakh")
+    assert money_said("Sharma ka bill pachaas hazaar paanch ko dena hai") == [5_000_500]
+    _flagged("Sharma ka bill pachaas hazaar paanch ko dena hai", "pachaas hazaar")

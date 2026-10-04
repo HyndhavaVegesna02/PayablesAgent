@@ -247,6 +247,23 @@ _HEDGE_BEFORE = {"lagbhag", "lagbhagh", "kareeb", "karib", "kareeban", "takreeba
 _DASHES = {"-", "–", "—", "~", "/", "&"}  # and any run of dashes ("--")
 
 
+# A day number before a month name is a date, not money (CHG-042): "dedh lakh rupaye 5 November tak". The day
+# is a digit 1-31 ("5", "5th") or a number word up to 31; the month is its name, its short form, or "tarikh".
+_MONTHS = {"january", "february", "march", "april", "may", "june", "july", "august", "september", "october",
+           "november", "december", "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept", "oct", "nov",
+           "dec", "tarikh", "tareekh", "taarikh", "tarik"}
+_DAY_WORDS = {w for w, v in _SAID_NUMBERS.items() if v <= 31} | {
+    "dus", "ikkees", "ikkis", "ikis", "baees", "bais", "baais", "bayees", "teis", "teyees", "tais", "chaubees",
+    "chaubis", "pachis", "pachchis", "chhabbees", "chhabbis", "chabbis", "sattaees", "sattais", "atthaees",
+    "atthais", "athais", "untees", "untis", "ikattees", "ikattis", "iktees", "iktis", "unees", "unnis", "unis",
+    "gyaarah", "gyara", "baara", "tera", "chauda", "pandra", "sola", "satra", "athaarah", "athara"}
+
+
+def _is_day(word: str) -> bool:
+    m = re.fullmatch(r"([0-9]{1,2})(?:st|nd|rd|th)?", word)
+    return (m is not None and 1 <= int(m.group(1)) <= 31) or word in _DAY_WORDS
+
+
 def _digits(word: str) -> bool:
     return any(c.isdigit() for c in word)
 
@@ -297,7 +314,9 @@ def money_said(text: str) -> list[int | None]:
     word is a clean end ("dedh lakh rupaye, paanch November"). After digits
     only a scale word goes on: another number straight after them makes the
     amount None ("Rs 1,00,000 pachaas"), and after a comma it starts its own
-    ("Rs 1,50,000, 5 November").
+    ("Rs 1,50,000, 5 November"). A day number before a month name ("5
+    November", "paanch Nov", "5 tarikh") is a date: it ends an amount and is
+    never part of one (CHG-042).
 
     Money-shaped means a scale word, a currency word, ₹, paise, Rs or "/-" on
     the digits, digits grouped with commas ("1,50,000"), or five or more bare
@@ -333,9 +352,13 @@ def money_said(text: str) -> list[int | None]:
         if i is not None:
             found[i] = None
 
-    for tok in tokens:
+    dates = {i for i in range(len(tokens) - 1) if _is_day(tokens[i]) and tokens[i + 1] in _MONTHS}
+    for i, tok in enumerate(tokens):
         w = tok.replace("_", "")
-        if tok == ".":  # a sentence end
+        if i in dates:  # "5 November", "paanch November": a date ends any amount and belongs to none
+            close()
+            watch = None
+        elif tok == ".":  # a sentence end
             closed = close()
             if closed is not None:
                 watch, soft = closed, False
