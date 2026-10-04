@@ -135,3 +135,13 @@ def test_the_readme_names_every_app_module_app_validate_imports():
     text = (ROOT / "README.md").read_text(encoding="utf-8")
     sentence = text[text.index("project can lift the package with"):][:200]
     assert needed and all(f"{m}.py" in sentence for m in needed), (needed, sentence)
+
+
+def test_the_eval_readme_tells_the_live_runs_in_order():
+    """PO (batch 8 verdict; CHG-036): the pilot's failure, the trace, the root cause, the fix, the AFTER."""
+    text = (ROOT / "docs" / "evals" / "README.md").read_text(encoding="utf-8")
+    story = text[text.index("## The live runs, in order"):text.index("## Full-workflow runs")]
+    marks = ["2026-10-04-live-pilot/`", "2026-10-04-live-pilot/traces/", "root causes", "docs/batches/2026-10-04-8/",
+             "2026-10-04-live-after-batch-8/", "2026-10-04-live-baseline/"]
+    at = [story.index(m) for m in marks]
+    assert at == sorted(at), dict(zip(marks, at))
