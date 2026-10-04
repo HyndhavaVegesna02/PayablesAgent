@@ -1,4 +1,4 @@
-.PHONY: setup db seed reseed run worker demo-time test smoke-gemini evals ablation workflow
+.PHONY: setup db seed reseed run worker demo-time test smoke-gemini evals ablation workflow check-evidence
 
 setup:
 	uv sync --all-groups
@@ -46,3 +46,8 @@ ablation:
 # make workflow AI=live ARGS=--yes-spend   live Gemini, behind the budget guard; only when authorised
 workflow:
 	uv run python -m evals.workflow --ai $(or $(AI),fixtures) $(if $(RUN),--run $(RUN)) $(if $(N),--runs $(N)) $(ARGS)
+
+# Every committed fixture-mode report under docs/evals/ still says what the code emits (CHG-032).
+# About a minute; not part of make test; required at batch close (.yourteam/definition-of-done.md).
+check-evidence:
+	uv run python scripts/check_evidence.py

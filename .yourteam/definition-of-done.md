@@ -6,6 +6,7 @@ batch.yaml. Nonzero exit means not done.
 
 ## Commands
 - [ ] Tests, Hypothesis properties and import-boundary checks pass: `make test` -> exit 0
+- [ ] Every committed fixture-mode report reproduces (CHG-032, PO: required at batch close): `make check-evidence` -> exit 0
 
 ## Standing rules
 - [ ] Every acceptance criterion has at least one test driving it
