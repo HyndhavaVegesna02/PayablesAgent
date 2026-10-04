@@ -1,6 +1,6 @@
 # Every change, ever. Entries are never deleted -- done and rejected are history.
 # Status is a field, never a folder.
-next_id: 45
+next_id: 46
 changes:
   - id: CHG-001
     title: Repo skeleton — layout, config, schema, Clock, tracer, job table, CI
@@ -607,6 +607,16 @@ changes:
     expected_paths: ['evals/ablation.py', 'evals/budget.py', 'tests/test_ablation_timeout.py', 'docs/evals/']
     depends_on: null
     batch: 15
+  - id: CHG-045
+    title: Workflow A's new-decisions check finds the voice bill by amount and due date, not the vendor name read (PO)
+    file: docs/changes/CHG-045-voice-bill-by-amount.md
+    status: ready
+    priority: 45
+    type: defect
+    lane: direct
+    expected_paths: ['evals/workflow_runs.py', 'tests/test_workflow_live_paths.py', 'docs/evals/', 'docs/changes/CHG-025-batch5-review-notes.md']
+    depends_on: null
+    batch: 16
 
 # Shape of an entry:
 #   - id: CHG-001

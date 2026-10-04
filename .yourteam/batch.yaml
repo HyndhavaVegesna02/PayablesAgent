@@ -1,39 +1,17 @@
 # Active batch. status: none means no batch is running.
-batch: 15
-status: closed      # none | active | review | closed | aborted
-goal: "What live phase 2 found: a day before a month is a date, not money (CHG-042); workflow B finds debits by amount and answers by a stated rule (CHG-043); one ablation timeout for every harness (CHG-044). Pre-accepted on a green gate."
-branch: batch-15
+batch: 16
+status: active      # none | active | review | closed | aborted
+goal: "Workflow A's new-decisions check finds the voice bill by amount and due date (CHG-045); the live findings documented as known limits. No live spend; pre-accepted on a green gate."
+branch: batch-16
 start_tag: null
-started: "2026-10-04T16:30:00+05:30"
+started: "2026-10-04T17:40:00+05:30"
 interrupts: []
 changes:
-  - id: CHG-042
+  - id: CHG-045
     lane: direct
-    board: done
-    start_commit: 5f74105
+    board: in_progress
+    start_commit: null
     blocked_question: null
-    gate_evidence:
-      - {command: "make test", exit_code: 0, output_tail: "es, 284 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | agent never imports the ledger writer, web or the pipeline KEPT | the AI and the agent never reach owner email KEPT | notify is pure text and sending: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 9 kept, 0 broken. | Uninstalled 1 package in 1ms | Installed 1 package in 9ms", commit: fcb8bd7, at: 2026-10-04T10:31:25+00:00}
-      - {command: "make check-evidence", exit_code: 0, output_tail: "j0xif_j_\\4\\workflow-A-2026-10-04.md | checked docs/evals/workflow-A-2026-10-04.json | run B: 1/1 passed; report: C:\\Users\\Hyndhava\\AppData\\Local\\Temp\\check-evidence-j0xif_j_\\5\\workflow-B-2026-10-04.md | checked docs/evals/workflow-B-2026-10-04.json | all 6 reports reproduce: fixture-mode ones below their commit and date, combined ones exactly (md and json) | C:\\Hyn\\PayablesAgent\\.venv\\Lib\\site-packages\\fastapi\\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead. | from starlette.testclient import TestClient as TestClient  # noqa", commit: fcb8bd7, at: 2026-10-04T10:33:05+00:00}
-    prepatch: "PASS at 5f74105: tests/test_voice_amount_dates.py fails by assertion on the old tree (the live transcript and its forms; 5 D29 guards hold before and after)"
-    notes_resolved: false
-  - id: CHG-043
-    lane: direct
-    board: done
-    start_commit: 31d9ffd
-    blocked_question: null
-    gate_evidence:
-      - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 86 files, 284 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | agent never imports the ledger writer, web or the pipeline KEPT | the AI and the agent never reach owner email KEPT | notify is pure text and sending: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 9 kept, 0 broken.", commit: 9a6cd60, at: 2026-10-04T10:33:37+00:00}
-      - {command: "make check-evidence", exit_code: 0, output_tail: "8u8kbl6y\\4\\workflow-A-2026-10-04.md | checked docs/evals/workflow-A-2026-10-04.json | run B: 1/1 passed; report: C:\\Users\\Hyndhava\\AppData\\Local\\Temp\\check-evidence-8u8kbl6y\\5\\workflow-B-2026-10-04.md | checked docs/evals/workflow-B-2026-10-04.json | all 6 reports reproduce: fixture-mode ones below their commit and date, combined ones exactly (md and json) | C:\\Hyn\\PayablesAgent\\.venv\\Lib\\site-packages\\fastapi\\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead. | from starlette.testclient import TestClient as TestClient  # noqa", commit: 9a6cd60, at: 2026-10-04T10:35:20+00:00}
-    prepatch: "PASS at 31d9ffd: tests/test_workflow_live_paths.py cannot import debit_question on the old tree"
-    notes_resolved: false
-  - id: CHG-044
-    lane: direct
-    board: done
-    start_commit: 31d9ffd
-    blocked_question: null
-    gate_evidence:
-      - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 86 files, 284 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | agent never imports the ledger writer, web or the pipeline KEPT | the AI and the agent never reach owner email KEPT | notify is pure text and sending: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 9 kept, 0 broken.", commit: 1e41748, at: 2026-10-04T10:35:52+00:00}
-      - {command: "make check-evidence", exit_code: 0, output_tail: "vomnexrt\\4\\workflow-A-2026-10-04.md | checked docs/evals/workflow-A-2026-10-04.json | run B: 1/1 passed; report: C:\\Users\\Hyndhava\\AppData\\Local\\Temp\\check-evidence-vomnexrt\\5\\workflow-B-2026-10-04.md | checked docs/evals/workflow-B-2026-10-04.json | all 6 reports reproduce: fixture-mode ones below their commit and date, combined ones exactly (md and json) | C:\\Hyn\\PayablesAgent\\.venv\\Lib\\site-packages\\fastapi\\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead. | from starlette.testclient import TestClient as TestClient  # noqa", commit: 1e41748, at: 2026-10-04T10:37:33+00:00}
-    prepatch: "PASS at 31d9ffd: tests/test_ablation_timeout.py fails on the old tree (no TIMEOUT_MS)"
+    gate_evidence: []
+    prepatch: null
     notes_resolved: false
