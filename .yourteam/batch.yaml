@@ -9,33 +9,33 @@ interrupts: []
 changes:
   - id: CHG-033
     lane: direct
-    board: todo
-    start_commit: null
+    board: done
+    start_commit: 712e40d
     blocked_question: null
     gate_evidence: []
-    prepatch: null
+    prepatch: "PASS at 712e40d: tests/test_spoken_currency.py cannot import without_currency_word on the old tree"
     notes_resolved: false
   - id: CHG-034
     lane: direct
-    board: todo
-    start_commit: null
+    board: done
+    start_commit: 0e428d8
     blocked_question: null
     gate_evidence: []
-    prepatch: null
+    prepatch: "PASS at 0e428d8: the marking, the live-run replay and the scenario-gap tests fail by assertion"
     notes_resolved: false
   - id: CHG-035
     lane: direct
-    board: todo
-    start_commit: null
+    board: done
+    start_commit: f27efcb
     blocked_question: null
     gate_evidence: []
-    prepatch: null
+    prepatch: "PASS at f27efcb: tests/test_combined_report.py fails on the old tree (no combine)"
     notes_resolved: false
   - id: CHG-036
     lane: direct
-    board: todo
-    start_commit: null
+    board: done
+    start_commit: def61cd
     blocked_question: null
     gate_evidence: []
-    prepatch: null
+    prepatch: "PASS at def61cd: the README order test fails on the old tree"
     notes_resolved: false
