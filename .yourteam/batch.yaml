@@ -1,6 +1,6 @@
 # Active batch. status: none means no batch is running.
 batch: 17
-status: active      # none | active | review | closed | aborted
+status: review      # none | active | review | closed | aborted
 goal: "The judge's findings, offline: stale docs and two threat-model sections (CHG-046); traces (CHG-047); one consolidated ablation table (CHG-048); three new knock-outs (CHG-049); path budgets (CHG-050); three harder fixture-only scenarios (CHG-051); the reusable harness (CHG-052). The live ablation v2 follows the merge, on the user's confirmation."
 branch: batch-17
 start_tag: null
