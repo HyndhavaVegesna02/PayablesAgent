@@ -13,7 +13,7 @@ changes:
     start_commit: 5f74105
     blocked_question: null
     gate_evidence: []
-    prepatch: null
+    prepatch: "PASS at 5f74105: tests/test_voice_amount_dates.py fails by assertion on the old tree (the live transcript and its forms; 5 D29 guards hold before and after)"
     notes_resolved: false
   - id: CHG-043
     lane: direct
@@ -21,7 +21,7 @@ changes:
     start_commit: 31d9ffd
     blocked_question: null
     gate_evidence: []
-    prepatch: null
+    prepatch: "PASS at 31d9ffd: tests/test_workflow_live_paths.py cannot import debit_question on the old tree"
     notes_resolved: false
   - id: CHG-044
     lane: direct
@@ -29,5 +29,5 @@ changes:
     start_commit: 31d9ffd
     blocked_question: null
     gate_evidence: []
-    prepatch: null
+    prepatch: "PASS at 31d9ffd: tests/test_ablation_timeout.py fails on the old tree (no TIMEOUT_MS)"
     notes_resolved: false
