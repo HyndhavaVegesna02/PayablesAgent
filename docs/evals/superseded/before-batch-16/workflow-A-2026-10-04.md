@@ -2,7 +2,7 @@
 
 | Mode | Model | Prompt version | Commit | Date | Repeats | Model calls | Cost µUSD |
 |---|---|---|---|---|---|---|---|
-| fixtures | gemini-3.8-flash | 2026-10-04.2 | cf733c3 | 2026-10-04T18:00:47+05:30 | 1 | 37 | 0 |
+| fixtures | gemini-3.8-flash | 2026-10-04.2 | c88f511 | 2026-10-04T09:26:03+05:30 | 1 | 37 | 0 |
 
 Fixture mode: every model reply is canned (fixtures/ai_replies.json), so the run is deterministic and costs nothing. It shows the system end to end, not the model.
 
@@ -47,7 +47,7 @@ Fixture mode: every model reply is canned (fixtures/ai_replies.json), so the run
 | | | | | `explain-plan-note` | [true, true] | [true, true] | PASS |
 | 13 | Sat 17 Oct 10:00 | owner | Sat: confirms the four new bills on Needs attention, typing in the voice note's due date (Thu 5 Nov) and whatever else the page marks | `due-date-marked-on-the-form` | true | true | PASS |
 | | | | | `bills-in-the-ledger` | ["", "418", "AP/2610/131", "LT/2610/88"] | ["", "418", "AP/2610/131", "LT/2610/88"] | PASS |
-| | | | | `new-decisions` | {"418": "PAY 2026-10-22", "AP/2610/131": "PAY 2026-10-26", "LT/2610/88": "WAIT", "voice bill (1,50,000, due 5 Nov)": "WAIT"} | {"418": "PAY 2026-10-22", "AP/2610/131": "PAY 2026-10-26", "LT/2610/88": "WAIT", "voice bill (1,50,000, due 5 Nov)": "WAIT"} | PASS |
+| | | | | `new-decisions` | {"418": "PAY 2026-10-22", "AP/2610/131": "PAY 2026-10-26", "LT/2610/88": "WAIT", "Sharma Packaging": "WAIT"} | {"418": "PAY 2026-10-22", "AP/2610/131": "PAY 2026-10-26", "LT/2610/88": "WAIT", "Sharma Packaging": "WAIT"} | PASS |
 | | | | | `prime-chem-still-thursday` | PAY 2026-10-22 | PAY 2026-10-22 | PASS |
 | | | | | `lowest` | [27561000, "2026-10-26"] | [27561000, "2026-10-26"] | PASS |
 | | | | | `first-bank-details-asked` | [1] | [1] | PASS |

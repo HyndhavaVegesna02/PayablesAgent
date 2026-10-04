@@ -5,8 +5,8 @@
     "model": "gemini-3.8-flash",
     "prompt_version": "2026-10-04.2",
     "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
-    "commit": "cf733c3",
-    "date": "2026-10-04T18:00:47+05:30",
+    "commit": "c88f511",
+    "date": "2026-10-04T09:26:03+05:30",
     "budget": null
   },
   "repeats": [
@@ -527,13 +527,13 @@
                 "418": "PAY 2026-10-22",
                 "AP/2610/131": "PAY 2026-10-26",
                 "LT/2610/88": "WAIT",
-                "voice bill (1,50,000, due 5 Nov)": "WAIT"
+                "Sharma Packaging": "WAIT"
               },
               "actual": {
                 "418": "PAY 2026-10-22",
                 "AP/2610/131": "PAY 2026-10-26",
                 "LT/2610/88": "WAIT",
-                "voice bill (1,50,000, due 5 Nov)": "WAIT"
+                "Sharma Packaging": "WAIT"
               },
               "ok": true,
               "why": "418 due Sat 24 Oct: paid Thu 22; AP/2610/131 due Wed 28: paid Mon 26; LT/2610/88 (due 2 Nov) and Sharma (due 5 Nov) are after the horizon, Sat 17 to Fri 30 Oct"
