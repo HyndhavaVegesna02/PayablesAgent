@@ -1,0 +1,1 @@
+{"run_id": "job-10-attempt-1", "step": 1, "timestamp": "2026-10-14T09:00:00+05:30", "wall_time": "2026-10-04T22:25:27.189159+05:30", "input_ref": "business:1", "tool": "send_alert", "result": "no SMTP host configured: alerts wait unsent"}

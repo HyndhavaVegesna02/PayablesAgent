@@ -1,0 +1,96 @@
+{
+  "meta": {
+    "label": "ablation-v2-full-11",
+    "mode": "live",
+    "model": "gemini-3.8-flash",
+    "prompt_version": "2026-10-04.2",
+    "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
+    "commit": "c4cf5f2",
+    "date": "2026-10-04T22:21:17+05:30",
+    "runs_per_scenario": 2,
+    "status": "COMPLETE",
+    "stopped_because": null,
+    "budget": {
+      "calls": 6,
+      "micro_usd": 6169,
+      "rate_limited": 0,
+      "caps": {
+        "calls": 600,
+        "micro_usd": 100000
+      },
+      "stopped": null
+    }
+  },
+  "harnesses": {
+    "full": {
+      "mechanics_only": false,
+      "context_only": false,
+      "seams": [],
+      "runs": 2,
+      "errored": 0,
+      "outcome_success_rate": 1.0,
+      "by_scenario": {
+        "11-shortfall-week": {
+          "met": 2,
+          "scored": 2
+        }
+      },
+      "ai_calls": 6,
+      "cost_micro_usd": 6169
+    }
+  },
+  "drops": {},
+  "earned_most": [],
+  "runs": {
+    "full": [
+      {
+        "scenario": "11-shortfall-week",
+        "run": 1,
+        "status": "PASSED",
+        "outcome_ok": true,
+        "outcomes": [
+          [
+            "prime-chem-paid-thursday-without-going-below-the-floor",
+            true,
+            {
+              "lowest_paise": 35000000,
+              "lowest_on": "2026-10-22",
+              "decisions": {
+                "1": "PAY 2026-10-19",
+                "2": "PAY 2026-10-19",
+                "3": "PAY 2026-10-19",
+                "4": "PAY 2026-10-19",
+                "5": "PAY 2026-10-22"
+              }
+            }
+          ]
+        ],
+        "error": null
+      },
+      {
+        "scenario": "11-shortfall-week",
+        "run": 2,
+        "status": "PASSED",
+        "outcome_ok": true,
+        "outcomes": [
+          [
+            "prime-chem-paid-thursday-without-going-below-the-floor",
+            true,
+            {
+              "lowest_paise": 35000000,
+              "lowest_on": "2026-10-22",
+              "decisions": {
+                "1": "PAY 2026-10-19",
+                "2": "PAY 2026-10-19",
+                "3": "PAY 2026-10-19",
+                "4": "PAY 2026-10-19",
+                "5": "PAY 2026-10-22"
+              }
+            }
+          ]
+        ],
+        "error": null
+      }
+    ]
+  }
+}

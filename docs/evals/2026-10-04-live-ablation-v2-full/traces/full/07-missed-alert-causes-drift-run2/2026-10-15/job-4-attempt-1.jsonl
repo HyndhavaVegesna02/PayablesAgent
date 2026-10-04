@@ -1,0 +1,1 @@
+{"run_id": "job-4-attempt-1", "step": 1, "timestamp": "2026-10-15T13:00:00+05:30", "wall_time": "2026-10-04T21:09:20.966950+05:30", "tool": "reconcile", "result": "no bill matches: debit stays UNMATCHED", "arguments": {"replan": true, "cases": [1], "alerts": [["unexpected_debit", "bank_txn:1"]], "recheck_at": null}}
