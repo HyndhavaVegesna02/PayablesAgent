@@ -1,6 +1,6 @@
 # Every change, ever. Entries are never deleted -- done and rejected are history.
 # Status is a field, never a folder.
-next_id: 42
+next_id: 43
 changes:
   - id: CHG-001
     title: Repo skeleton — layout, config, schema, Clock, tracer, job table, CI
@@ -577,6 +577,16 @@ changes:
     expected_paths: ['evals/budget.py', 'evals/runner.py', 'evals/ablation.py', 'evals/workflow.py', 'Makefile', 'tests/test_max_usd.py']
     depends_on: null
     batch: 14
+  - id: CHG-042
+    title: A day number next to a month name is a date, not money (the live scenario 04 regression; PO)
+    file: docs/changes/CHG-042-day-month-is-a-date.md
+    status: ready
+    priority: 42
+    type: defect
+    lane: direct
+    expected_paths: ['app/domain/money.py', 'tests/test_voice_amount_dates.py', 'tests/test_voice_amount_said.py']
+    depends_on: null
+    batch: 15
 
 # Shape of an entry:
 #   - id: CHG-001
