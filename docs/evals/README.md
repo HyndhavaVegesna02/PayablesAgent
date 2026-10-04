@@ -95,8 +95,8 @@ the knock-out's own. `make check-evidence` re-derives the table from its parts.
 
 **Why two knock-outs showed no effect, and what would show one.** These are results, not gaps to hide, and
 they're one run per scenario.
-- **no_planner** (the plan comes from the model, given the planner's snapshot as text). On scenario 06 the week
-  is short, and on 11 the shortfall is one bill: the model reached the planner's decisions from the snapshot.
+- **no_planner** (the plan comes from the model, given the planner's snapshot as text). On scenarios 06 and 11 the
+  model, given the planner's own snapshot, met the plan outcomes their checks name.
   The planner earns its place when the arithmetic is long: many bills, two payment days, a floor that only a
   split keeps. Workflow A's fortnight (the worked example's golden table) is that case, and it is where a
   no_planner run should be scored next.
