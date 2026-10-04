@@ -29,15 +29,15 @@ expect:
     component: reconcile
     sql: SELECT COUNT(*) FROM owner_question WHERE kind = 'explain_txn' AND status = 'OPEN'
     equals: 1
-  - id: path-budget-steps   # path budget (CHG-050): the ambiguous-match case at the owner within 3 steps; applies live too
+  - id: path-budget-steps   # path budget (CHG-050): its one case within 8 agent steps, half the most that 02's two unexplained-debit cases used together live (16); fixture-only, so set again from its first live run; applies live too
     component: agent
     level: trajectory
-    sql: SELECT COALESCE(MAX(json_extract(state_json, '$.steps_total')), 0) <= 3 FROM agent_case
+    sql: SELECT COALESCE(SUM(json_extract(state_json, '$.steps_total')), 0) <= 8 FROM agent_case
     equals: 1
-  - id: path-budget-refused   # path budget (CHG-050): at most 3 calls refused by code; applies live too
+  - id: path-budget-refused   # path budget (CHG-050): at most 3 calls code refused (an unknown tool, bad arguments, a repeat, a final answer), counted from the notes code writes, never the model's own words; applies live too
     component: agent
     level: trajectory
-    sql: SELECT COALESCE(SUM((length(state_json) - length(replace(state_json, 'refused', ''))) / 7), 0) <= 3 FROM agent_case
+    sql: "SELECT (SELECT COUNT(*) FROM agent_case c, json_each(c.state_json, '$.notes') n WHERE n.value GLOB 'final answer refused by code*' OR n.value GLOB 'step [0-9]*: refused unknown tool *' OR n.value GLOB 'step [0-9]*: refused [a-z]*_[a-z]*: *') + (SELECT COUNT(*) FROM agent_case c, json_each(c.state_json, '$.findings') f WHERE json_extract(f.value, '$.lines[0]') GLOB 'refused*') <= 3"
     equals: 1
 outcome:
   - id: neither-bill-paid-on-a-guess

@@ -12,7 +12,12 @@ In fixture mode the canned replies cover only the full system's prompts, so
 the bare harness and the no_planner knock-out get a stand-in model that runs
 their mechanics (one read, then a final answer that plans nothing). Their rows
 are marked "mechanics only" and are left out of the comparison: what they
-score needs the live model."""
+score needs the live model. The no_case_file knock-out runs on the canned
+replies, but they are scripted against the case file's text, so what they
+answer to a chat says nothing about what a model would. Offline it shows that
+the context changes (tests/test_knockouts_v2.py), not what that costs. Its row
+is marked "context only" and left out of the comparison too; its drop needs
+the live model."""
 
 from __future__ import annotations
 
@@ -30,6 +35,7 @@ from evals.scenario import Scenario
 
 HARNESSES = ("full", "bare", *knockouts.KNOCKOUTS)
 MECHANICS_ONLY_IN_FIXTURES = frozenset({"bare", "no_planner"})  # their model calls have no canned reply
+CONTEXT_ONLY_IN_FIXTURES = frozenset({"no_case_file"})  # canned replies are scripted against the case file
 # One request timeout for every harness's live calls (CHG-044): the bare harness sends one growing chat
 # history, which ran past Gemini's deadline at config.yaml's 60 s; the same longer value for all keeps the
 # comparison fair. The product keeps config.yaml's.
@@ -79,7 +85,7 @@ def run_harness(name: str, scenario: Scenario, backend: Backend, app_config: App
                 should_stop: Callable[[], str | None] = never,
                 keep: Path | None = None) -> tuple[RunResult, list[str]]:
     """One run of one scenario under one harness; the result and the seams it patched. With `keep`, the
-    run's traces are copied there."""
+    run's traces are copied to `keep/<scenario>-run<n>`, whichever the harness."""
     if name == "full":
         return runner.run_once(scenario, backend, app_config, run, should_stop=should_stop,
                                inspect=metrics.inspect, keep=keep), []
@@ -110,6 +116,7 @@ def build(meta: dict[str, Any], harnesses: list[str], scenarios: list[Scenario],
         rs = results.get(h, [])
         per[h] = {
             "mechanics_only": fixtures and h in MECHANICS_ONLY_IN_FIXTURES,
+            "context_only": fixtures and h in CONTEXT_ONLY_IN_FIXTURES,
             "seams": seams.get(h, []),
             "runs": len(rs), "errored": sum(r.status == "ERRORED" for r in rs),
             "outcome_success_rate": rate(rs),
@@ -121,13 +128,17 @@ def build(meta: dict[str, Any], harnesses: list[str], scenarios: list[Scenario],
         }
     full = per.get("full", {}).get("outcome_success_rate")
     drops = {h: round(full - p["outcome_success_rate"], 3) for h, p in per.items()
-             if h in knockouts.KNOCKOUTS and not p["mechanics_only"] and full is not None
+             if h in knockouts.KNOCKOUTS and not p["mechanics_only"] and not p["context_only"] and full is not None
              and p["outcome_success_rate"] is not None}
     top = max(drops.values(), default=None)
     return {"meta": meta, "harnesses": per, "drops": drops,
             "earned_most": sorted(h for h, d in drops.items() if d == top) if top is not None and top > 0 else [],
             "runs": {h: [{"scenario": r.scenario, "run": r.run, "status": r.status, "outcome_ok": r.outcome_ok,
                           "outcomes": r.outcomes, "error": r.error} for r in rs] for h, rs in results.items()}}
+
+
+def _mark(p: dict[str, Any]) -> str:
+    return " *mechanics only*" if p["mechanics_only"] else " *context only*" if p.get("context_only") else ""
 
 
 def _pct(x: float | None) -> str:
@@ -149,7 +160,11 @@ def markdown(report: dict[str, Any], scenarios: list[Scenario]) -> str:
         out += ["Fixture mode: every model reply is canned, so the full system and the knock-outs that keep its "
                 "prompts are deterministic, and tokens and cost are zero. The rows marked *mechanics only* ran "
                 "on a stand-in that plans nothing; they show the harness runs, not what it scores, and are left "
-                "out of the comparison. The live run (`--ai live --yes-spend`) scores them.", ""]
+                "out of the comparison. The row marked *context only* (no_case_file) sends the model a chat in "
+                "place of the case file, but the canned replies are scripted against the case file's text, so what "
+                "they answer to a chat says nothing about what a model would; it is left out of the comparison "
+                "as well. "
+                "The live run (`--ai live --yes-spend`) scores them.", ""]
     names = list(per)
     out += ["## Outcome checks met, by scenario", "", "| Scenario | " + " | ".join(names) + " |",
             "|---|" + "---|" * len(names)]
@@ -158,10 +173,10 @@ def markdown(report: dict[str, Any], scenarios: list[Scenario]) -> str:
         for h in names:
             c = per[h]["by_scenario"].get(s.name, {"met": 0, "scored": 0})
             cells.append("—" if not c["scored"] else f"{c['met']}/{c['scored']}"
-                         + (" *mechanics only*" if per[h]["mechanics_only"] else ""))
+                         + _mark(per[h]))
         out.append(f"| {s.title} | " + " | ".join(cells) + " |")
     out.append("| **Outcome success** | " + " | ".join(
-        _pct(per[h]["outcome_success_rate"]) + (" *mechanics only*" if per[h]["mechanics_only"] else "")
+        _pct(per[h]["outcome_success_rate"]) + _mark(per[h])
         for h in names) + " |")
     out.append("| Model calls | " + " | ".join(str(per[h]["ai_calls"]) for h in names) + " |")
     out.append("| Cost µUSD | " + " | ".join(str(per[h]["cost_micro_usd"]) for h in names) + " |")
@@ -242,7 +257,7 @@ def main(argv: list[str] | None = None) -> int:
                 stopped = stopped or should_stop()
                 if stopped:
                     break
-                keep = out_dir / "traces" / f"{h}-{s.name}-run{i}" if keep_traces else None
+                keep = out_dir / "traces" / h if keep_traces else None  # traces/<harness>/<scenario>-run<n>
                 r, seams[h] = run_harness(h, s, backend(), config, i, should_stop=should_stop, keep=keep)
                 results[h].append(r)
                 print(f"{h:15} {'met' if r.outcome_ok else r.status:8} {s.name} run {i}", flush=True)

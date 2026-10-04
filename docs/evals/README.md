@@ -101,14 +101,18 @@ they're one run per scenario.
   split keeps. Workflow A's fortnight (the worked example's golden table) is that case, and it is where a
   no_planner run should be scored next.
 - **no_escalation** (no stake rule, no rerun at high, a plain step cap). On 07 the agent found the missing alert
-  at medium thinking in its first run, so neither the stake rule nor the rerun was ever needed; on 08 nothing
+  at medium thinking in its first run (the path check `drift-resolved-in-its-first-run` on
+  `2026-10-04-live-baseline-11x5/`), so neither the stake rule nor the rerun was ever needed; on 08 nothing
   explains the gap, so every path ends with the owner. Escalation earns its place when the medium run fails
   and a high one would succeed, or when a large stake should start at high. None of the eleven was built for
   that; the scenario to add is a missed alert that takes more searching than the medium step cap allows, run
   live at more than one run per scenario.
 
 The ablation v2 adds three knock-outs at the agent's own controls (CHG-049): `no_case_file`,
-`no_evidence_gate` and `all_tools`.
+`no_evidence_gate` and `all_tools`. In fixture mode, `no_case_file` is marked *context only* and left out of
+the comparison: the canned replies are scripted against the case file's text, so what they answer to a chat
+says nothing about what a model would. Offline it is proved only to change what the model is sent; the live
+run measures what that costs.
 
 ## Full-workflow runs
 

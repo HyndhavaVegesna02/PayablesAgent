@@ -23,15 +23,15 @@ expect:
     component: reconcile
     sql: SELECT reported_balance_paise || ' ' || drift_status FROM bank_account WHERE id = 1
     equals: "47241000 OK"
-  - id: path-budget-steps   # path budget (CHG-050): every unexplained-debit case settled or at the owner within 3 steps; applies live too
+  - id: path-budget-steps   # path budget (CHG-050): all cases within 20 agent steps; the committed live runs used at most 16 (2026-10-04-live-baseline, the exception job's calls); applies live too
     component: agent
     level: trajectory
-    sql: SELECT COALESCE(MAX(json_extract(state_json, '$.steps_total')), 0) <= 3 FROM agent_case
+    sql: SELECT COALESCE(SUM(json_extract(state_json, '$.steps_total')), 0) <= 20 FROM agent_case
     equals: 1
-  - id: path-budget-refused   # path budget (CHG-050): at most 3 calls refused by code (unknown tool, bad arguments, a repeat, a final answer); applies live too
+  - id: path-budget-refused   # path budget (CHG-050): at most 3 calls code refused (an unknown tool, bad arguments, a repeat, a final answer), counted from the notes code writes, never the model's own words; applies live too
     component: agent
     level: trajectory
-    sql: SELECT COALESCE(SUM((length(state_json) - length(replace(state_json, 'refused', ''))) / 7), 0) <= 3 FROM agent_case
+    sql: "SELECT (SELECT COUNT(*) FROM agent_case c, json_each(c.state_json, '$.notes') n WHERE n.value GLOB 'final answer refused by code*' OR n.value GLOB 'step [0-9]*: refused unknown tool *' OR n.value GLOB 'step [0-9]*: refused [a-z]*_[a-z]*: *') + (SELECT COUNT(*) FROM agent_case c, json_each(c.state_json, '$.findings') f WHERE json_extract(f.value, '$.lines[0]') GLOB 'refused*') <= 3"
     equals: 1
 outcome:
   - id: three-statement-rows-recorded

@@ -438,10 +438,10 @@ def test_the_baseline_and_the_regression_reports_are_kept_and_say_where_they_cam
     bad = json.loads((latest("regress-max-steps") / "report.json").read_text(encoding="utf-8"))
     for rep in (base, bad):
         assert rep["meta"]["commit"] != "unknown" and "+uncommitted" not in rep["meta"]["commit"]
-        assert rep["meta"]["runs_per_scenario"] == 5 and rep["totals"]["scenarios"] == 11
+        assert rep["meta"]["runs_per_scenario"] == 5 and rep["totals"]["scenarios"] == 14  # 11 TDD + 3 harder
     assert base["totals"]["passed"] == base["totals"]["runs"]
     assert bad["totals"]["passed"] == bad["totals"]["runs"]  # every end result held
-    assert bad["totals"]["path"] == [10, 15] and base["totals"]["path"] == [15, 15]  # scenarios 7, 8, 10 x 5
+    assert bad["totals"]["path"] == [25, 30] and base["totals"]["path"] == [30, 30]  # 02, 07, 08, 10, 13, 14 x 5
     path_failed = {r["scenario"]: r["path"] for r in bad["scenarios"] if r["path"][0] < r["path"][1]}
     assert path_failed == {"07-missed-alert-causes-drift": [0, 5]}  # the path check caught it, every run
     assert all(r["path"][0] == r["path"][1] for r in base["scenarios"])

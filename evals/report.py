@@ -258,8 +258,8 @@ def ablation_combine(parts: list[tuple[str, dict[str, Any]]], label: str) -> dic
     cells: dict[str, dict[str, dict[str, Any]]] = {}
     for source, rep in parts:
         for h, per in rep["harnesses"].items():
-            if per.get("mechanics_only"):
-                continue  # a fixture stand-in plans nothing: not compared
+            if per.get("mechanics_only") or per.get("context_only"):
+                continue  # a fixture stand-in plans nothing, or canned replies can't show the effect: not compared
             for s, c in per["by_scenario"].items():
                 if c["scored"] or s not in cells.get(h, {}):
                     cells.setdefault(h, {})[s] = {**c, "source": source}

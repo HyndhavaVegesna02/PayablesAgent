@@ -235,7 +235,8 @@ def _events(env: BareEnv, scenario: Scenario) -> list[str]:
 def run_once(scenario: Scenario, backend: Backend, app_config: AppConfig, run: int = 1, *,
              should_stop: Callable[[], str | None] = never,
              inspect: Callable[[Any], dict[str, Any]] | None = None, keep: Path | None = None) -> RunResult:
-    """One bare run. Its traces are copied to `keep` when given (CHG-047: a live ablation keeps them)."""
+    """One bare run. Its traces are copied to `keep/<scenario>-run<n>` when given, as the runner copies its
+    own (CHG-047: a live ablation keeps them)."""
     from evals import metrics
 
     with tempfile.TemporaryDirectory(prefix=f"bare-{scenario.name}-") as tmp_name:
@@ -292,5 +293,5 @@ def run_once(scenario: Scenario, backend: Backend, app_config: AppConfig, run: i
         result.metrics = metrics.collect(metrics.trace_steps(tmp / "traces"), conn)
         conn.close()
         if keep is not None and (tmp / "traces").exists():
-            shutil.copytree(tmp / "traces", keep, dirs_exist_ok=True)
+            shutil.copytree(tmp / "traces", keep / f"{scenario.name}-run{run}", dirs_exist_ok=True)
     return result

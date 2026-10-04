@@ -157,6 +157,6 @@ recorded in the change file it links to.
   checks, and path budgets in every agent scenario (CHG-050).
 - *The harness comparison is fair* ([D24](changes/CHG-010a-evals.md)): the same inputs, model and outcome
   checks for every harness, one request timeout for all (CHG-044).
-- *No figure is typed into a hand-written page* ([D25](changes/CHG-010a-evals.md)): reports carry the numbers,
+- *No figure is typed into a hand-written page* ([D25](changes/CHG-010c-evidence-docs.md)): reports carry the numbers,
   and `make check-evidence` re-derives every committed report.
 

@@ -65,3 +65,21 @@ def test_without_the_case_file_the_agent_is_given_a_growing_chat_from_the_openin
 def test_the_new_knock_outs_are_in_the_ablation():
     assert {"no_case_file", "no_evidence_gate", "all_tools"} <= set(knockouts.KNOCKOUTS)
     assert {"no_case_file", "no_evidence_gate", "all_tools"} <= set(ablation.HARNESSES)
+
+
+def test_offline_no_case_file_is_marked_context_only_and_left_out_of_the_comparison(tmp_path):
+    """Review round 1: offline, no_case_file's row is "context only", like a mechanics-only row: canned replies
+    are scripted against the case file's text, so its drop is not ranked. A live ablation compares it."""
+    import json
+
+    ablation.main(["--ai", "fixtures", "--harness", "full", "--harness", "no_case_file", "--scenario", DRIFT,
+                   "--label", "t", "--out", str(tmp_path)])
+    (out,) = tmp_path.glob("*-fixtures-t")
+    rep = json.loads((out / "report.json").read_text(encoding="utf-8"))
+    assert rep["harnesses"]["no_case_file"]["context_only"] and "no_case_file" not in rep["drops"]
+    md = (out / "report.md").read_text(encoding="utf-8")
+    assert "*context only*" in md and "| no_case_file |" not in md.split("## Which component earned the most")[1]
+    live = ablation.build({**rep["meta"], "mode": "live"}, ["full", "no_case_file"], [scenario.load(DRIFT)],
+                          {}, {})
+    assert live["harnesses"]["no_case_file"]["context_only"] is False
+

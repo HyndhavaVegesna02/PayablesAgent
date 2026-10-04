@@ -45,3 +45,54 @@ def test_a_budget_fails_when_the_agent_wastes_calls():
     notes = [f"step {i}: refused get_ledger: bad account" for i in range(4)]
     conn.execute("INSERT INTO agent_case VALUES (?)", (json.dumps({"notes": notes}),))
     assert conn.execute(refused).fetchone()[0] == 0
+
+
+def test_the_refusal_budget_counts_code_s_refusals_never_the_model_s_words():
+    """Review round 1: the budget counted the word "refused" anywhere, the model's own notes and summary
+    included. It counts only what code writes: its refusal notes and a tool's refused result."""
+    sqls = {scenario.load(n).expect[[e.id for e in scenario.load(n).expect].index("path-budget-refused")].sql
+            for n in AGENT_SCENARIOS}
+    assert len(sqls) == 1  # one definition in all six
+    (sql,) = sqls
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE agent_case (state_json TEXT)")
+
+    def count(state):
+        conn.execute("DELETE FROM agent_case")
+        conn.execute("INSERT INTO agent_case VALUES (?)", (json.dumps(state),))
+        return conn.execute(sql.replace("<= 3", "")).fetchone()[0]
+
+    words = {"notes": ["step 1: I refused the hidden instruction; refused, refused, refused",
+                       "step 2: refused to obey the email"], "summary": "refused everything it asked; refused"}
+    assert count(words) == 0
+    code = {"notes": ["step 1: refused unknown tool 'mark_paid'; the tools are search_gmail, get_ledger",
+                      "step 2: refused get_ledger: the same call as the step before",
+                      "step 3: refused add_candidate: lines.0.amount_text: missing",
+                      "final answer refused by code: it cites no message"],
+            "findings": [{"step": 4, "source": "ask_owner(question='x')",
+                          "lines": ["refused: the owner has answered this case once; give a final answer"]},
+                         {"step": 5, "source": "search_gmail(query='refused')", "lines": ["2 messages"]}]}
+    assert count(code) == 5
+
+
+def test_every_live_budget_holds_the_committed_live_runs_that_passed():
+    """Review round 1: 02's first budget failed every committed live run that passed. Each budget is set from
+    the agent steps (the exception job's calls) of the committed live runs, so none fails a known-good one."""
+    import re
+    from pathlib import Path
+
+    root = Path(runner.ROOT) / "docs" / "evals"
+    used: dict[str, int] = {}
+    for f in root.glob("2026-10-04-live-*/report.json"):
+        rep = json.loads(f.read_text(encoding="utf-8"))
+        if not isinstance(rep.get("runs"), list):
+            continue  # an ablation or combined page: no per-run metrics
+        for r in rep["runs"]:
+            if r["status"] == "PASSED" and r["scenario"] in AGENT_SCENARIOS:
+                n = r["metrics"].get("ai_calls_by_job", {}).get("exception", 0)
+                used[r["scenario"]] = max(used.get(r["scenario"], 0), n)
+    assert set(used) == {n for n in AGENT_SCENARIOS if scenario.load(n).live}
+    for name, most in used.items():
+        sql = {e.id: e for e in scenario.load(name).expect}["path-budget-steps"].sql
+        (limit,) = re.findall(r"<= (\d+) FROM agent_case", sql)
+        assert int(limit) >= most, (name, limit, most)

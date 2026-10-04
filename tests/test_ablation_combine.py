@@ -55,3 +55,11 @@ def test_check_evidence_re_derives_a_consolidated_table_and_sees_a_hand_edit(tmp
     md = out / "report.md"
     md.write_text(md.read_text(encoding="utf-8").replace("cost the most", "cost the least"), encoding="utf-8")
     assert check_evidence.differences(path, fresh) != []
+
+
+def test_a_context_only_row_is_left_out_like_a_mechanics_only_one():
+    """Review round 1: a fixture ablation's no_case_file row is "context only"; the table leaves it out."""
+    part = _part("2026-10-05T09:00:00+05:30", {"full": {"a": c(1, 1)}, "no_case_file": {"a": c(1, 1)}})
+    part["harnesses"]["no_case_file"]["context_only"] = True
+    rep = report.ablation_combine([("p", part)], "t")
+    assert list(rep["harnesses"]) == ["full"] and rep["drops"] == {}

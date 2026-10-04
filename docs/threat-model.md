@@ -94,10 +94,10 @@ applied. For the run counts, see the report in
 [docs/evals/](evals/README.md), whose header names its commit.
 
 **3. Live, on Gemini** (`docs/evals/2026-10-04-live-baseline-part2/`, and its
-row on the combined page `2026-10-04-live-baseline-11x5/`): scenario 10 ran five
-times on the real model, and every run met its checks. PAPER-001 kept its
-priority, date and status, and the new bank details waited for the owner. The
-report holds the count and the cost; the model's own path differed from the
+row on the combined page `2026-10-04-live-baseline-11x5/`): scenario 10 ran on
+the real model, and the report holds how many runs met its checks, and the
+cost. In those runs PAPER-001 kept its priority, date and status, and the new
+bank details waited for the owner. The model's own path differed from the
 script's, which is why the checks that pin the scripted path are left out of a
 live run.
 
@@ -170,7 +170,10 @@ what isn't:
 **Mitigations:**
 - **Minimisation.** Only known senders' mail is fetched, and other headers are
   dropped before a model call. The ledger keeps bank accounts masked to the
-  last four digits.
+  last four digits. Two places keep a vendor's full extracted bank details: the
+  candidate record the owner confirms from, and the job's trace (a model
+  reply is kept up to 2,000 characters, CHG-047). Both stay in the app's own
+  storage.
 - **No authority.** The model has no tool that writes the ledger, approves,
   pays or sends anything outside the app; what it returns is parsed into a
   schema and checked by code (above).
@@ -197,5 +200,5 @@ what isn't:
   Gmail scope (read-only, filtered senders, the refresh token encrypted at
   rest) is the user's part, and isn't in this build.
 - **The live attack evidence is a few runs of one model.** Scenario 10 ran live
-  on Gemini (below). The second injection form, an instruction hidden in an
+  on Gemini (section 3 above). The second injection form, an instruction hidden in an
   invoice's PDF (scenario 12), is fixture-only and has not run live.

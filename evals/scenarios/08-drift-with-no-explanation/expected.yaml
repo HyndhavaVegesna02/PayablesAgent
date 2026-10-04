@@ -28,15 +28,15 @@ expect:
     component: planner
     sql: SELECT opening_cash_paise FROM plan_run WHERE is_current = 1
     equals: 56500000
-  - id: path-budget-steps   # path budget (CHG-050): all cases within 14 steps (a drift case may use both runs); applies live too
+  - id: path-budget-steps   # path budget (CHG-050): all cases within 14 agent steps; the committed live runs used at most 11 (live-baseline, live-after-batch-8); applies live too
     component: agent
     level: trajectory
     sql: SELECT COALESCE(SUM(json_extract(state_json, '$.steps_total')), 0) <= 14 FROM agent_case
     equals: 1
-  - id: path-budget-refused   # path budget (CHG-050): at most 3 calls refused by code (unknown tool, bad arguments, a repeat, a final answer); applies live too
+  - id: path-budget-refused   # path budget (CHG-050): at most 3 calls code refused (an unknown tool, bad arguments, a repeat, a final answer), counted from the notes code writes, never the model's own words; applies live too
     component: agent
     level: trajectory
-    sql: SELECT COALESCE(SUM((length(state_json) - length(replace(state_json, 'refused', ''))) / 7), 0) <= 3 FROM agent_case
+    sql: "SELECT (SELECT COUNT(*) FROM agent_case c, json_each(c.state_json, '$.notes') n WHERE n.value GLOB 'final answer refused by code*' OR n.value GLOB 'step [0-9]*: refused unknown tool *' OR n.value GLOB 'step [0-9]*: refused [a-z]*_[a-z]*: *') + (SELECT COUNT(*) FROM agent_case c, json_each(c.state_json, '$.findings') f WHERE json_extract(f.value, '$.lines[0]') GLOB 'refused*') <= 3"
     equals: 1
 outcome:
   - id: no-transaction-invented

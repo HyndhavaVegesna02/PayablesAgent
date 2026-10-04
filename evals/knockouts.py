@@ -30,7 +30,10 @@ Batch 17 (CHG-049) adds three, at the agent's own controls:
   lines). The chat lives in memory for one job, as a chat would: a new job (a
   retry, or a resume after the owner answers) starts again from the opening,
   without the earlier findings the case file would carry. Seam:
-  `app.agent.loop.next_step`.
+  `app.agent.loop.next_step`. Offline it is proved only to change what the
+  model is sent (tests/test_knockouts_v2.py): canned replies are scripted
+  against the case file's text, so a fixture ablation marks its row "context
+  only" and leaves it out of the comparison. What it costs is measured live.
 - **no_evidence_gate:** a RESOLVED final answer is accepted without code's
   checks (a cited message the case found, candidates that are its VALID ones,
   a drift closed by an alert). Seam: `app.jobs.run_case.apply_final`.

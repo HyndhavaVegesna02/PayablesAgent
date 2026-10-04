@@ -134,11 +134,11 @@ the real model. Run it only when someone is paying for it.
 | What | Where |
 | --- | --- |
 | Architecture, with the agent loop, tools, context management and control points labelled | [docs/architecture.md](docs/architecture.md) |
-| Eval report: the 11 TDD scenarios, repeated runs, three levels (end to end, path, component) | [docs/evals/](docs/evals/README.md) |
-| Harness ablation: full vs bare, same model, and four knock-outs | [docs/evals/](docs/evals/README.md) |
+| Eval report: the 11 TDD scenarios and three harder fixture-only ones, repeated runs, three levels (end to end, path, component) | [docs/evals/](docs/evals/README.md) |
+| Harness ablation: full vs bare, same model, and seven knock-outs, with one consolidated table | [docs/evals/](docs/evals/README.md) |
 | One regression caught | [docs/evals/](docs/evals/README.md#the-regression-told-straight-d23) |
 | Two full-workflow fortnights through the real web app, worker and demo clock, step by step | [docs/evals/](docs/evals/README.md#full-workflow-runs) |
-| Two traces, a success and a failure, each with a walkthrough | [docs/traces/](docs/traces/README.md) |
+| Two live traces, a failure and a success, each with a walkthrough (and a fixture pair) | [docs/traces/](docs/traces/README.md) |
 | Threat model, with the attack we ran and its outcome | [docs/threat-model.md](docs/threat-model.md) |
 | Permission model: what the agent and each role can touch | [docs/permission-model.md](docs/permission-model.md) |
 | Demo script (3 minutes) | [docs/demo-script.md](docs/demo-script.md) |
@@ -181,11 +181,20 @@ one backend interface, and **`app/validate`**, the domain rule checks for Indian
   a hard call cap and cost cap (`--max-usd` lowers it), pacing, backoff on a rate limit, an immediate stop on
   a spending cap, and a reason the report records.
 
-**How to lift it.** Copy `evals/` and give it four things of yours: a `Backend` with one `generate(...)`
-method (`app/ai/client.py`'s protocol), a function that builds a fresh world for one run (here
-`evals/runner.py::fresh_world`: a migrated, seeded database), the step handlers your scenarios need
-(the `STEPS` table in `evals/runner.py`), and your seams. The report writers (`evals/report.py`) and `make check-evidence`'s
-re-derivation work unchanged on what they produce.
+**How to lift it.** Three files lift as they are: `evals/scenario.py` (the scenario format),
+`evals/report.py` (the report writers and combiners) and `evals/metrics.py` (path metrics). `metrics.py` reads
+the trace format `app/trace/tracer.py` writes, one JSON line per step with its tool and result, so bring the
+tracer or write that format. The rest is written against this app, and is what you rewrite for yours, keeping
+its shape:
+- `evals/runner.py` builds each run's world from this app's database, pipeline, worker and web routes. Yours
+  needs a function that builds a fresh world for one run (here `evals/runner.py::fresh_world`) and a handler
+  for each kind of scenario step (the `STEPS` table in `evals/runner.py`).
+- `evals/budget.py` wraps a backend with one `generate(...)` method (`app/ai/client.py`'s `Backend` protocol)
+  and prices calls with `app/ai/client.py::cost_micro_usd`. Point both at your model client.
+- `evals/knockouts.py` patches this app's seams. Yours are your own `(module, attribute, replacement)`
+  triples.
+
+`make check-evidence`'s re-derivation (`scripts/check_evidence.py`) works on what the report writers produce.
 
 ### `app/validate`
 
