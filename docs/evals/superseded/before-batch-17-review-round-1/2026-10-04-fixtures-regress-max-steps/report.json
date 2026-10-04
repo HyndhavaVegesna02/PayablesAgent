@@ -1,14 +1,14 @@
 {
   "meta": {
-    "label": "baseline",
+    "label": "regress-max-steps",
     "mode": "fixtures",
     "model": "gemini-3.8-flash",
     "prompt_version": "2026-10-04.2",
-    "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
-    "variant": null,
+    "config_sha256": "c64090a2e1223a12c72179086c53941d93df9dc6499fc63563b9f84db70fc095",
+    "variant": "evals/variants/regress-max-steps.yaml",
     "prompt_overrides": null,
-    "commit": "ea91d7a",
-    "date": "2026-10-04T19:39:32+05:30",
+    "commit": "254454b",
+    "date": "2026-10-04T19:13:01+05:30",
     "runs_per_scenario": 5,
     "status": "COMPLETE",
     "stopped_because": null,
@@ -22,10 +22,10 @@
     "success_rate": 1.0,
     "scenarios_all_runs_passed": 14,
     "path": [
-      30,
+      25,
       30
     ],
-    "ai_calls": 440,
+    "ai_calls": 375,
     "cost_micro_usd": 0
   },
   "scenarios": [
@@ -323,10 +323,21 @@
       "errored": 0,
       "success_rate": 1.0,
       "path": [
-        5,
+        0,
         5
       ],
-      "path_failures": [],
+      "path_failures": [
+        {
+          "run": 1,
+          "checks": [
+            {
+              "id": "drift-resolved-in-its-first-run",
+              "got": "high max_steps",
+              "want": "medium none"
+            }
+          ]
+        }
+      ],
       "spread": [
         1.0,
         1.0
@@ -340,18 +351,17 @@
       },
       "components_failed": [],
       "mean": {
-        "ai_calls": 16.0,
-        "tool_calls": 11.0,
+        "ai_calls": 11.0,
+        "tool_calls": 6.0,
         "refused": 0.0,
         "loops": 0.0,
-        "wasted_calls": 2.0,
+        "wasted_calls": 1.0,
         "retries": 0.0,
         "schema_failures": 0.0,
-        "invalid_candidates": 2.0
+        "invalid_candidates": 1.0
       },
       "escalations": [
-        "max_steps",
-        "max_validation_failures"
+        "max_steps"
       ],
       "tokens_mean": {
         "input": 0.0,
@@ -390,8 +400,8 @@
       },
       "components_failed": [],
       "mean": {
-        "ai_calls": 16.0,
-        "tool_calls": 12.0,
+        "ai_calls": 8.0,
+        "tool_calls": 4.0,
         "refused": 0.0,
         "loops": 0.0,
         "wasted_calls": 0.0,
@@ -495,7 +505,9 @@
         "schema_failures": 0.0,
         "invalid_candidates": 0.0
       },
-      "escalations": [],
+      "escalations": [
+        "max_steps"
+      ],
       "tokens_mean": {
         "input": 0.0,
         "output": 0.0,
@@ -650,7 +662,7 @@
     {
       "scenario": "14-noisy-statement-row",
       "title": "A statement row with a noisy narration (fixture-only, not yet run live)",
-      "passes_when": "The payment is recorded once; code doesn't guess the bill from a noisy narration, so the bill goes to review and the owner is asked; it is never paid twice",
+      "passes_when": "The payment is recorded once, and the bill is matched or sent to review, never paid twice",
       "runs": 5,
       "passed": 5,
       "failed": 0,
@@ -3261,8 +3273,8 @@
         {
           "id": "drift-resolved-in-its-first-run",
           "component": "agent",
-          "ok": true,
-          "got": "medium none",
+          "ok": false,
+          "got": "high max_steps",
           "want": "medium none",
           "level": "trajectory"
         },
@@ -3294,28 +3306,29 @@
       "component": null,
       "error": null,
       "metrics": {
-        "ai_calls": 16,
+        "ai_calls": 11,
         "ai_calls_by_job": {
-          "exception": 13,
+          "exception": 8,
           "explain": 1,
           "sort": 1,
           "extract:bank_alert": 1
         },
         "schema_failures": 0,
-        "tool_calls": 11,
+        "tool_calls": 6,
         "tool_calls_by_tool": {
-          "search_gmail": 8,
-          "add_candidate": 3
+          "search_gmail": 4,
+          "add_candidate": 2
         },
         "refused": 0,
         "loops": 0,
         "tool_errors": 0,
-        "invalid_candidates": 2,
-        "wasted_calls": 2,
+        "invalid_candidates": 1,
+        "wasted_calls": 1,
         "retries": 0,
         "dead_jobs": 0,
         "escalations": [
-          "max_validation_failures",
+          "max_steps",
+          "max_steps",
           "max_steps"
         ],
         "tokens": {
@@ -3381,8 +3394,8 @@
         {
           "id": "drift-resolved-in-its-first-run",
           "component": "agent",
-          "ok": true,
-          "got": "medium none",
+          "ok": false,
+          "got": "high max_steps",
           "want": "medium none",
           "level": "trajectory"
         },
@@ -3414,28 +3427,29 @@
       "component": null,
       "error": null,
       "metrics": {
-        "ai_calls": 16,
+        "ai_calls": 11,
         "ai_calls_by_job": {
-          "exception": 13,
+          "exception": 8,
           "explain": 1,
           "sort": 1,
           "extract:bank_alert": 1
         },
         "schema_failures": 0,
-        "tool_calls": 11,
+        "tool_calls": 6,
         "tool_calls_by_tool": {
-          "search_gmail": 8,
-          "add_candidate": 3
+          "search_gmail": 4,
+          "add_candidate": 2
         },
         "refused": 0,
         "loops": 0,
         "tool_errors": 0,
-        "invalid_candidates": 2,
-        "wasted_calls": 2,
+        "invalid_candidates": 1,
+        "wasted_calls": 1,
         "retries": 0,
         "dead_jobs": 0,
         "escalations": [
-          "max_validation_failures",
+          "max_steps",
+          "max_steps",
           "max_steps"
         ],
         "tokens": {
@@ -3501,8 +3515,8 @@
         {
           "id": "drift-resolved-in-its-first-run",
           "component": "agent",
-          "ok": true,
-          "got": "medium none",
+          "ok": false,
+          "got": "high max_steps",
           "want": "medium none",
           "level": "trajectory"
         },
@@ -3534,28 +3548,29 @@
       "component": null,
       "error": null,
       "metrics": {
-        "ai_calls": 16,
+        "ai_calls": 11,
         "ai_calls_by_job": {
-          "exception": 13,
+          "exception": 8,
           "explain": 1,
           "sort": 1,
           "extract:bank_alert": 1
         },
         "schema_failures": 0,
-        "tool_calls": 11,
+        "tool_calls": 6,
         "tool_calls_by_tool": {
-          "search_gmail": 8,
-          "add_candidate": 3
+          "search_gmail": 4,
+          "add_candidate": 2
         },
         "refused": 0,
         "loops": 0,
         "tool_errors": 0,
-        "invalid_candidates": 2,
-        "wasted_calls": 2,
+        "invalid_candidates": 1,
+        "wasted_calls": 1,
         "retries": 0,
         "dead_jobs": 0,
         "escalations": [
-          "max_validation_failures",
+          "max_steps",
+          "max_steps",
           "max_steps"
         ],
         "tokens": {
@@ -3621,8 +3636,8 @@
         {
           "id": "drift-resolved-in-its-first-run",
           "component": "agent",
-          "ok": true,
-          "got": "medium none",
+          "ok": false,
+          "got": "high max_steps",
           "want": "medium none",
           "level": "trajectory"
         },
@@ -3654,28 +3669,29 @@
       "component": null,
       "error": null,
       "metrics": {
-        "ai_calls": 16,
+        "ai_calls": 11,
         "ai_calls_by_job": {
-          "exception": 13,
+          "exception": 8,
           "explain": 1,
           "sort": 1,
           "extract:bank_alert": 1
         },
         "schema_failures": 0,
-        "tool_calls": 11,
+        "tool_calls": 6,
         "tool_calls_by_tool": {
-          "search_gmail": 8,
-          "add_candidate": 3
+          "search_gmail": 4,
+          "add_candidate": 2
         },
         "refused": 0,
         "loops": 0,
         "tool_errors": 0,
-        "invalid_candidates": 2,
-        "wasted_calls": 2,
+        "invalid_candidates": 1,
+        "wasted_calls": 1,
         "retries": 0,
         "dead_jobs": 0,
         "escalations": [
-          "max_validation_failures",
+          "max_steps",
+          "max_steps",
           "max_steps"
         ],
         "tokens": {
@@ -3741,8 +3757,8 @@
         {
           "id": "drift-resolved-in-its-first-run",
           "component": "agent",
-          "ok": true,
-          "got": "medium none",
+          "ok": false,
+          "got": "high max_steps",
           "want": "medium none",
           "level": "trajectory"
         },
@@ -3774,28 +3790,29 @@
       "component": null,
       "error": null,
       "metrics": {
-        "ai_calls": 16,
+        "ai_calls": 11,
         "ai_calls_by_job": {
-          "exception": 13,
+          "exception": 8,
           "explain": 1,
           "sort": 1,
           "extract:bank_alert": 1
         },
         "schema_failures": 0,
-        "tool_calls": 11,
+        "tool_calls": 6,
         "tool_calls_by_tool": {
-          "search_gmail": 8,
-          "add_candidate": 3
+          "search_gmail": 4,
+          "add_candidate": 2
         },
         "refused": 0,
         "loops": 0,
         "tool_errors": 0,
-        "invalid_candidates": 2,
-        "wasted_calls": 2,
+        "invalid_candidates": 1,
+        "wasted_calls": 1,
         "retries": 0,
         "dead_jobs": 0,
         "escalations": [
-          "max_validation_failures",
+          "max_steps",
+          "max_steps",
           "max_steps"
         ],
         "tokens": {
@@ -3870,17 +3887,17 @@
       "component": null,
       "error": null,
       "metrics": {
-        "ai_calls": 16,
+        "ai_calls": 8,
         "ai_calls_by_job": {
-          "exception": 13,
+          "exception": 5,
           "explain": 1,
           "sort": 1,
           "extract:bank_alert": 1
         },
         "schema_failures": 0,
-        "tool_calls": 12,
+        "tool_calls": 4,
         "tool_calls_by_tool": {
-          "search_gmail": 12
+          "search_gmail": 4
         },
         "refused": 0,
         "loops": 0,
@@ -3980,17 +3997,17 @@
       "component": null,
       "error": null,
       "metrics": {
-        "ai_calls": 16,
+        "ai_calls": 8,
         "ai_calls_by_job": {
-          "exception": 13,
+          "exception": 5,
           "explain": 1,
           "sort": 1,
           "extract:bank_alert": 1
         },
         "schema_failures": 0,
-        "tool_calls": 12,
+        "tool_calls": 4,
         "tool_calls_by_tool": {
-          "search_gmail": 12
+          "search_gmail": 4
         },
         "refused": 0,
         "loops": 0,
@@ -4090,17 +4107,17 @@
       "component": null,
       "error": null,
       "metrics": {
-        "ai_calls": 16,
+        "ai_calls": 8,
         "ai_calls_by_job": {
-          "exception": 13,
+          "exception": 5,
           "explain": 1,
           "sort": 1,
           "extract:bank_alert": 1
         },
         "schema_failures": 0,
-        "tool_calls": 12,
+        "tool_calls": 4,
         "tool_calls_by_tool": {
-          "search_gmail": 12
+          "search_gmail": 4
         },
         "refused": 0,
         "loops": 0,
@@ -4200,17 +4217,17 @@
       "component": null,
       "error": null,
       "metrics": {
-        "ai_calls": 16,
+        "ai_calls": 8,
         "ai_calls_by_job": {
-          "exception": 13,
+          "exception": 5,
           "explain": 1,
           "sort": 1,
           "extract:bank_alert": 1
         },
         "schema_failures": 0,
-        "tool_calls": 12,
+        "tool_calls": 4,
         "tool_calls_by_tool": {
-          "search_gmail": 12
+          "search_gmail": 4
         },
         "refused": 0,
         "loops": 0,
@@ -4310,17 +4327,17 @@
       "component": null,
       "error": null,
       "metrics": {
-        "ai_calls": 16,
+        "ai_calls": 8,
         "ai_calls_by_job": {
-          "exception": 13,
+          "exception": 5,
           "explain": 1,
           "sort": 1,
           "extract:bank_alert": 1
         },
         "schema_failures": 0,
-        "tool_calls": 12,
+        "tool_calls": 4,
         "tool_calls_by_tool": {
-          "search_gmail": 12
+          "search_gmail": 4
         },
         "refused": 0,
         "loops": 0,
@@ -4865,7 +4882,9 @@
         "wasted_calls": 1,
         "retries": 0,
         "dead_jobs": 0,
-        "escalations": [],
+        "escalations": [
+          "max_steps"
+        ],
         "tokens": {
           "input": 0,
           "output": 0,
@@ -4993,7 +5012,9 @@
         "wasted_calls": 1,
         "retries": 0,
         "dead_jobs": 0,
-        "escalations": [],
+        "escalations": [
+          "max_steps"
+        ],
         "tokens": {
           "input": 0,
           "output": 0,
@@ -5121,7 +5142,9 @@
         "wasted_calls": 1,
         "retries": 0,
         "dead_jobs": 0,
-        "escalations": [],
+        "escalations": [
+          "max_steps"
+        ],
         "tokens": {
           "input": 0,
           "output": 0,
@@ -5249,7 +5272,9 @@
         "wasted_calls": 1,
         "retries": 0,
         "dead_jobs": 0,
-        "escalations": [],
+        "escalations": [
+          "max_steps"
+        ],
         "tokens": {
           "input": 0,
           "output": 0,
@@ -5377,7 +5402,9 @@
         "wasted_calls": 1,
         "retries": 0,
         "dead_jobs": 0,
-        "escalations": [],
+        "escalations": [
+          "max_steps"
+        ],
         "tokens": {
           "input": 0,
           "output": 0,
@@ -6926,7 +6953,7 @@
           1
         ],
         [
-          "paper-bill-paid-or-in-review",
+          "paper-bill-paid-at-most-once",
           true,
           1
         ]
@@ -7015,7 +7042,7 @@
           1
         ],
         [
-          "paper-bill-paid-or-in-review",
+          "paper-bill-paid-at-most-once",
           true,
           1
         ]
@@ -7104,7 +7131,7 @@
           1
         ],
         [
-          "paper-bill-paid-or-in-review",
+          "paper-bill-paid-at-most-once",
           true,
           1
         ]
@@ -7193,7 +7220,7 @@
           1
         ],
         [
-          "paper-bill-paid-or-in-review",
+          "paper-bill-paid-at-most-once",
           true,
           1
         ]
@@ -7282,7 +7309,7 @@
           1
         ],
         [
-          "paper-bill-paid-or-in-review",
+          "paper-bill-paid-at-most-once",
           true,
           1
         ]

@@ -7,8 +7,8 @@
     "config_sha256": "c64090a2e1223a12c72179086c53941d93df9dc6499fc63563b9f84db70fc095",
     "variant": "evals/variants/regress-max-steps.yaml",
     "prompt_overrides": null,
-    "commit": "254454b",
-    "date": "2026-10-04T19:13:01+05:30",
+    "commit": "ea91d7a",
+    "date": "2026-10-04T19:39:43+05:30",
     "runs_per_scenario": 5,
     "status": "COMPLETE",
     "stopped_because": null,
@@ -662,7 +662,7 @@
     {
       "scenario": "14-noisy-statement-row",
       "title": "A statement row with a noisy narration (fixture-only, not yet run live)",
-      "passes_when": "The payment is recorded once, and the bill is matched or sent to review, never paid twice",
+      "passes_when": "The payment is recorded once; code doesn't guess the bill from a noisy narration, so the bill goes to review and the owner is asked; it is never paid twice",
       "runs": 5,
       "passed": 5,
       "failed": 0,
@@ -6953,7 +6953,7 @@
           1
         ],
         [
-          "paper-bill-paid-at-most-once",
+          "paper-bill-paid-or-in-review",
           true,
           1
         ]
@@ -7042,7 +7042,7 @@
           1
         ],
         [
-          "paper-bill-paid-at-most-once",
+          "paper-bill-paid-or-in-review",
           true,
           1
         ]
@@ -7131,7 +7131,7 @@
           1
         ],
         [
-          "paper-bill-paid-at-most-once",
+          "paper-bill-paid-or-in-review",
           true,
           1
         ]
@@ -7220,7 +7220,7 @@
           1
         ],
         [
-          "paper-bill-paid-at-most-once",
+          "paper-bill-paid-or-in-review",
           true,
           1
         ]
@@ -7309,7 +7309,7 @@
           1
         ],
         [
-          "paper-bill-paid-at-most-once",
+          "paper-bill-paid-or-in-review",
           true,
           1
         ]

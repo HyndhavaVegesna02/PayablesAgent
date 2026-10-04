@@ -7,8 +7,8 @@
     "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
     "variant": null,
     "prompt_overrides": null,
-    "commit": "ea91d7a",
-    "date": "2026-10-04T19:39:32+05:30",
+    "commit": "254454b",
+    "date": "2026-10-04T19:12:51+05:30",
     "runs_per_scenario": 5,
     "status": "COMPLETE",
     "stopped_because": null,
@@ -650,7 +650,7 @@
     {
       "scenario": "14-noisy-statement-row",
       "title": "A statement row with a noisy narration (fixture-only, not yet run live)",
-      "passes_when": "The payment is recorded once; code doesn't guess the bill from a noisy narration, so the bill goes to review and the owner is asked; it is never paid twice",
+      "passes_when": "The payment is recorded once, and the bill is matched or sent to review, never paid twice",
       "runs": 5,
       "passed": 5,
       "failed": 0,
@@ -6926,7 +6926,7 @@
           1
         ],
         [
-          "paper-bill-paid-or-in-review",
+          "paper-bill-paid-at-most-once",
           true,
           1
         ]
@@ -7015,7 +7015,7 @@
           1
         ],
         [
-          "paper-bill-paid-or-in-review",
+          "paper-bill-paid-at-most-once",
           true,
           1
         ]
@@ -7104,7 +7104,7 @@
           1
         ],
         [
-          "paper-bill-paid-or-in-review",
+          "paper-bill-paid-at-most-once",
           true,
           1
         ]
@@ -7193,7 +7193,7 @@
           1
         ],
         [
-          "paper-bill-paid-or-in-review",
+          "paper-bill-paid-at-most-once",
           true,
           1
         ]
@@ -7282,7 +7282,7 @@
           1
         ],
         [
-          "paper-bill-paid-or-in-review",
+          "paper-bill-paid-at-most-once",
           true,
           1
         ]

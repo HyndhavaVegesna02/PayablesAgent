@@ -5,8 +5,8 @@
     "model": "gemini-3.8-flash",
     "prompt_version": "2026-10-04.2",
     "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
-    "commit": "ea91d7a",
-    "date": "2026-10-04T19:39:56+05:30",
+    "commit": "254454b",
+    "date": "2026-10-04T19:13:11+05:30",
     "runs_per_scenario": 1,
     "status": "COMPLETE",
     "stopped_because": null,
@@ -15,7 +15,6 @@
   "harnesses": {
     "full": {
       "mechanics_only": false,
-      "context_only": false,
       "seams": [],
       "runs": 14,
       "errored": 0,
@@ -83,7 +82,6 @@
     },
     "bare": {
       "mechanics_only": true,
-      "context_only": false,
       "seams": [],
       "runs": 14,
       "errored": 0,
@@ -151,7 +149,6 @@
     },
     "no_planner": {
       "mechanics_only": true,
-      "context_only": false,
       "seams": [
         "app.jobs.replan.plan"
       ],
@@ -221,7 +218,6 @@
     },
     "no_rule_checks": {
       "mechanics_only": false,
-      "context_only": false,
       "seams": [
         "app.validate.invoice.check_gstin",
         "app.validate.invoice.check_invoice_arithmetic",
@@ -302,7 +298,6 @@
     },
     "no_escalation": {
       "mechanics_only": false,
-      "context_only": false,
       "seams": [
         "app.agent.escalation.start_thinking",
         "app.agent.escalation.run_over",
@@ -374,7 +369,6 @@
     },
     "no_drift_rule": {
       "mechanics_only": false,
-      "context_only": false,
       "seams": [
         "app.jobs.replan.build_snapshot"
       ],
@@ -444,7 +438,6 @@
     },
     "no_case_file": {
       "mechanics_only": false,
-      "context_only": true,
       "seams": [
         "app.agent.loop.next_step"
       ],
@@ -514,7 +507,6 @@
     },
     "no_evidence_gate": {
       "mechanics_only": false,
-      "context_only": false,
       "seams": [
         "app.jobs.run_case.apply_final"
       ],
@@ -584,7 +576,6 @@
     },
     "all_tools": {
       "mechanics_only": false,
-      "context_only": false,
       "seams": [
         "app.agent.tools.TOOLS",
         "app.agent.loop.TOOLS",
@@ -659,6 +650,7 @@
     "no_rule_checks": 0.071,
     "no_escalation": 0.0,
     "no_drift_rule": 0.071,
+    "no_case_file": 0.0,
     "no_evidence_gate": 0.071,
     "all_tools": 0.071
   },
@@ -919,7 +911,7 @@
             1
           ],
           [
-            "paper-bill-paid-or-in-review",
+            "paper-bill-paid-at-most-once",
             true,
             1
           ]
@@ -1165,7 +1157,7 @@
             0
           ],
           [
-            "paper-bill-paid-or-in-review",
+            "paper-bill-paid-at-most-once",
             false,
             0
           ]
@@ -1423,7 +1415,7 @@
             0
           ],
           [
-            "paper-bill-paid-or-in-review",
+            "paper-bill-paid-at-most-once",
             false,
             0
           ]
@@ -1681,7 +1673,7 @@
             1
           ],
           [
-            "paper-bill-paid-or-in-review",
+            "paper-bill-paid-at-most-once",
             true,
             1
           ]
@@ -1939,7 +1931,7 @@
             1
           ],
           [
-            "paper-bill-paid-or-in-review",
+            "paper-bill-paid-at-most-once",
             true,
             1
           ]
@@ -2197,7 +2189,7 @@
             1
           ],
           [
-            "paper-bill-paid-or-in-review",
+            "paper-bill-paid-at-most-once",
             true,
             1
           ]
@@ -2455,7 +2447,7 @@
             1
           ],
           [
-            "paper-bill-paid-or-in-review",
+            "paper-bill-paid-at-most-once",
             true,
             1
           ]
@@ -2713,7 +2705,7 @@
             1
           ],
           [
-            "paper-bill-paid-or-in-review",
+            "paper-bill-paid-at-most-once",
             true,
             1
           ]
@@ -2971,7 +2963,7 @@
             1
           ],
           [
-            "paper-bill-paid-or-in-review",
+            "paper-bill-paid-at-most-once",
             true,
             1
           ]
