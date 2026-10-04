@@ -1,0 +1,96 @@
+{
+  "meta": {
+    "label": "ablation-no_drift_rule",
+    "mode": "live",
+    "model": "gemini-3.8-flash",
+    "prompt_version": "2026-10-04.2",
+    "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
+    "commit": "c0a350d",
+    "date": "2026-10-04T15:38:56+05:30",
+    "runs_per_scenario": 1,
+    "status": "COMPLETE",
+    "stopped_because": null,
+    "budget": {
+      "calls": 26,
+      "micro_usd": 79731,
+      "rate_limited": 0,
+      "caps": {
+        "calls": 600,
+        "micro_usd": 750000
+      },
+      "stopped": null
+    }
+  },
+  "harnesses": {
+    "no_drift_rule": {
+      "mechanics_only": false,
+      "seams": [
+        "app.jobs.replan.build_snapshot"
+      ],
+      "runs": 2,
+      "errored": 0,
+      "outcome_success_rate": 0.5,
+      "by_scenario": {
+        "07-missed-alert-causes-drift": {
+          "met": 1,
+          "scored": 1
+        },
+        "08-drift-with-no-explanation": {
+          "met": 0,
+          "scored": 1
+        }
+      },
+      "ai_calls": 26,
+      "cost_micro_usd": 79731
+    }
+  },
+  "drops": {},
+  "earned_most": [],
+  "runs": {
+    "no_drift_rule": [
+      {
+        "scenario": "07-missed-alert-causes-drift",
+        "run": 1,
+        "status": "PASSED",
+        "outcome_ok": true,
+        "outcomes": [
+          [
+            "missed-20000-debit-recorded",
+            true,
+            1
+          ]
+        ],
+        "error": null
+      },
+      {
+        "scenario": "08-drift-with-no-explanation",
+        "run": 1,
+        "status": "FAILED",
+        "outcome_ok": false,
+        "outcomes": [
+          [
+            "no-transaction-invented",
+            true,
+            0
+          ],
+          [
+            "plan-counts-only-money-that-is-there",
+            false,
+            {
+              "lowest_paise": 11500000,
+              "lowest_on": "2026-10-22",
+              "decisions": {
+                "1": "ESCALATE",
+                "2": "PAY 2026-10-15",
+                "3": "PAY 2026-10-15",
+                "4": "PAY 2026-10-19",
+                "5": "PAY 2026-10-22"
+              }
+            }
+          ]
+        ],
+        "error": null
+      }
+    ]
+  }
+}

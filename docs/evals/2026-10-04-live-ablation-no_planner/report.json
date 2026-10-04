@@ -1,0 +1,96 @@
+{
+  "meta": {
+    "label": "ablation-no_planner",
+    "mode": "live",
+    "model": "gemini-3.8-flash",
+    "prompt_version": "2026-10-04.2",
+    "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
+    "commit": "c0a350d",
+    "date": "2026-10-04T15:32:08+05:30",
+    "runs_per_scenario": 1,
+    "status": "COMPLETE",
+    "stopped_because": null,
+    "budget": {
+      "calls": 18,
+      "micro_usd": 115504,
+      "rate_limited": 0,
+      "caps": {
+        "calls": 600,
+        "micro_usd": 750000
+      },
+      "stopped": null
+    }
+  },
+  "harnesses": {
+    "no_planner": {
+      "mechanics_only": false,
+      "seams": [
+        "app.jobs.replan.plan"
+      ],
+      "runs": 2,
+      "errored": 0,
+      "outcome_success_rate": 1.0,
+      "by_scenario": {
+        "06-payment-returned-by-the-bank": {
+          "met": 1,
+          "scored": 1
+        },
+        "11-shortfall-week": {
+          "met": 1,
+          "scored": 1
+        }
+      },
+      "ai_calls": 18,
+      "cost_micro_usd": 115504
+    }
+  },
+  "drops": {},
+  "earned_most": [],
+  "runs": {
+    "no_planner": [
+      {
+        "scenario": "06-payment-returned-by-the-bank",
+        "run": 1,
+        "status": "PASSED",
+        "outcome_ok": true,
+        "outcomes": [
+          [
+            "paper-bill-not-paid",
+            true,
+            1
+          ],
+          [
+            "returned-debit-not-counted",
+            true,
+            0
+          ]
+        ],
+        "error": null
+      },
+      {
+        "scenario": "11-shortfall-week",
+        "run": 1,
+        "status": "PASSED",
+        "outcome_ok": true,
+        "outcomes": [
+          [
+            "prime-chem-paid-thursday-without-going-below-the-floor",
+            true,
+            {
+              "lowest_paise": 35000000,
+              "lowest_on": "2026-10-22",
+              "decisions": {
+                "1": "PAY 2026-10-19",
+                "2": "PAY 2026-10-19",
+                "3": "PAY 2026-10-19",
+                "4": "PAY 2026-10-19",
+                "5": "PAY 2026-10-22"
+              }
+            }
+          ]
+        ],
+        "error": null
+      }
+    ]
+  }
+}
