@@ -490,7 +490,7 @@ changes:
   - id: CHG-033
     title: A currency word, or its start, after a spoken amount is noise (PO D28.1)
     file: docs/changes/CHG-033-spoken-currency-word.md
-    status: ready
+    status: done
     priority: 033
     type: defect
     lane: direct
@@ -500,7 +500,7 @@ changes:
   - id: CHG-034
     title: The eval's scripted owner fills every field the page marks (PO D28.2)
     file: docs/changes/CHG-034-owner-fills-every-flagged-field.md
-    status: ready
+    status: done
     priority: 034
     type: defect
     lane: direct
@@ -510,7 +510,7 @@ changes:
   - id: CHG-035
     title: One 11x5 page combined from the two live invocations, generated, never typed
     file: docs/changes/CHG-035-combined-eval-report.md
-    status: ready
+    status: done
     priority: 035
     type: feature
     lane: direct
@@ -520,7 +520,7 @@ changes:
   - id: CHG-036
     title: docs/evals/README tells the live story in order (PO, batch 8 verdict)
     file: docs/changes/CHG-036-eval-readme-story.md
-    status: ready
+    status: done
     priority: 036
     type: docs
     lane: direct

@@ -70,3 +70,10 @@ ruff (clean) and check-evidence ("all 5 reports reproduce"). The new test fails 
 assertion. The superseded copies are byte-identical to the reports as they stood at 94e46d8. In the
 regenerated reports only the commit, the date and fields-read's recorded value changed; every result is the
 same. No critical or major findings. The one minor is the decision on 05 and 09 already recorded in round 2.
+
+## PO verdict
+
+ACCEPT for CHG-033 to CHG-036, together (2026-10-04, payablesagent-ac). The PO checked 2a1b947 independently
+(1343 passed; 9/9 import contracts kept). Notes (2) and (3) are accepted. For (2), the bare harness hearing the
+same owner-typed values keeps the comparison fair, and the ablation report header will say so. CHG-037 is
+next, in batch 11.
