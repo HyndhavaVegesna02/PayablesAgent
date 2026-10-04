@@ -1,6 +1,6 @@
 # Active batch. status: none means no batch is running.
 batch: 11
-status: active      # none | active | review | closed | aborted
+status: review      # none | active | review | closed | aborted
 goal: "The PO's batch 10 verdict: the voice amount check compares parsed paise, never a text substring (CHG-037); the ablation report's header says every harness's owner types the same values (CHG-038)."
 branch: batch-11
 start_tag: null
