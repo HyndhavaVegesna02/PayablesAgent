@@ -1,6 +1,6 @@
 # Every change, ever. Entries are never deleted -- done and rejected are history.
 # Status is a field, never a folder.
-next_id: 46
+next_id: 53
 changes:
   - id: CHG-001
     title: Repo skeleton — layout, config, schema, Clock, tracer, job table, CI
@@ -617,6 +617,76 @@ changes:
     expected_paths: ['evals/workflow_runs.py', 'tests/test_workflow_live_paths.py', 'docs/evals/', 'docs/changes/CHG-025-batch5-review-notes.md']
     depends_on: null
     batch: 16
+  - id: CHG-046
+    title: Docs: stale live-eval lines fixed from the reports; threat model gains scenario 10 live, approval fatigue and the model as a processor; architecture gains Trade-offs and decisions (PO, batch 17)
+    file: docs/changes/CHG-046.md
+    status: ready
+    priority: 46
+    type: docs
+    lane: direct
+    expected_paths: ['README.md', 'docs/threat-model.md', 'docs/evals/README.md', 'docs/architecture.md']
+    depends_on: null
+    batch: 17
+  - id: CHG-047
+    title: Traces: live failure/success pair official with walkthroughs; tracer records wall time, latency, attempt and retries, and 2,000-char replies; bare traces kept (PO, batch 17)
+    file: docs/changes/CHG-047.md
+    status: ready
+    priority: 47
+    type: feature
+    lane: planned
+    expected_paths: ['app/trace/tracer.py', 'app/ai/client.py', 'app/worker.py', 'evals/bare.py', 'evals/budget.py', 'docs/traces/']
+    depends_on: null
+    batch: 17
+  - id: CHG-048
+    title: One consolidated ablation table from report.json files (harness x scenario, spread, deltas, earned-most) and a written discussion of the null results (PO, batch 17)
+    file: docs/changes/CHG-048.md
+    status: ready
+    priority: 48
+    type: feature
+    lane: direct
+    expected_paths: ['evals/report.py', 'evals/ablation.py', 'docs/evals/README.md']
+    depends_on: null
+    batch: 17
+  - id: CHG-049
+    title: Three new knock-outs at named seams: no_case_file, no_evidence_gate, all_tools; each with an outcome check that detects it, proved in fixture mode (PO, batch 17)
+    file: docs/changes/CHG-049.md
+    status: ready
+    priority: 49
+    type: feature
+    lane: planned
+    expected_paths: ['evals/knockouts.py', 'evals/ablation.py', 'evals/scenarios/', 'fixtures/ai_replies.json']
+    depends_on: null
+    batch: 17
+  - id: CHG-050
+    title: Path budgets: every agent scenario asserts trajectory limits (steps, refused calls), live as well (PO, batch 17)
+    file: docs/changes/CHG-050.md
+    status: ready
+    priority: 50
+    type: feature
+    lane: direct
+    expected_paths: ['evals/scenarios/']
+    depends_on: null
+    batch: 17
+  - id: CHG-051
+    title: Three harder scenarios, fixture-only: an injection in an attachment, an ambiguous same-amount debit across two vendors, a noisy statement row (PO, batch 17)
+    file: docs/changes/CHG-051.md
+    status: ready
+    priority: 51
+    type: feature
+    lane: planned
+    expected_paths: ['evals/scenarios/', 'fixtures/']
+    depends_on: null
+    batch: 17
+  - id: CHG-052
+    title: README's reusable section names the harness pieces (component-tagged eval runner, knock-out seams, budget guard) with how to lift them (PO, batch 17)
+    file: docs/changes/CHG-052.md
+    status: ready
+    priority: 52
+    type: docs
+    lane: direct
+    expected_paths: ['README.md']
+    depends_on: null
+    batch: 17
 
 # Shape of an entry:
 #   - id: CHG-001
