@@ -39,7 +39,16 @@ expect:
     component: reconcile
     sql: SELECT drift_status FROM bank_account WHERE id = 1
     equals: OK
-
+  - id: path-budget-steps   # path budget (CHG-050): the drift case within one run's 6 steps; all cases within 15; applies live too
+    component: agent
+    level: trajectory
+    sql: SELECT (SELECT COALESCE(MAX(json_extract(state_json, '$.steps_total')), 0) <= 6 FROM agent_case WHERE kind = 'drift') AND (SELECT COALESCE(SUM(json_extract(state_json, '$.steps_total')), 0) <= 15 FROM agent_case)
+    equals: 1
+  - id: path-budget-refused   # path budget (CHG-050): at most 3 calls refused by code (unknown tool, bad arguments, a repeat, a final answer); applies live too
+    component: agent
+    level: trajectory
+    sql: SELECT COALESCE(SUM((length(state_json) - length(replace(state_json, 'refused', ''))) / 7), 0) <= 3 FROM agent_case
+    equals: 1
 outcome:
   - id: missed-20000-debit-recorded
     sql: SELECT COUNT(*) FROM bank_txn WHERE direction = 'debit' AND amount_paise = 2000000 AND txn_date = '2026-10-13'

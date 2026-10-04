@@ -23,7 +23,16 @@ expect:
     component: reconcile
     sql: SELECT reported_balance_paise || ' ' || drift_status FROM bank_account WHERE id = 1
     equals: "47241000 OK"
-
+  - id: path-budget-steps   # path budget (CHG-050): every unexplained-debit case settled or at the owner within 3 steps; applies live too
+    component: agent
+    level: trajectory
+    sql: SELECT COALESCE(MAX(json_extract(state_json, '$.steps_total')), 0) <= 3 FROM agent_case
+    equals: 1
+  - id: path-budget-refused   # path budget (CHG-050): at most 3 calls refused by code (unknown tool, bad arguments, a repeat, a final answer); applies live too
+    component: agent
+    level: trajectory
+    sql: SELECT COALESCE(SUM((length(state_json) - length(replace(state_json, 'refused', ''))) / 7), 0) <= 3 FROM agent_case
+    equals: 1
 outcome:
   - id: three-statement-rows-recorded
     sql: SELECT COUNT(*) FROM bank_txn

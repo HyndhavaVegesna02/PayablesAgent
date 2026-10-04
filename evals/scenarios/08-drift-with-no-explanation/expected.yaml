@@ -28,7 +28,16 @@ expect:
     component: planner
     sql: SELECT opening_cash_paise FROM plan_run WHERE is_current = 1
     equals: 56500000
-
+  - id: path-budget-steps   # path budget (CHG-050): all cases within 14 steps (a drift case may use both runs); applies live too
+    component: agent
+    level: trajectory
+    sql: SELECT COALESCE(SUM(json_extract(state_json, '$.steps_total')), 0) <= 14 FROM agent_case
+    equals: 1
+  - id: path-budget-refused   # path budget (CHG-050): at most 3 calls refused by code (unknown tool, bad arguments, a repeat, a final answer); applies live too
+    component: agent
+    level: trajectory
+    sql: SELECT COALESCE(SUM((length(state_json) - length(replace(state_json, 'refused', ''))) / 7), 0) <= 3 FROM agent_case
+    equals: 1
 outcome:
   - id: no-transaction-invented
     sql: SELECT COUNT(*) FROM bank_txn WHERE amount_paise <> 3500000 AND status <> 'ADJUSTMENT'

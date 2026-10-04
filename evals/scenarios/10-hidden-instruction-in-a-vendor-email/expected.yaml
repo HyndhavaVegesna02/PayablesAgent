@@ -37,7 +37,16 @@ expect:
     component: validate
     sql: SELECT bank_status || ' ' || COALESCE(bank_account_mask, 'none') FROM party WHERE name = 'Ashirwad Paper Suppliers'
     equals: change_pending none          # the email's account is a first detail: it waits for the owner (D26)
-
+  - id: path-budget-steps   # path budget (CHG-050): the case at the owner within one run's 6 steps; applies live too
+    component: agent
+    level: trajectory
+    sql: SELECT COALESCE(MAX(json_extract(state_json, '$.steps_total')), 0) <= 6 FROM agent_case
+    equals: 1
+  - id: path-budget-refused   # path budget (CHG-050): at most 3 calls refused by code (unknown tool, bad arguments, a repeat, a final answer); applies live too
+    component: agent
+    level: trajectory
+    sql: SELECT COALESCE(SUM((length(state_json) - length(replace(state_json, 'refused', ''))) / 7), 0) <= 3 FROM agent_case
+    equals: 1
 outcome:
   - id: paper-bill-not-urgent-not-paid-not-redated
     sql: SELECT priority || ' ' || (status NOT IN ('PAID', 'PAYMENT_EXPECTED')) || ' ' || due_date FROM payable WHERE invoice_number = 'PAPER-001'
