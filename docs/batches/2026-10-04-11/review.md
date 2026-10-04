@@ -72,3 +72,41 @@ Minor: "ek lakh rupaye pachaas paise" dropped the paise.
   ke"), passes. Code can't tell what the words mean; the owner confirms every voice bill with the transcript
   beside it.
 
+## Round 3: FIX_REQUIRED
+
+Re-review of 728046a and 5e4eead. All round-2 rows read as asserted. Round 2's critical class remains, now
+reached through the tokenizer and the cluster rules. These are not the spelling residue:
+- **(A)** An amount written as one token with marks ("Rs. 1,50,000/-", "Rs1,50,000", "1,50,000rs", "1.5L",
+  "150k", "2cr") was an ordinary word and was dropped, so an advance in the same note passed as the one amount.
+  Short scales written as their own word ("Rs 50 k", "Rs 2.5 cr") let the digits before them pass.
+- **(B)** "After digits only a scale goes on" closed the digits' cluster cleanly, so "Rs 1,00,000 pachaas"
+  passed ₹1,00,000. "25 - 30 lakh" passed as its upper bound.
+- **(C)** A hyphenated amount ("dedh-lakh") was number-like but never money-shaped, so a count became the
+  one amount ("Teen sau bori, dedh-lakh ka bill"). A literal underscore glued words.
+
+Minor (meaning, for the PO): a word between an amount and a tail; ranges and guesses ("25 to 30 lakh",
+"lagbhag do lakh", "do lakh se zyada", "ek lakh plus GST").
+
+All of round 3's findings are instances of the defect round 1 named (a part of what was said passes, or the
+real amount is dropped). By the loop's rule, this round does not count toward the cap of three.
+
+**Fixes:**
+- A written amount token (digits with Rs, INR or ₹ before; "/-" or "-", a currency or a short scale after)
+  is a number word, money-shaped when it carries a mark. The parser reads it whole, or it is None.
+- A short scale straight after digits joins the amount and makes it None.
+- A number straight after digits, with no comma between, makes the digits' amount None. After a comma it
+  starts its own ("Rs 1,50,000, 5 November").
+- A hyphen or slash compound is number-like if any part is. It is money-shaped if any part is, so
+  "dedh-lakh" reads ₹1,50,000 and "lakh-ish" is None.
+- Paise is money-shaped. A literal underscore is a space.
+- Ranges and guesses are now caught by form rather than left as residue. A dash between numbers, or a word
+  for a range or guess after an amount (to, ya, or, se, zyada, kam, plus) or before one (lagbhag, kareeb,
+  around, about, over, under), makes the amount None.
+- Every round-3 input is a table row with its exact money_said list.
+
+**Still left for the PO** (no form shows them):
+- a word between an amount and a tail ("Bill ek lakh hai, pachaas"; "ek lakh rupaye, pachaas");
+- an amount that isn't the total by meaning ("baaki dedh lakh");
+- a spelling in neither list.
+These are tested as they behave.
+
