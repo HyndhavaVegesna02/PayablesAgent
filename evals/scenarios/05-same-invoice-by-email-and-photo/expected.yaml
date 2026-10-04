@@ -6,7 +6,8 @@ steps:
   - deliver: [08-invoice-ashirwad-ap131.eml]
   - poll: true
   - upload: {file: ap-2610-131-photo.png, kind: photo}
-  - confirm_waiting: true
+  - confirm_waiting:                   # typing what AP/2610/131 says into any field marked (D28)
+      fill: {party: Ashirwad Paper Suppliers, amount: "95,000", due_date: "2026-10-28"}
 expect:
   - id: both-read-as-invoices
     component: sort

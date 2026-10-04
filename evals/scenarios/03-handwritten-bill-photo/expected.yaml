@@ -4,7 +4,8 @@ passes_when: Fields extracted; GSTIN and totals checked
 steps:
   - at: "2026-10-14T12:00"
   - upload: {file: handwritten-bill-ganesh.png, kind: photo}   # by the helper, on /add
-  - confirm_waiting: true                                      # the owner confirms it
+  - confirm_waiting:                                           # the owner confirms it, typing what the bill
+      fill: {party: Shree Ganesh Hardware, amount: "12,390", due_date: "2026-10-24"}   # says into any field marked (D28)
 expect:
   - id: sorted-as-invoice
     component: sort
@@ -12,8 +13,8 @@ expect:
     equals: invoice
   - id: fields-read
     component: extract
-    sql: SELECT p.invoice_number || ' ' || p.amount_paise || ' ' || pt.name FROM payable p JOIN party pt ON pt.id = p.party_id WHERE p.invoice_number = '418'
-    equals: "418 1239000 Shree Ganesh Hardware"
+    sql: SELECT json_extract(payload_json, '$.record.invoice_number') || ' ' || json_extract(payload_json, '$.record.amount_paise') || ' ' || json_extract(payload_json, '$.record.party') FROM candidate ORDER BY id LIMIT 1
+    equals: "418 1239000 Shree Ganesh Hardware"      # as read (the candidate), so the owner's typing can't hide a misread
   - id: gstin-checked
     component: validate
     sql: SELECT json_extract(checks_json, '$.gstin') FROM candidate ORDER BY id LIMIT 1

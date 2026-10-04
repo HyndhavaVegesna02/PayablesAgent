@@ -5,7 +5,8 @@ steps:
   - at: "2026-10-13T12:00"
   - deliver: [08-invoice-ashirwad-ap131.eml]
   - poll: true
-  - confirm_waiting: true              # the owner confirms AP/2610/131; its bank details wait for the owner (D26)
+  - confirm_waiting:                   # the owner confirms AP/2610/131; its bank details wait for the owner (D26)
+      fill: {party: Ashirwad Paper Suppliers, amount: "95,000", due_date: "2026-10-28"}
   - approve_bank_details: {invoice: AP/2610/131}   # checked by phone and approved: Ashirwad's first details
   - at: "2026-10-14T11:00"
   - deliver: [09-invoice-ashirwad-new-bank.eml]

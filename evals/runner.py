@@ -216,6 +216,14 @@ def refusal_component(errors: dict[str, str], filled: set[str]) -> str | None:
     return None
 
 
+def owner_typing(cand: dict[str, Any], shown: dict[str, str], said: dict[str, str]) -> tuple[dict[str, str], list[str]]:
+    """What a scripted owner types (PO D28): every field the page marks, with
+    the value the document or transcript gives (`said`), and nothing else.
+    Returns (typed, marked fields with no value given)."""
+    marked = flagged_fields(cand, shown)
+    return {k: said[k] for k in marked if k in said}, sorted(set(marked) - set(said))
+
+
 class ScenarioGap(Exception):
     """The page marks a field the scenario gives the owner no value for: the
     scenario is incomplete, which is not the model's failure (PO D28)."""
@@ -229,12 +237,10 @@ def _confirm_waiting(env: RunEnv, spec: Any) -> None:
     fill = spec.get("fill", {}) if isinstance(spec, dict) else {}
     for cand in repo.waiting_candidates(env.conn, OWNER.business_id):
         values = prefill(cand, repo.accounts(env.conn, 1))
-        marked = flagged_fields(cand, values)
-        missing = sorted(set(marked) - set(fill))
+        typed, missing = owner_typing(cand, values, fill)
         if missing:
             raise ScenarioGap(f"the page marks {', '.join(missing)} on entry {cand['id']}, and the scenario gives "
                               "the owner no value for it")
-        typed = {k: fill[k] for k in marked}
         values.update(typed)
         try:
             actions.confirm_candidate(env.conn, OWNER, cand["id"], values, clock=env.clock)

@@ -1,6 +1,6 @@
 # Every change, ever. Entries are never deleted -- done and rejected are history.
 # Status is a field, never a folder.
-next_id: 37
+next_id: 38
 changes:
   - id: CHG-001
     title: Repo skeleton — layout, config, schema, Clock, tracer, job table, CI
@@ -527,6 +527,16 @@ changes:
     expected_paths: ['docs/evals/README.md']
     depends_on: null
     batch: 10
+  - id: CHG-037
+    title: The voice check's said-words match can accept a leading part of the amount ("do lakh" of "do lakh pachaas hazaar")
+    file: docs/changes/CHG-037-voice-said-words-boundary.md
+    status: draft
+    priority: 37
+    type: defect
+    lane: null
+    expected_paths: []
+    depends_on: null
+    batch: null
 
 # Shape of an entry:
 #   - id: CHG-001

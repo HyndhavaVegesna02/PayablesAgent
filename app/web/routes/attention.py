@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import Response
 
 from app.domain.money import format_inr
+from app.validate import NO_DUE_DATE, failed
 from app.web import actions, repo
 from app.web.app import render
 from app.web.auth import User, db, owner_only
@@ -59,7 +60,8 @@ def flagged_fields(c: dict, shown: dict[str, str]) -> dict[str, str]:
     and marked for the owner to fill (CHG-030; PO D28): field -> the note
     beside it. A date the document didn't give, an amount the code couldn't
     read, a vendor the model couldn't name."""
-    return {f: ("Not given on the document: fill it in." if f == "due_date" else
+    not_given = c.get("checks", {}).get("dates") == failed(NO_DUE_DATE)
+    return {f: ("Not given on the document: fill it in." if f == "due_date" and not_given else
                 "Not read from the document: fill it in.")
             for f in REQUIRED.get(c["record_type"], ()) if not shown.get(f)}
 

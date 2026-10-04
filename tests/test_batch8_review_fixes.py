@@ -228,9 +228,12 @@ def test_the_bare_harness_is_told_the_owners_new_steps_in_words(tmp_path):
 def test_every_empty_required_field_is_marked_for_the_owner():
     from app.web.routes.attention import flagged_fields
 
-    bill = {"record_type": "payable"}
+    bill = {"record_type": "payable", "checks": {"dates": "failed: no due date was given: fill it in"}}
     assert flagged_fields(bill, {"party": "Sharma Packaging", "amount": "", "due_date": ""}) == {
         "amount": "Not read from the document: fill it in.", "due_date": "Not given on the document: fill it in."}
+    missed = {"record_type": "payable", "checks": {"dates": "passed"}}  # the document gave one; it wasn't read
+    assert flagged_fields(missed, {"party": "x", "amount": "₹1", "due_date": ""}) == {
+        "due_date": "Not read from the document: fill it in."}
     assert flagged_fields({"record_type": "receivable"}, {"party": "", "amount": "₹1,000"}) == {
         "party": "Not read from the document: fill it in."}
     assert flagged_fields(bill, {"party": "x", "amount": "₹1", "due_date": "2026-11-05"}) == {}
@@ -264,4 +267,59 @@ def test_the_live_runs_unread_amount_is_marked_and_the_scripted_owner_types_what
     assert seen[-1]["amount"] == "1,50,000" and seen[-1]["due_date"] == "2026-11-05"
     assert r.error is None and r.component == "extract"  # its own reading failed; the owner's typing didn't
     assert {c.id for c in r.checks if not c.ok} == {"amount-is-150000", "amount-checked-against-the-words"}
+
+
+# --- batch 10 review, round 1 ----------------------------------------------------------------------------------
+
+
+def test_every_scenario_that_confirms_states_what_its_documents_say():
+    """D28.2: the scripted owner types every marked field from the document, so each confirming scenario states
+    the values; otherwise a live misread would end as a ScenarioGap (a crash), not the model's own failure."""
+    from evals import scenario
+
+    for name in scenario.names():
+        for step in scenario.load(name).steps:
+            if "confirm_waiting" in step:
+                fill = step["confirm_waiting"].get("fill", {}) if isinstance(step["confirm_waiting"], dict) else {}
+                assert {"party", "amount", "due_date"} <= set(fill), name
+
+
+@pytest.mark.parametrize("said", ["dedh lakh rupaya", "dedh lakh rupaiya", "dedh lakh rupye", "dedh lakh rupiya only"])
+def test_the_common_spellings_of_rupaye_are_noise_too(said):
+    from app.domain.money import parse_spoken_inr
+
+    assert parse_spoken_inr(said) == 15_000_000
+
+
+def test_combine_takes_the_latest_by_date_keeps_finished_runs_over_errored_ones_and_needs_two_parts():
+    import copy
+
+    from evals import report
+
+    first = json.loads((runner.ROOT / "docs" / "evals" / "2026-10-04-live-baseline" / "report.json").read_text(
+        encoding="utf-8"))
+    later = copy.deepcopy(first)
+    later["meta"]["date"] = "2026-10-05T09:00:00+05:30"
+    for r in later["scenarios"]:
+        r.update(errored=r["runs"], passed=0, failed=0)  # every run errored here
+    later["scenarios"][0]["errored"] = 0  # but 01 finished
+    combined = report.combine([("later", later), ("first", first)], "x")  # given out of order
+    sources = {r["scenario"]: r["source"] for r in combined["scenarios"]}
+    assert sources["01-debit-alert-for-a-planned-payment"] == "later"
+    assert sources["02-password-protected-statement"] == "first"  # errored runs don't replace finished ones
+    with pytest.raises(ValueError):
+        report.combine([("first", first)], "x")
+
+
+def test_check_evidence_names_a_combined_reports_missing_source(tmp_path, monkeypatch, capsys):
+    from scripts import check_evidence
+
+    evals = tmp_path / "docs" / "evals" / "2026-10-05-live-x"
+    evals.mkdir(parents=True)
+    (evals / "report.json").write_text(json.dumps({"meta": {"kind": "combined", "label": "x", "sources": [
+        {"report": "2026-10-04-gone"}]}}), encoding="utf-8")
+    monkeypatch.setattr(check_evidence, "ROOT", tmp_path)
+    monkeypatch.setattr(check_evidence, "EVALS", tmp_path / "docs" / "evals")
+    assert check_evidence.main() == 1
+    assert "its sources ['2026-10-04-gone'] are not under docs/evals/" in capsys.readouterr().out
 

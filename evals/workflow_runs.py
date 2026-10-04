@@ -22,7 +22,8 @@ from typing import Any
 
 from app.domain.money import format_inr, parse_inr
 from app.web import repo
-from app.web.routes.attention import flagged_fields, prefill
+from app.web.routes.attention import prefill
+from evals.runner import owner_typing
 from evals.workflow import Run, StepFailed, _text, forms
 
 STATEMENT_PASSWORD = "SPW-4821-oct"  # fictional; typed by the owner (scripts/make_fixtures.py)
@@ -86,12 +87,11 @@ def confirm(run: Run, candidate_id: int, said: dict[str, str] | None = None) -> 
     cand = next((c for c in repo.waiting_candidates(run.conn, 1) if c["id"] == candidate_id), None)
     if cand is None:
         raise StepFailed(f"entry {candidate_id} is not waiting on Needs attention")
-    marked = flagged_fields(cand, prefill(cand, repo.accounts(run.conn, 1)))
-    missing = sorted(set(marked) - set(said or {}))
+    typed, missing = owner_typing(cand, prefill(cand, repo.accounts(run.conn, 1)), said or {})
     if missing:
         raise StepFailed(f"the page marks {', '.join(missing)} on entry {candidate_id}, and the step gives the owner "
                          "no value for it")
-    run.owner.submit("/attention", f"/candidates/{candidate_id}/confirm", {k: (said or {})[k] for k in marked})
+    run.owner.submit("/attention", f"/candidates/{candidate_id}/confirm", typed)
     run.drain()
 
 
@@ -305,7 +305,7 @@ def run_a(run: Run) -> None:
                    "canned note); live, Gemini's, or the template when Gemini's fails its check")
 
     with run.step("owner", "Sat: confirms the four new bills on Needs attention, typing in the voice note's due "
-                           "date (Thu 5 Nov), the one field marked for them"):
+                           "date (Thu 5 Nov) and whatever else the page marks"):
         run.move_to("2026-10-17T10:00")
         voice = run.one("SELECT c.id FROM candidate c JOIN source_document d ON d.id = c.source_document_id "
                         "WHERE d.kind = 'voice'")

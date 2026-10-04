@@ -90,7 +90,15 @@ def differences(old_json: Path, new_json: Path) -> list[str]:
 def main() -> int:
     import os
 
+    before = os.getcwd()
     os.chdir(ROOT)  # the reports record repo-relative paths (a variant's config)
+    try:
+        return _check()
+    finally:
+        os.chdir(before)
+
+
+def _check() -> int:
     reports = committed()
     if not reports:
         print("no fixture-mode reports under docs/evals/")
@@ -99,13 +107,19 @@ def main() -> int:
     with tempfile.TemporaryDirectory(prefix="check-evidence-") as tmp:
         for i, (kind, path, meta) in enumerate(reports):
             out = Path(tmp) / str(i)
+            gone = [s["report"] for s in meta.get("sources", []) if not (EVALS / s["report"] / "report.json").exists()]
+            if gone:
+                problems.append(f"{path.relative_to(ROOT).as_posix()}: its sources {gone} are not under docs/evals/ "
+                                "(moved to superseded/?); combine it again from where they are")
+                continue
             problems += differences(path, regenerate(kind, meta, out))
             print(f"checked {path.relative_to(ROOT).as_posix()}", flush=True)
     if problems:
         print("\n".join(["The committed evidence no longer matches what the code emits:", *problems,
                          "Regenerate it at a clean commit and keep the old copy under docs/evals/superseded/."]))
         return 1
-    print(f"all {len(reports)} fixture-mode reports reproduce (md and json, below their commit and date)")
+    print(f"all {len(reports)} reports reproduce: fixture-mode ones below their commit and date, combined ones "
+          "exactly (md and json)")
     return 0
 
 

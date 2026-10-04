@@ -191,19 +191,26 @@ def _scenario_sections(rows: list[dict[str, Any]], *, source: bool = False) -> l
 
 # --- one report from several invocations (batch 10, CHG-035) -----------------------------------------------------
 
-SOURCE_FIELDS = ("mode", "model", "prompt_version", "commit", "date", "status", "stopped_because", "runs_per_scenario")
+SOURCE_FIELDS = ("mode", "model", "prompt_version", "config_sha256", "variant", "commit", "date", "status",
+                 "stopped_because", "runs_per_scenario")
 
 
 def combine(parts: list[tuple[str, dict[str, Any]]], label: str) -> dict[str, Any]:
-    """One report from several (oldest first), each given with the folder it
-    came from. For every scenario the latest report that ran it wins: its row
-    and its runs are this report's, and the row names its source. Totals are
+    """One report from two or more, each given with the folder it came from.
+    For every scenario the latest report (by its own date) that finished a
+    run of it wins: its row and its runs are this report's, and the row names
+    its source. Totals are
     counted from the winning runs; `spent` adds up every invocation's spend,
     the runs that lost included. Nothing here is typed by hand."""
+    if len(parts) < 2:
+        raise ValueError("combine needs two or more reports")
+    parts = sorted(parts, key=lambda p: str(p[1]["meta"]["date"]))  # latest by its own date, not argument order
     rows: dict[str, dict[str, Any]] = {}
     runs: dict[str, list[dict[str, Any]]] = {}
     for source, rep in parts:
         for row in rep["scenarios"]:
+            if row["runs"] == row["errored"] and row["scenario"] in rows:
+                continue  # every run of it errored here: the earlier finished runs stand
             rows[row["scenario"]] = {**row, "source": source}
             runs[row["scenario"]] = [r for r in rep["runs"] if r["scenario"] == row["scenario"]]
     chosen = [rows[name] for name in sorted(rows)]
@@ -270,7 +277,7 @@ def main(argv: list[str] | None = None) -> int:
                                 description="combine: one report from several report folders, oldest first.")
     sub = p.add_subparsers(dest="command", required=True)
     c = sub.add_parser("combine")
-    c.add_argument("folders", type=Path, nargs="+", help="report folders under docs/evals, oldest first")
+    c.add_argument("folders", type=Path, nargs="+", help="two or more report folders under docs/evals")
     c.add_argument("--label", required=True)
     c.add_argument("--out", type=Path, default=ROOT / "docs" / "evals")
     args = p.parse_args(argv)

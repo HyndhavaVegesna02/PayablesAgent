@@ -87,12 +87,11 @@ _SAID_WHOLE = {"dedh": Fraction(3, 2), "derh": Fraction(3, 2), "dhai": Fraction(
                "adhai": Fraction(5, 2)}
 _SAID_SHIFT = {"saade": Fraction(1, 2), "sadhe": Fraction(1, 2), "saadhe": Fraction(1, 2),
                "paune": Fraction(-1, 4), "pone": Fraction(-1, 4)}
-_SAID_NOISE = {"rupees", "rupee", "rupaye", "rupaiye", "rupay", "rs", "inr", "only", "sirf", "bas", "ka", "ki", "ke",
-               "and", "aur", "₹"}
-_DECIMAL = re.compile(r"^[0-9]+(?:\.[0-9]+)?$")
 # The unit said after an amount (PO D28). The number words decide the amount; the unit is noise, and so is
 # a unit cut short ("dedh lakh rup"): a prefix of at least three letters of one of these, never another word.
-CURRENCY_WORDS = ("rupaye", "rupees", "rupee", "rupiya", "rupaiye", "rupay", "rs", "inr")
+CURRENCY_WORDS = ("rupaye", "rupees", "rupee", "rupiya", "rupaiye", "rupaya", "rupaiya", "rupye", "rupay", "rs", "inr")
+_SAID_NOISE = {*CURRENCY_WORDS, "only", "sirf", "bas", "ka", "ki", "ke", "and", "aur", "₹"}
+_DECIMAL = re.compile(r"^[0-9]+(?:\.[0-9]+)?$")
 
 
 def _is_currency_word(word: str) -> bool:
