@@ -1,10 +1,10 @@
 # Harness ablation: ablation
 
-**How the harnesses are compared (D24).** Every harness gets the same inputs: the seeded worked example and the scenario's emails, uploads and owner actions, in the same order. The bare harness is given them as text (the seeded state written out, each email's text with its attachments, each owner action as a sentence) because it has no ingest pipeline; the model is the same. Where an entry is missing a field the owner must fill, every harness's owner fills it with the same value from the scenario: the full system and the knock-outs type it into the field the page marks, and the bare harness hears it as a sentence, so no harness gets more of the document than another (PO, batch 10). The bare harness's every call, and the no_planner knock-out's plan call, is at medium thinking, the level of the full system's extract and exception work; the full system uses config.yaml's level per job. Only the harness differs. Every harness is scored on the same `outcome` checks: the business result in its own database (and the week's plan), never how it got there.
+**How the harnesses are compared (D24).** Every harness gets the same inputs: the seeded worked example and the scenario's emails, uploads and owner actions, in the same order. The bare harness is given them as text (the seeded state written out, each email's text with its attachments, each owner action as a sentence) because it has no ingest pipeline; the model is the same. The bare harness's every call, and the no_planner knock-out's plan call, is at medium thinking, the level of the full system's extract and exception work; the full system uses config.yaml's level per job. Only the harness differs. Every harness is scored on the same `outcome` checks: the business result in its own database (and the week's plan), never how it got there.
 
 | Mode | Model | Prompt version | Config | Commit | Date | Runs per scenario |
 |---|---|---|---|---|---|---|
-| fixtures | gemini-3.8-flash | 2026-10-04.2 | 51f54558b581 | 73b6270 | 2026-10-04T10:01:28+05:30 | 1 |
+| fixtures | gemini-3.8-flash | 2026-10-04.2 | 51f54558b581 | 7ad9d92 | 2026-10-04T04:58:38+05:30 | 1 |
 
 Fixture mode: every model reply is canned, so the full system and the knock-outs that keep its prompts are deterministic, and tokens and cost are zero. The rows marked *mechanics only* ran on a stand-in that plans nothing; they show the harness runs, not what it scores, and are left out of the comparison. The live run (`--ai live --yes-spend`) scores them.
 
