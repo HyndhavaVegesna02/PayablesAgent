@@ -620,7 +620,7 @@ changes:
   - id: CHG-046
     title: Docs: stale live-eval lines fixed from the reports; threat model gains scenario 10 live, approval fatigue and the model as a processor; architecture gains Trade-offs and decisions (PO, batch 17)
     file: docs/changes/CHG-046.md
-    status: ready
+    status: done
     priority: 46
     type: docs
     lane: direct
@@ -630,7 +630,7 @@ changes:
   - id: CHG-047
     title: Traces: live failure/success pair official with walkthroughs; tracer records wall time, latency, attempt and retries, and 2,000-char replies; bare traces kept (PO, batch 17)
     file: docs/changes/CHG-047.md
-    status: ready
+    status: done
     priority: 47
     type: feature
     lane: planned
@@ -640,7 +640,7 @@ changes:
   - id: CHG-048
     title: One consolidated ablation table from report.json files (harness x scenario, spread, deltas, earned-most) and a written discussion of the null results (PO, batch 17)
     file: docs/changes/CHG-048.md
-    status: ready
+    status: done
     priority: 48
     type: feature
     lane: direct
@@ -650,7 +650,7 @@ changes:
   - id: CHG-049
     title: Three new knock-outs at named seams: no_case_file, no_evidence_gate, all_tools; each with an outcome check that detects it, proved in fixture mode (PO, batch 17)
     file: docs/changes/CHG-049.md
-    status: ready
+    status: done
     priority: 49
     type: feature
     lane: planned
@@ -660,7 +660,7 @@ changes:
   - id: CHG-050
     title: Path budgets: every agent scenario asserts trajectory limits (steps, refused calls), live as well (PO, batch 17)
     file: docs/changes/CHG-050.md
-    status: ready
+    status: done
     priority: 50
     type: feature
     lane: direct
@@ -670,7 +670,7 @@ changes:
   - id: CHG-051
     title: Three harder scenarios, fixture-only: an injection in an attachment, an ambiguous same-amount debit across two vendors, a noisy statement row (PO, batch 17)
     file: docs/changes/CHG-051.md
-    status: ready
+    status: done
     priority: 51
     type: feature
     lane: planned
@@ -680,7 +680,7 @@ changes:
   - id: CHG-052
     title: README's reusable section names the harness pieces (component-tagged eval runner, knock-out seams, budget guard) with how to lift them (PO, batch 17)
     file: docs/changes/CHG-052.md
-    status: ready
+    status: done
     priority: 52
     type: docs
     lane: direct

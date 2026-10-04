@@ -64,4 +64,4 @@ CHG-046 and CHG-052 changed no test files; the evidence-doc and citation tests g
 
 ## PO verdict
 
-Pending.
+ACCEPT for CHG-046 to CHG-052, as a whole (payablesagent-ac, 2026-10-04). The PO checked 43ab9de independently: the full suite and the import contracts pass. Decision D31 amends CHG-049 AC2 for no_case_file: "proved in fixture mode to change the model's context; its outcome effect measured live". If the live run shows no outcome drop for it, that is reported as found.
