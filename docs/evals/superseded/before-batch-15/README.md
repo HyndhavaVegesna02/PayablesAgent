@@ -13,4 +13,7 @@ Batch 15 fixed what live phase 2 found.
   first live runs of the two fortnights, before CHG-042 (A's voice step) and CHG-043 (B's scripted owner).
   They are the BEFORE for the live reruns now in ../../.
 
+- `2026-10-04-live-baseline-11x5/`: the combined page before scenario 04's AFTER; its 04 row came from
+  `live-baseline-part2`. The current page is combined from three invocations, 04's row from the AFTER.
+
 Kept as they were, for comparison. The current reports are in ../../.

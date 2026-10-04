@@ -1,0 +1,486 @@
+{
+  "meta": {
+    "label": "baseline-04-after",
+    "mode": "live",
+    "model": "gemini-3.8-flash",
+    "prompt_version": "2026-10-04.2",
+    "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
+    "variant": null,
+    "prompt_overrides": null,
+    "commit": "feba8d0",
+    "date": "2026-10-04T17:36:16+05:30",
+    "runs_per_scenario": 5,
+    "status": "COMPLETE",
+    "stopped_because": null,
+    "budget": {
+      "calls": 5,
+      "micro_usd": 7077,
+      "rate_limited": 0,
+      "caps": {
+        "calls": 600,
+        "micro_usd": 250000
+      },
+      "stopped": null
+    }
+  },
+  "totals": {
+    "scenarios": 1,
+    "runs": 5,
+    "passed": 5,
+    "errored": 0,
+    "success_rate": 1.0,
+    "scenarios_all_runs_passed": 1,
+    "path": [
+      0,
+      0
+    ],
+    "ai_calls": 5,
+    "cost_micro_usd": 7077
+  },
+  "scenarios": [
+    {
+      "scenario": "04-hinglish-voice-note",
+      "title": "Hinglish voice note saying \"dedh lakh\"",
+      "passes_when": "Amount extracted as \u20b91,50,000 and shown with the transcript",
+      "runs": 5,
+      "passed": 5,
+      "failed": 0,
+      "errored": 0,
+      "success_rate": 1.0,
+      "path": [
+        0,
+        0
+      ],
+      "path_failures": [],
+      "spread": [
+        1.0,
+        1.0
+      ],
+      "worst": {
+        "run": 1,
+        "status": "PASSED",
+        "component": null,
+        "error": null,
+        "failed_checks": []
+      },
+      "components_failed": [],
+      "mean": {
+        "ai_calls": 1.0,
+        "tool_calls": 0.0,
+        "refused": 0.0,
+        "loops": 0.0,
+        "wasted_calls": 0.0,
+        "retries": 0.0,
+        "schema_failures": 0.0,
+        "invalid_candidates": 0.0
+      },
+      "escalations": [],
+      "tokens_mean": {
+        "input": 498.0,
+        "output": 75.6,
+        "thoughts": 202.2
+      },
+      "cost_micro_usd": {
+        "mean": 1415.4,
+        "max": 1574
+      }
+    }
+  ],
+  "runs": [
+    {
+      "scenario": "04-hinglish-voice-note",
+      "run": 1,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "missing-due-date-flagged-not-guessed",
+          "component": "extract",
+          "ok": true,
+          "got": "failed: no due date was given: fill it in",
+          "want": "failed: no due date was given: fill it in",
+          "level": "end_to_end"
+        },
+        {
+          "id": "bill-due-as-the-owner-said",
+          "component": "validate",
+          "ok": true,
+          "got": "2026-11-05",
+          "want": "2026-11-05",
+          "level": "end_to_end"
+        },
+        {
+          "id": "amount-is-150000",
+          "component": "extract",
+          "ok": true,
+          "got": 15000000,
+          "want": 15000000,
+          "level": "end_to_end"
+        },
+        {
+          "id": "transcript-kept-for-the-owner",
+          "component": "extract",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "amount-checked-against-the-words",
+          "component": "validate",
+          "ok": true,
+          "got": "passed",
+          "want": "passed",
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 1,
+        "ai_calls_by_job": {
+          "extract:voice_note": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 498,
+          "output": 76,
+          "thoughts": 244
+        },
+        "cost_micro_usd": 1574
+      },
+      "outcomes": [
+        [
+          "bill-150000-recorded",
+          true,
+          1
+        ]
+      ]
+    },
+    {
+      "scenario": "04-hinglish-voice-note",
+      "run": 2,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "missing-due-date-flagged-not-guessed",
+          "component": "extract",
+          "ok": true,
+          "got": "failed: no due date was given: fill it in",
+          "want": "failed: no due date was given: fill it in",
+          "level": "end_to_end"
+        },
+        {
+          "id": "bill-due-as-the-owner-said",
+          "component": "validate",
+          "ok": true,
+          "got": "2026-11-05",
+          "want": "2026-11-05",
+          "level": "end_to_end"
+        },
+        {
+          "id": "amount-is-150000",
+          "component": "extract",
+          "ok": true,
+          "got": 15000000,
+          "want": 15000000,
+          "level": "end_to_end"
+        },
+        {
+          "id": "transcript-kept-for-the-owner",
+          "component": "extract",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "amount-checked-against-the-words",
+          "component": "validate",
+          "ok": true,
+          "got": "passed",
+          "want": "passed",
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 1,
+        "ai_calls_by_job": {
+          "extract:voice_note": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 498,
+          "output": 76,
+          "thoughts": 174
+        },
+        "cost_micro_usd": 1311
+      },
+      "outcomes": [
+        [
+          "bill-150000-recorded",
+          true,
+          1
+        ]
+      ]
+    },
+    {
+      "scenario": "04-hinglish-voice-note",
+      "run": 3,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "missing-due-date-flagged-not-guessed",
+          "component": "extract",
+          "ok": true,
+          "got": "failed: no due date was given: fill it in",
+          "want": "failed: no due date was given: fill it in",
+          "level": "end_to_end"
+        },
+        {
+          "id": "bill-due-as-the-owner-said",
+          "component": "validate",
+          "ok": true,
+          "got": "2026-11-05",
+          "want": "2026-11-05",
+          "level": "end_to_end"
+        },
+        {
+          "id": "amount-is-150000",
+          "component": "extract",
+          "ok": true,
+          "got": 15000000,
+          "want": 15000000,
+          "level": "end_to_end"
+        },
+        {
+          "id": "transcript-kept-for-the-owner",
+          "component": "extract",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "amount-checked-against-the-words",
+          "component": "validate",
+          "ok": true,
+          "got": "passed",
+          "want": "passed",
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 1,
+        "ai_calls_by_job": {
+          "extract:voice_note": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 498,
+          "output": 74,
+          "thoughts": 149
+        },
+        "cost_micro_usd": 1210
+      },
+      "outcomes": [
+        [
+          "bill-150000-recorded",
+          true,
+          1
+        ]
+      ]
+    },
+    {
+      "scenario": "04-hinglish-voice-note",
+      "run": 4,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "missing-due-date-flagged-not-guessed",
+          "component": "extract",
+          "ok": true,
+          "got": "failed: no due date was given: fill it in",
+          "want": "failed: no due date was given: fill it in",
+          "level": "end_to_end"
+        },
+        {
+          "id": "bill-due-as-the-owner-said",
+          "component": "validate",
+          "ok": true,
+          "got": "2026-11-05",
+          "want": "2026-11-05",
+          "level": "end_to_end"
+        },
+        {
+          "id": "amount-is-150000",
+          "component": "extract",
+          "ok": true,
+          "got": 15000000,
+          "want": 15000000,
+          "level": "end_to_end"
+        },
+        {
+          "id": "transcript-kept-for-the-owner",
+          "component": "extract",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "amount-checked-against-the-words",
+          "component": "validate",
+          "ok": true,
+          "got": "passed",
+          "want": "passed",
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 1,
+        "ai_calls_by_job": {
+          "extract:voice_note": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 498,
+          "output": 78,
+          "thoughts": 240
+        },
+        "cost_micro_usd": 1566
+      },
+      "outcomes": [
+        [
+          "bill-150000-recorded",
+          true,
+          1
+        ]
+      ]
+    },
+    {
+      "scenario": "04-hinglish-voice-note",
+      "run": 5,
+      "status": "PASSED",
+      "checks": [
+        {
+          "id": "missing-due-date-flagged-not-guessed",
+          "component": "extract",
+          "ok": true,
+          "got": "failed: no due date was given: fill it in",
+          "want": "failed: no due date was given: fill it in",
+          "level": "end_to_end"
+        },
+        {
+          "id": "bill-due-as-the-owner-said",
+          "component": "validate",
+          "ok": true,
+          "got": "2026-11-05",
+          "want": "2026-11-05",
+          "level": "end_to_end"
+        },
+        {
+          "id": "amount-is-150000",
+          "component": "extract",
+          "ok": true,
+          "got": 15000000,
+          "want": 15000000,
+          "level": "end_to_end"
+        },
+        {
+          "id": "transcript-kept-for-the-owner",
+          "component": "extract",
+          "ok": true,
+          "got": 1,
+          "want": 1,
+          "level": "end_to_end"
+        },
+        {
+          "id": "amount-checked-against-the-words",
+          "component": "validate",
+          "ok": true,
+          "got": "passed",
+          "want": "passed",
+          "level": "end_to_end"
+        }
+      ],
+      "component": null,
+      "error": null,
+      "metrics": {
+        "ai_calls": 1,
+        "ai_calls_by_job": {
+          "extract:voice_note": 1
+        },
+        "schema_failures": 0,
+        "tool_calls": 0,
+        "tool_calls_by_tool": {},
+        "refused": 0,
+        "loops": 0,
+        "tool_errors": 0,
+        "invalid_candidates": 0,
+        "wasted_calls": 0,
+        "retries": 0,
+        "dead_jobs": 0,
+        "escalations": [],
+        "tokens": {
+          "input": 498,
+          "output": 74,
+          "thoughts": 204
+        },
+        "cost_micro_usd": 1416
+      },
+      "outcomes": [
+        [
+          "bill-150000-recorded",
+          true,
+          1
+        ]
+      ]
+    }
+  ]
+}

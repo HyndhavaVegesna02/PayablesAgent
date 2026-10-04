@@ -34,40 +34,25 @@
         "runs_per_scenario": 5,
         "calls": 157,
         "micro_usd": 383991
-      },
-      {
-        "report": "2026-10-04-live-baseline-04-after",
-        "mode": "live",
-        "model": "gemini-3.8-flash",
-        "prompt_version": "2026-10-04.2",
-        "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
-        "variant": null,
-        "commit": "feba8d0",
-        "date": "2026-10-04T17:36:16+05:30",
-        "status": "COMPLETE",
-        "stopped_because": null,
-        "runs_per_scenario": 5,
-        "calls": 5,
-        "micro_usd": 7077
       }
     ]
   },
   "totals": {
     "scenarios": 11,
     "runs": 55,
-    "passed": 55,
+    "passed": 50,
     "errored": 0,
-    "success_rate": 1.0,
-    "scenarios_all_runs_passed": 11,
+    "success_rate": 0.909,
+    "scenarios_all_runs_passed": 10,
     "path": [
       5,
       5
     ],
     "ai_calls": 393,
-    "cost_micro_usd": 1163657,
+    "cost_micro_usd": 1163476,
     "spent": {
-      "calls": 416,
-      "micro_usd": 1196633
+      "calls": 411,
+      "micro_usd": 1189556
     }
   },
   "scenarios": [
@@ -222,27 +207,42 @@
       "title": "Hinglish voice note saying \"dedh lakh\"",
       "passes_when": "Amount extracted as \u20b91,50,000 and shown with the transcript",
       "runs": 5,
-      "passed": 5,
-      "failed": 0,
+      "passed": 0,
+      "failed": 5,
       "errored": 0,
-      "success_rate": 1.0,
+      "success_rate": 0.0,
       "path": [
         0,
         0
       ],
       "path_failures": [],
       "spread": [
-        1.0,
-        1.0
+        0.6,
+        0.6
       ],
       "worst": {
         "run": 1,
-        "status": "PASSED",
-        "component": null,
+        "status": "FAILED",
+        "component": "extract",
         "error": null,
-        "failed_checks": []
+        "failed_checks": [
+          {
+            "id": "amount-is-150000",
+            "component": "extract",
+            "got": null,
+            "want": 15000000
+          },
+          {
+            "id": "amount-checked-against-the-words",
+            "component": "validate",
+            "got": "failed: the voice note says an amount this app can't read in full: type it in",
+            "want": "passed"
+          }
+        ]
       },
-      "components_failed": [],
+      "components_failed": [
+        "extract"
+      ],
       "mean": {
         "ai_calls": 1.0,
         "tool_calls": 0.0,
@@ -257,13 +257,13 @@
       "tokens_mean": {
         "input": 498.0,
         "output": 75.6,
-        "thoughts": 202.2
+        "thoughts": 192.4
       },
       "cost_micro_usd": {
-        "mean": 1415.4,
-        "max": 1574
+        "mean": 1379.2,
+        "max": 1604
       },
-      "source": "2026-10-04-live-baseline-04-after"
+      "source": "2026-10-04-live-baseline-part2"
     },
     {
       "scenario": "05-same-invoice-by-email-and-photo",
