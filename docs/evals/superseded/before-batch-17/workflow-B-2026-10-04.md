@@ -2,7 +2,7 @@
 
 | Mode | Model | Prompt version | Commit | Date | Repeats | Model calls | Cost µUSD |
 |---|---|---|---|---|---|---|---|
-| fixtures | gemini-3.8-flash | 2026-10-04.2 | 254454b | 2026-10-04T19:13:31+05:30 | 1 | 57 | 0 |
+| fixtures | gemini-3.8-flash | 2026-10-04.2 | 10d29b1 | 2026-10-04T16:00:31+05:30 | 1 | 56 | 0 |
 
 Fixture mode: every model reply is canned (fixtures/ai_replies.json), so the run is deterministic and costs nothing. It shows the system end to end, not the model.
 

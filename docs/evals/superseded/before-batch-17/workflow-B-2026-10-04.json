@@ -5,8 +5,8 @@
     "model": "gemini-3.8-flash",
     "prompt_version": "2026-10-04.2",
     "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
-    "commit": "254454b",
-    "date": "2026-10-04T19:13:31+05:30",
+    "commit": "10d29b1",
+    "date": "2026-10-04T16:00:31+05:30",
     "budget": null
   },
   "repeats": [
@@ -14,14 +14,14 @@
       "ok": true,
       "stopped": null,
       "metrics": {
-        "ai_calls": 57,
+        "ai_calls": 56,
         "ai_calls_by_job": {
           "explain": 15,
           "sort": 15,
           "extract:bank_alert": 9,
           "extract:invoice": 3,
           "extract:statement": 1,
-          "exception": 13,
+          "exception": 12,
           "extract:failure_notice": 1
         },
         "schema_failures": 0,

@@ -4,44 +4,38 @@
 
 | Mode | Model | Prompt version | Config | Commit | Date | Runs per scenario |
 |---|---|---|---|---|---|---|
-| fixtures | gemini-3.8-flash | 2026-10-04.2 | 51f54558b581 | 254454b | 2026-10-04T19:13:11+05:30 | 1 |
+| fixtures | gemini-3.8-flash | 2026-10-04.2 | 51f54558b581 | 10d29b1 | 2026-10-04T16:00:17+05:30 | 1 |
 
 Fixture mode: every model reply is canned, so the full system and the knock-outs that keep its prompts are deterministic, and tokens and cost are zero. The rows marked *mechanics only* ran on a stand-in that plans nothing; they show the harness runs, not what it scores, and are left out of the comparison. The live run (`--ai live --yes-spend`) scores them.
 
 ## Outcome checks met, by scenario
 
-| Scenario | full | bare | no_planner | no_rule_checks | no_escalation | no_drift_rule | no_case_file | no_evidence_gate | all_tools |
-|---|---|---|---|---|---|---|---|---|---|
-| Bank debit alert for a planned payment | 1/1 | 0/1 *mechanics only* | 0/1 *mechanics only* | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 |
-| Password-protected statement PDF | 1/1 | 0/1 *mechanics only* | 1/1 *mechanics only* | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 |
-| Handwritten bill photo | 1/1 | 0/1 *mechanics only* | 1/1 *mechanics only* | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 |
-| Hinglish voice note saying "dedh lakh" | 1/1 | 0/1 *mechanics only* | 1/1 *mechanics only* | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 |
-| Same invoice by email and by photo | 1/1 | 0/1 *mechanics only* | 1/1 *mechanics only* | 0/1 | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 |
-| Payment returned by the bank | 1/1 | 1/1 *mechanics only* | 1/1 *mechanics only* | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 |
-| Missed alert causes drift | 1/1 | 0/1 *mechanics only* | 1/1 *mechanics only* | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 |
-| Drift with no explanation | 1/1 | 0/1 *mechanics only* | 0/1 *mechanics only* | 1/1 | 1/1 | 0/1 | 1/1 | 1/1 | 1/1 |
-| Vendor email changes bank details | 1/1 | 0/1 *mechanics only* | 1/1 *mechanics only* | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 |
-| Hidden instruction in a vendor email | 1/1 | 1/1 *mechanics only* | 1/1 *mechanics only* | 1/1 | 1/1 | 1/1 | 1/1 | 0/1 | 0/1 |
-| Shortfall week (the worked example) | 1/1 | 0/1 *mechanics only* | 0/1 *mechanics only* | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 |
-| Hidden instruction in an invoice's PDF (fixture-only, not yet run live) | 1/1 | 1/1 *mechanics only* | 1/1 *mechanics only* | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 |
-| One debit, two bills of the same amount from two vendors (fixture-only, not yet run live) | 1/1 | 0/1 *mechanics only* | 0/1 *mechanics only* | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 |
-| A statement row with a noisy narration (fixture-only, not yet run live) | 1/1 | 0/1 *mechanics only* | 0/1 *mechanics only* | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 | 1/1 |
-| **Outcome success** | 100% | 21% *mechanics only* | 64% *mechanics only* | 93% | 100% | 93% | 100% | 93% | 93% |
-| Model calls | 88 | 28 | 89 | 88 | 107 | 87 | 91 | 87 | 87 |
-| Cost µUSD | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| Scenario | full | bare | no_planner | no_rule_checks | no_escalation | no_drift_rule |
+|---|---|---|---|---|---|---|
+| Bank debit alert for a planned payment | 1/1 | 0/1 *mechanics only* | 0/1 *mechanics only* | 1/1 | 1/1 | 1/1 |
+| Password-protected statement PDF | 1/1 | 0/1 *mechanics only* | 1/1 *mechanics only* | 1/1 | 1/1 | 1/1 |
+| Handwritten bill photo | 1/1 | 0/1 *mechanics only* | 1/1 *mechanics only* | 1/1 | 1/1 | 1/1 |
+| Hinglish voice note saying "dedh lakh" | 1/1 | 0/1 *mechanics only* | 1/1 *mechanics only* | 1/1 | 1/1 | 1/1 |
+| Same invoice by email and by photo | 1/1 | 0/1 *mechanics only* | 1/1 *mechanics only* | 0/1 | 1/1 | 1/1 |
+| Payment returned by the bank | 1/1 | 1/1 *mechanics only* | 1/1 *mechanics only* | 1/1 | 1/1 | 1/1 |
+| Missed alert causes drift | 1/1 | 0/1 *mechanics only* | 1/1 *mechanics only* | 1/1 | 1/1 | 1/1 |
+| Drift with no explanation | 1/1 | 0/1 *mechanics only* | 0/1 *mechanics only* | 1/1 | 1/1 | 0/1 |
+| Vendor email changes bank details | 1/1 | 0/1 *mechanics only* | 1/1 *mechanics only* | 1/1 | 1/1 | 1/1 |
+| Hidden instruction in a vendor email | 1/1 | 1/1 *mechanics only* | 1/1 *mechanics only* | 1/1 | 1/1 | 1/1 |
+| Shortfall week (the worked example) | 1/1 | 0/1 *mechanics only* | 0/1 *mechanics only* | 1/1 | 1/1 | 1/1 |
+| **Outcome success** | 100% | 18% *mechanics only* | 73% *mechanics only* | 91% | 100% | 91% |
+| Model calls | 70 | 22 | 76 | 70 | 89 | 69 |
+| Cost µUSD | 0 | 0 | 0 | 0 | 0 | 0 |
 
 ## Which component earned the most
 
-Knocking out **all_tools, no_drift_rule, no_evidence_gate, no_rule_checks** cost the most: outcome success fell by 7 points from the full system's 100%.
+Knocking out **no_drift_rule, no_rule_checks** cost the most: outcome success fell by 9 points from the full system's 100%.
 
 | Knock-out | Drop in outcome success (points) |
 |---|---|
-| no_rule_checks | 7 |
-| no_drift_rule | 7 |
-| no_evidence_gate | 7 |
-| all_tools | 7 |
+| no_rule_checks | 9 |
+| no_drift_rule | 9 |
 | no_escalation | 0 |
-| no_case_file | 0 |
 
 ## What each knock-out patched
 
@@ -51,8 +45,5 @@ Each is a context manager over named seams (evals/knockouts.py), restored after 
 - **no_rule_checks:** `app.validate.invoice.check_gstin`, `app.validate.invoice.check_invoice_arithmetic`, `app.validate.statement.check_statement_arithmetic`, `app.validate.alert.check_mail_date`, `app.ingest.pipeline._check_bank_details`, `app.ingest.pipeline.check_bank_alert`, `app.ingest.pipeline.check_failure_notice`, `app.ingest.pipeline.check_statement`, `app.ingest.pipeline.check_voice`, `app.ingest.pipeline.check_invoice`, `app.agent.tools.check_bank_alert`, `app.agent.tools.check_invoice`
 - **no_escalation:** `app.agent.escalation.start_thinking`, `app.agent.escalation.run_over`, `app.agent.escalation.after_run`
 - **no_drift_rule:** `app.jobs.replan.build_snapshot`
-- **no_case_file:** `app.agent.loop.next_step`
-- **no_evidence_gate:** `app.jobs.run_case.apply_final`
-- **all_tools:** `app.agent.tools.TOOLS`, `app.agent.loop.TOOLS`, `app.agent.loop.next_step`
 - **no_rule_checks** leaves on the checks that decide whether a record can be read at all: schema, amount parsing, account and sender, statement dates, confidence, voice: the amount was said.
 - **bare:** evals/bare.py: one growing chat history, every tool (write tools included) on its own database, no checks, no case file, no escalation, no planner, a cap of 20 steps.
