@@ -29,8 +29,8 @@ def test_only_the_commit_and_date_may_differ(tmp_path, monkeypatch):
 def test_every_fixture_mode_report_is_found_and_live_and_superseded_ones_are_not():
     found = {(kind, path.relative_to(check_evidence.EVALS).as_posix()) for kind, path, _ in check_evidence.committed()}
     kinds = {kind for kind, _ in found}
-    assert kinds == {"suite", "ablation", "workflow", "combined"}  # combined: re-derived from its parts (CHG-035)
-    assert all("superseded" not in p and ("live" not in p or k == "combined") for k, p in found)
+    assert kinds == {"suite", "ablation", "workflow", "combined", "ablation-combined"}  # derived pages re-derived
+    assert all("superseded" not in p and ("live" not in p or k in ("combined", "ablation-combined")) for k, p in found)
     assert any(p.endswith("fixtures-regress-max-steps/report.json") for _, p in found)
 
 

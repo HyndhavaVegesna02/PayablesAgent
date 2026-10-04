@@ -31,8 +31,8 @@ def committed() -> list[tuple[str, Path, dict]]:
     found = []
     for path in sorted(EVALS.glob("*/report.json")) + sorted(EVALS.glob("workflow-*.json")):
         meta = json.loads(path.read_text(encoding="utf-8"))["meta"]
-        if meta.get("kind") == "combined":  # derived from other reports: re-derived offline, whatever its mode
-            found.append(("combined", path, meta))
+        if meta.get("kind") in ("combined", "ablation-combined"):  # derived from other reports: re-derived offline
+            found.append((meta["kind"], path, meta))
             continue
         if meta.get("mode") != "fixtures":
             continue
@@ -49,6 +49,10 @@ def regenerate(kind: str, meta: dict, out: Path) -> Path:
     if kind == "combined":
         parts = report.load_parts([EVALS / s["report"] for s in meta["sources"]])
         fresh = report.write_combined(report.combine(parts, meta["label"]), out / "combined") / "report.json"
+    elif kind == "ablation-combined":
+        parts = report.load_parts([EVALS / s["report"] for s in meta["sources"]])
+        fresh = report.write_ablation_combined(report.ablation_combine(parts, meta["label"]),
+                                               out / "ablation-combined") / "report.json"
     elif kind == "suite":
         args = ["--ai", "fixtures", "--runs", str(meta["runs_per_scenario"]), "--label", meta["label"],
                 "--out", str(out)]
@@ -67,7 +71,7 @@ def regenerate(kind: str, meta: dict, out: Path) -> Path:
 
 
 def _blank(text: str, meta: dict) -> str:
-    if meta.get("kind") == "combined":  # its commits and dates are its sources', and must match exactly
+    if meta.get("kind") in ("combined", "ablation-combined"):  # its commits and dates are its sources'; exact
         return text
     return text.replace(str(meta["commit"]), "<commit>").replace(str(meta["date"]), "<date>")
 
