@@ -19,9 +19,11 @@ changes:
     notes_resolved: false
   - id: CHG-038
     lane: direct
-    board: in_progress
+    board: done
     start_commit: 4ed0587
     blocked_question: null
-    gate_evidence: []
+    gate_evidence:
+      - {command: "make test", exit_code: 0, output_tail: "--------- | Contracts | --------- | Analyzed 86 files, 284 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | agent never imports the ledger writer, web or the pipeline KEPT | the AI and the agent never reach owner email KEPT | notify is pure text and sending: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 9 kept, 0 broken.", commit: b2937c6, at: 2026-10-04T04:32:30+00:00}
+      - {command: "make check-evidence", exit_code: 0, output_tail: "oy_dm1ix\\3\\workflow-A-2026-10-04.md | checked docs/evals/workflow-A-2026-10-04.json | run B: 1/1 passed; report: C:\\Users\\Hyndhava\\AppData\\Local\\Temp\\check-evidence-oy_dm1ix\\4\\workflow-B-2026-10-04.md | checked docs/evals/workflow-B-2026-10-04.json | all 5 reports reproduce: fixture-mode ones below their commit and date, combined ones exactly (md and json) | C:\\Hyn\\PayablesAgent\\.venv\\Lib\\site-packages\\fastapi\\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead. | from starlette.testclient import TestClient as TestClient  # noqa", commit: b2937c6, at: 2026-10-04T04:34:08+00:00}
     prepatch: "PASS at 4ed0587: the header test fails by assertion on the old tree"
     notes_resolved: false
