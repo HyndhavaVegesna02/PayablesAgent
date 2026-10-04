@@ -1,6 +1,6 @@
 # Every change, ever. Entries are never deleted -- done and rejected are history.
 # Status is a field, never a folder.
-next_id: 38
+next_id: 39
 changes:
   - id: CHG-001
     title: Repo skeleton — layout, config, schema, Clock, tracer, job table, CI
@@ -528,15 +528,25 @@ changes:
     depends_on: null
     batch: 10
   - id: CHG-037
-    title: The voice check's said-words match can accept a leading part of the amount ("do lakh" of "do lakh pachaas hazaar")
+    title: The voice amount check compares parsed paise, never a text substring (PO, batch 10 verdict)
     file: docs/changes/CHG-037-voice-said-words-boundary.md
-    status: draft
+    status: ready
     priority: 37
     type: defect
-    lane: null
-    expected_paths: []
+    lane: direct
+    expected_paths: ['app/domain/money.py', 'app/validate/voice.py', 'tests/test_voice_amount_said.py']
     depends_on: null
-    batch: null
+    batch: 11
+  - id: CHG-038
+    title: The ablation report's header says the bare harness hears the same owner-typed values (PO, batch 10 verdict)
+    file: docs/changes/CHG-038-ablation-header-owner-typing.md
+    status: ready
+    priority: 38
+    type: docs
+    lane: direct
+    expected_paths: ['evals/ablation.py', 'docs/evals/']
+    depends_on: null
+    batch: 11
 
 # Shape of an entry:
 #   - id: CHG-001
