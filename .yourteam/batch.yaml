@@ -62,7 +62,9 @@ changes:
     board: done
     start_commit: b1aae0e
     blocked_question: null
-    gate_evidence: []
+    gate_evidence:
+      - {command: "make test", exit_code: 2, output_tail: "PayablesAgent\\.venv\\Lib\\site-packages\\fastapi\\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead. | from starlette.testclient import TestClient as TestClient  # noqa | -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html | =========================== short test summary info =========================== | FAILED tests/test_evals.py::test_the_baseline_and_the_regression_reports_are_kept_and_say_where_they_came_from | 1 failed, 1573 passed, 1 warning in 116.48s (0:01:56) | make: *** [Makefile:28: test] Error 1", commit: 6501b18, at: 2026-10-04T14:01:45+00:00}
+      - {command: "make check-evidence", exit_code: 2, output_tail: "self.fetch_more_tokens() | File \"C:\\Hyn\\PayablesAgent\\.venv\\Lib\\site-packages\\yaml\\scanner.py\", line 223, in fetch_more_tokens | return self.fetch_value() | ^^^^^^^^^^^^^^^^^^ | File \"C:\\Hyn\\PayablesAgent\\.venv\\Lib\\site-packages\\yaml\\scanner.py\", line 577, in fetch_value | raise ScannerError(None, None, | yaml.scanner.ScannerError: mapping values are not allowed here | in \"<unicode string>\", line 34, column 169: | ... e*' OR n.value GLOB 'step [0-9]*: refused unknown tool *' OR n.v ... | ^ | make: *** [Makefile:53: check-evidence] Error 1", commit: 6501b18, at: 2026-10-04T14:03:43+00:00}
     prepatch: "PASS at 51955e7: no test files changed (README only; the doc-citation tests guard it)"
     notes_resolved: false
   - id: CHG-046
