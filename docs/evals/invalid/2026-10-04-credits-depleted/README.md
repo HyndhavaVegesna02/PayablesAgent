@@ -38,5 +38,4 @@ again:
 
 The valid part of v2 is the full system: `../../2026-10-04-live-ablation-v2-full/`
 (aborted on its cost cap) and `../../2026-10-04-live-ablation-v2-full-11/`,
-combined in `../../2026-10-04-live-ablation-v2/`. The rest of v2 waits for the
-credits to be topped up.
+combined with the rest of v2 in `../../2026-10-05-live-ablation-v2/`.

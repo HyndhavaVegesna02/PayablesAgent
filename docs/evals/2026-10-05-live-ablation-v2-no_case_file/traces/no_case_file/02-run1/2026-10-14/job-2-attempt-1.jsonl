@@ -1,0 +1,1 @@
+{"run_id": "job-2-attempt-1", "step": 1, "timestamp": "2026-10-14T09:00:00+05:30", "wall_time": "2026-10-05T00:17:23.095651+05:30", "input_ref": "source_document:1", "tool": "unlock", "result": "password-protected PDF: LOCKED; the owner is asked for the password (unlock_pdf)"}

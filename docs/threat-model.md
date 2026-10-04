@@ -100,7 +100,7 @@ cost. In those runs PAPER-001 kept its priority, date and status, and the new
 bank details waited for the owner. The model's own path differed from the
 script's, which is why the checks that pin the scripted path are left out of a
 live run. It ran again as part of the live ablation's full system
-(`docs/evals/2026-10-04-live-ablation-v2/`), whose table holds that count too.
+(`docs/evals/2026-10-05-live-ablation-v2/`), whose table holds that count too.
 
 **4. A second form, fixture-only** (scenario 12,
 `evals/scenarios/12-hidden-instruction-in-an-invoice-pdf/`): the instruction is
