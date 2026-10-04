@@ -182,10 +182,28 @@ def _short(e: ValidationError) -> str:
 # --- the real backend -------------------------------------------------------------
 
 
+# A 429 can mean two things (CHG-040). A rate limit passes with time; a spending cap or empty prepayment
+# doesn't, until the Google project's owner acts. Only the words Google uses for the second, or the reason
+# it files it under, make a 429 permanent.
+_SPEND_CAP_WORDS = ("spending cap", "spend cap", "prepayment")
+_SPEND_CAP_REASONS = ("SPEND", "BILLING", "PREPAY")
+
+
+def spend_cap(message: object, details: object) -> bool:
+    """Whether a 429 is a spending cap, billing or prepayment refusal."""
+    if any(w in str(message or "").lower() for w in _SPEND_CAP_WORDS):
+        return True
+    error = details.get("error", details) if isinstance(details, dict) else {}
+    infos = error.get("details", []) if isinstance(error, dict) else []
+    return any(isinstance(i, dict) and str(i.get("@type", "")).endswith("ErrorInfo")
+               and any(r in str(i.get("reason", "")).upper() for r in _SPEND_CAP_REASONS) for i in infos)
+
+
 class GeminiBackend:
     """google-genai behind the Backend protocol. Errors become AIUnavailable:
     server errors, 429 and network timeouts are retryable; any other 4xx is
-    not (retrying a refused request cannot help)."""
+    not (retrying a refused request cannot help), nor is a 429 for a spending
+    cap (CHG-040)."""
 
     def __init__(self, api_key: str, *, timeout_ms: int, httpx_client: httpx.Client | None = None) -> None:
         if not api_key.strip():
@@ -225,7 +243,7 @@ class GeminiBackend:
             raise AIUnavailable(f"Gemini server error {e.code}", retryable=True, code=e.code,
                                 status=e.status, detail=self._detail(e.message)) from None
         except errors.APIError as e:
-            retryable = e.code is None or e.code == 429
+            retryable = e.code is None or (e.code == 429 and not spend_cap(e.message, e.details))
             raise AIUnavailable(f"Gemini refused the request: {e.code} {e.status}", retryable=retryable,
                                 code=e.code, status=e.status, detail=self._detail(e.message)) from None
         except httpx.TransportError as e:  # timeouts and connection errors are not APIError
