@@ -186,71 +186,123 @@ def parse_spoken_inr(text: str) -> int:
     return int(paise)
 
 
-_LONGEST_SAID = 16  # words: longer than any amount people say
-_SAID_PART = {*_SAID_NUMBERS, *_SAID_SCALES, *_SAID_WHOLE, *_SAID_SHIFT, "sawa"}
-_BEFORE_AMOUNT = {"rs", "inr"}  # said before an amount; a rupee word comes after it
+# Words that are part of a spoken number but that parse_spoken_inr doesn't read: Hindi 11-99 as people
+# write them, other spellings, signs and paise (batch 11 review, round 2). Only membership is used, never a
+# value: a word here makes the amount around it unreadable, so a gap in this list can never become a wrong
+# amount through it, and an extra word can only send a bill to the owner.
+_NUMBER_LIKE = {
+    "dus", "gyaarah", "gyara", "baara", "tera", "chauda", "pandra", "sola", "satra", "athaarah", "athara",
+    "unees", "unnis", "unis", "ikkees", "ikkis", "ikis", "baees", "bais", "baais", "bayees", "teis", "teyees",
+    "tais", "chaubees", "chaubis", "pachis", "pachchis", "chhabbees", "chhabbis", "chabbis", "sattaees",
+    "sattais", "atthaees", "atthais", "athais", "untees", "untis", "ikattees", "ikattis", "iktees", "iktis",
+    "battees", "battis", "taintees", "tentis", "taintis", "chauntees", "chautis", "chontis", "paintees",
+    "paintis", "chhattees", "chhattis", "chattis", "saintees", "saintis", "adtees", "artees", "adtis", "artis",
+    "untalees", "untalis", "chaalees", "chalees", "iktalees", "iktalis", "bayalees", "bayalis", "taintalees",
+    "taintalis", "tetalis", "chavalees", "chauvalis", "chawalis", "paintalees", "paintalis", "chhiyalees",
+    "chhiyalis", "saintalees", "saintalis", "adtalees", "artalis", "adtalis", "unchaas", "unchas", "ikyaavan",
+    "ikyavan", "baavan", "bavan", "tirpan", "trepan", "chauvan", "chouvan", "pachpan", "chhappan", "chappan",
+    "sattaavan", "sattavan", "atthaavan", "athavan", "unsath", "unsaath", "iksath", "eksath", "baasath",
+    "basath", "tirsath", "tresath", "chausath", "chosath", "painsath", "chhiyasath", "chiyasath", "sadsath",
+    "sarsath", "adsath", "arsath", "unhattar", "ikhattar", "bahattar", "tihattar", "chauhattar", "pachhattar",
+    "pachattar", "chhihattar", "chihattar", "satattar", "sathattar", "athattar", "athhattar", "unaasi", "unasi",
+    "ikyaasi", "ikyasi", "bayaasi", "bayasi", "tiraasi", "tirasi", "chauraasi", "chaurasi", "pachaasi",
+    "pachasi", "chhiyaasi", "chhiyasi", "sattaasi", "sattasi", "atthaasi", "athasi", "navaasi", "navasi",
+    "nawasi", "nabe", "nabbay", "ikyaanave", "ikyanve", "baanave", "banve", "tiraanave", "tiranve",
+    "chauraanave", "chauranve", "pachaanave", "pachanve", "chhiyaanave", "chhiyanve", "sattaanave", "sattanve",
+    "atthaanave", "athanve", "ninyaanave", "ninyanve", "sava", "savaa", "saare", "saarhe", "sarhe", "sade",
+    "paav", "aadha", "adha", "half", "quarter", "zero", "shunya", "minus", "paisa", "paise", "naught",
+    "laakh", "laakhs", "hajaar", "hazaaar", "hazaron", "crores", "karoda", "thousands", "hundreds", "million",
+    "billion",
+}
+_SCALE_LIKE = {*_SAID_SCALES, "laakh", "laakhs", "hajaar", "hazaaar", "hazaron", "crores", "karoda",
+               "thousands", "hundreds", "million", "billion"}
 
 
 def _digits(word: str) -> bool:
     return bool(_DECIMAL.match(word.lstrip("₹")))
 
 
+def _number_like(word: str) -> bool:
+    if (word in _SAID_NUMBERS or word in _SAID_SCALES or word in _SAID_WHOLE or word in _SAID_SHIFT
+            or word in ("sawa", "₹") or word in _NUMBER_LIKE or _digits(word)):
+        return True
+    parts = [p for p in re.split(r"[-/]", word) if p]  # "twenty-five"; never "ap/2610/150"
+    return len(parts) > 1 and all(_number_like(p) for p in parts)
+
+
 def money_said(text: str) -> list[int | None]:
     """Every money-shaped amount a transcript says, in paise, in order (CHG-037,
-    PO D29). Each is read in full: from each word, the longest run of words
-    parse_spoken_inr reads, so "do lakh pachaas hazaar" is one amount,
-    ₹2,50,000, never "do lakh". When the parser refuses a run that goes on
-    with more of a number ("ek lakh pachaas", "five hundred thousand"), the
-    whole run is an amount code can't read: None, never its leading part.
+    PO D29); None for one code can't read in full. The transcript is cut into
+    clusters, each a run of number words ("ka", "aur", "only", commas, and an
+    Rs or rupee word before it may sit inside one), and each cluster is read
+    whole by parse_spoken_inr or not at all: never a leading part of it.
+    "do lakh pachaas hazaar" is ₹2,50,000; "ek lakh pachaas" (ambiguous) and
+    "ek lakh baees hazaar" (a word the parser doesn't read) are None.
 
-    Money-shaped means a scale word (sau, hazaar, lakh, crore...), a currency
-    word after it, Rs or ₹ before it, or digits grouped with commas ("1,50,000"); a
-    bare number (a date, an invoice number, a count) is not counted. A comma
-    doesn't end an amount ("ek lakh, pachaas hazaar" is one); a currency word
-    after it does, and so does the end of a sentence."""
+    A rupee word after an amount, or a sentence end, closes it. A number
+    word straight after that (nothing but a connector between) belongs to it,
+    so the amount is None: "ek lakh rupaye pachaas". A comma after a rupee
+    word is a clean end ("dedh lakh rupaye, paanch November"). After digits
+    only a scale word goes on ("Rs 1,50,000, 5 November" is two clusters).
+
+    Money-shaped means a scale word, a currency word or ₹, or digits grouped
+    with commas ("1,50,000"); a bare number (a date, an invoice number, a
+    count) is not counted."""
     text = re.sub(r"(?<=\d),(?=\d)", "_", text.lower())  # "1,50,000": one word, its grouping remembered
     text = re.sub(r"\brs\.", "rs ", text)
+    text = re.sub(r"(?<!\d)\.|\.(?!\d)|[!?;:\n]", " . ", text)
+    tokens = re.findall(r"₹?[\w./-]+|[^\w\s]", text)
+
     found: list[int | None] = []
-    for sentence in re.split(r"(?<!\d)\.|\.(?!\d)|[!?;:\n]", text):
-        raw = re.sub(r"[^\w\s.₹/-]", " ", sentence).split()
+    cluster: list[str] = []  # the open cluster's words, "_" marking a comma grouping
+    numbers: list[str] = []  # its number words
+    watch: int | None = None  # a closed amount that a number word next would make unreadable
+    soft = False  # whether a comma ends the watch (after a rupee word; not after a sentence end)
+
+    def close() -> int | None:
+        nonlocal cluster, numbers
+        raw, had = cluster, bool(numbers)
+        cluster, numbers = [], []
         words = [w.replace("_", "") for w in raw]
-        grouped = ["_" in w for w in raw]
+        shaped = any(w in _SCALE_LIKE or "₹" in w or _is_currency_word(w) for w in words) or any("_" in w for w in raw)
+        if not had or not shaped:
+            return None  # no number, or a bare one: not money
+        try:
+            found.append(parse_spoken_inr(" ".join(words)))
+        except ValueError:
+            found.append(None)
+        return len(found) - 1
 
-        def shaped(i: int, j: int) -> bool:  # a scale, a grouping or ₹ in it; Rs before it; a rupee word after it
-            return (any(words[k] in _SAID_SCALES or grouped[k] or words[k].startswith("₹") for k in range(i, j))
-                    or words[i] in _BEFORE_AMOUNT or (i > 0 and words[i - 1] in _BEFORE_AMOUNT)
-                    or _is_currency_word(words[j - 1]) or (j < len(words) and _is_currency_word(words[j])))
-
-        i = 0
-        while i < len(words):
-            unit = next((k + 1 for k in range(i + 1, len(words)) if _is_currency_word(words[k])), len(words))
-            longest = None
-            for j in range(min(unit, i + _LONGEST_SAID), i, -1):
-                try:
-                    longest = (parse_spoken_inr(" ".join(words[i:j])), j)
-                    break
-                except ValueError:
-                    continue
-            if longest is None:
-                i += 1
-                continue
-            paise, j = longest
-            k = j
-            while k < unit and (words[k] in _SAID_NOISE or _is_currency_word(words[k])):
-                k += 1
-            last = next(w for w in reversed(words[i:j]) if w not in _SAID_NOISE and not _is_currency_word(w))
-            # what follows goes on with this amount: after digits only a scale can ("150 dedh lakh" is two)
-            goes_on = k < unit and (words[k] in _SAID_SCALES if _digits(last) else
-                                    words[k] in _SAID_PART or _digits(words[k]))
-            if goes_on:  # the parser refused the rest of this amount: none of it is read
-                while k < len(words) and (words[k] in _SAID_PART or _digits(words[k]) or words[k] in _SAID_NOISE
-                                          or _is_currency_word(words[k])):
-                    k += 1
-                if shaped(i, k):
-                    found.append(None)
-                i = k
-                continue
-            if shaped(i, j):
-                found.append(paise)
-            i = j
+    for tok in tokens:
+        if tok == ".":  # a sentence end
+            closed = close()
+            if closed is not None:
+                watch, soft = closed, False
+            continue
+        if not (tok[0].isalnum() or tok[0] in "₹_"):  # a comma or other mark: inside an amount, it goes on
+            if soft:
+                watch = None
+            continue
+        w = tok.replace("_", "")
+        if _is_currency_word(w):
+            cluster.append(tok)
+            if numbers:  # the unit after an amount closes it
+                closed = close()
+                if closed is not None:
+                    watch, soft = closed, True
+        elif _number_like(w):
+            if watch is not None:
+                found[watch] = None  # "ek lakh rupaye pachaas": the rest of it came after the unit
+                watch = None
+            if numbers and _digits(numbers[-1]) and w not in _SCALE_LIKE:
+                close()  # after digits only a scale goes on: "150 dedh lakh" is two
+            cluster.append(tok)
+            numbers.append(w)
+        elif w in _SAID_NOISE:
+            if cluster:
+                cluster.append(tok)
+        else:  # an ordinary word ends any amount, and nothing after it belongs to one before it
+            close()
+            watch = None
+    close()
     return found

@@ -28,11 +28,13 @@ invoice number, an advance). The PO ruled:
 Extra false flags are the right trade: a flag costs the owner seconds, a wrong amount costs money.
 
 ## Acceptance Criteria
-- [ ] AC1: `app/domain/money.py::money_said(transcript)` returns every money-shaped amount the transcript says,
-  each read in full by the spoken-amount parser (the longest run of words it reads, never a leading part of
-  one). A run the parser refuses that goes on with more of a number is None (an amount code can't read).
-  A currency word after an amount, or a sentence end, closes it; a comma doesn't. Digit groups ("1,50,000")
-  and decimals ("1.5 lakh") stay whole.
+- [ ] AC1: `app/domain/money.py::money_said(transcript)` returns every money-shaped amount the transcript says.
+  The transcript is cut into clusters of number words, and each cluster is read whole or not at all, never
+  a leading part of it. Number words the parser doesn't read (Hindi 11-99 spellings, sava, laakh, minus,
+  paise, hyphenated numbers) still belong to a cluster, so it reads as None (an amount code can't read).
+  A currency word after an amount, or a sentence end, closes it, and a number word straight after that makes
+  it None. A comma neither closes an amount nor, after a rupee word, carries it on. Digit groups
+  ("1,50,000") and decimals ("1.5 lakh") stay whole.
 - [ ] AC2 (D29): the voice check passes only when the transcript's money-shaped amounts are exactly one
   distinct amount and parse_spoken_inr(amount_spoken) equals it, as integer paise. Every case from the
   review is a table test. Table tests where the words are a substring of what was said but the amounts differ
@@ -47,3 +49,5 @@ Extra false flags are the right trade: a flag costs the owner seconds, a wrong a
 - 2026-10-04: specified by the PO in the batch 10 verdict; planned for batch 11 (direct lane)
 - 2026-10-04: batch 11 review round 1: a refused run read as its leading part (critical); membership among
   all the transcript's numbers (major) -> PO D29
+- 2026-10-04: batch 11 review round 2: the leading part still passed through number words the parser lacks,
+  and through a tail after the unit or a full stop (critical) -> whole-cluster reading

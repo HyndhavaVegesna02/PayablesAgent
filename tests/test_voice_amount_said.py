@@ -54,6 +54,28 @@ FLAGGED = [
     ("bill dedh lakh ka hai, 2 lakh nahi", "2 lakh", [15_000_000, 20_000_000]),
     ("bill 1,50,000 GST alag 27,000", "27,000", [15_000_000, 2_700_000]),
     ("bill no. 150, dedh lakh", "150", [15_000_000]),
+    # a number word the parser doesn't read is still part of the amount (batch 11 review, round 2)
+    ("Sharma ka bill ek lakh dus hazaar rupaye.", "ek lakh", [None]),
+    ("Sharma ka bill ek lakh baees hazaar.", "1,00,000", [None]),
+    ("Sharma ka bill ek lakh baees hazaar.", "ek lakh", [None]),
+    ("Sharma ka bill do lakh pachpan hazaar rupaye.", "do lakh", [None]),
+    ("Sharma ka bill teen lakh chaubees hazaar ka.", "teen lakh", [None]),
+    ("Bill ek lakh pachhattar hazaar.", "ek lakh", [None]),
+    ("bill do lakh ikkis hazaar", "do lakh", [None]),
+    ("bill one lakh twenty-five", "one lakh", [None]),
+    ("Sharma ka bill sava do lakh.", "do lakh", [None]),
+    ("Bill saare teen lakh.", "teen lakh", [None]),
+    ("Sharma ka bill ek laakh pachaas hazaar.", "pachaas hazaar", [None]),
+    ("Bill of a hundred and fifty thousand rupees.", "fifty thousand", [None]),
+    ("Bill minus pachaas hazaar.", "pachaas hazaar", [None]),
+    ("Teen sau bori aayi, baees hazaar ka bill.", "teen sau", [30_000, None]),
+    # a number after the unit or the sentence that closed an amount belongs to it (round 2)
+    ("Bill ek lakh. Pachaas.", "ek lakh", [None]),
+    ("Bill ek lakh; pachaas", "ek lakh", [None]),
+    ("bill ek lakh rupaye pachaas", "ek lakh", [None]),
+    ("bill dedh lakh rup pachaas", "dedh lakh", [None]),
+    ("bill ek lakh rupaye pachaas paise", "ek lakh", [None]),
+    ("bill ek lakh rupaye aur pachaas hazaar", "ek lakh", [None, 5_000_000]),
     # no amount the code reads: never passed
     ("Sharma Packaging ka bill aaya hai, invoice 418, jaldi dena hai.", "dedh lakh", []),
     ("Bill aaya hai, amount baad mein bataunga.", "dedh lakh", []),
@@ -82,6 +104,9 @@ def test_anything_but_the_one_amount_said_goes_to_the_owner(transcript, spoken, 
     ("Sharma ka bill, pachaas hazaar rupaye, paanch November tak.", "pachaas hazaar", 5_000_000),
     ("Sharma ka bill dedh lakh rupaye... haan, dedh lakh, invoice 418.", "dedh lakh", 15_000_000),  # said twice
     ("₹1,50,000 ka bill hai, bill no. 150.", "1,50,000", 15_000_000),
+    ("Rupees one lakh fifty thousand only, due on 5 November.", "one lakh fifty thousand", 15_000_000),
+    ("Sharma ka bill, do lakh 21 hazaar rupaye, 2026-11-05 tak.", "2,21,000", 22_100_000),
+    ("Bill no. 150, dedh lakh rupaye, dus din mein.", "dedh lakh", 15_000_000),
 ])
 def test_the_one_amount_said_passes_in_any_words(transcript, spoken, paise):
     checks, _, reading = _check(transcript, spoken)
@@ -92,15 +117,18 @@ def test_a_currency_word_or_a_sentence_end_ends_an_amount_and_a_comma_does_not()
     """"pachaas hazaar paanch" reads as ₹50,005, so the unit or a full stop after an amount must end it;
     a comma must not, or "ek lakh, pachaas hazaar" would be two amounts (batch 5, review round 2)."""
     assert money_said("Sharma ka bill, pachaas hazaar rupaye, paanch November tak.") == [5_000_000]
-    assert money_said("Sharma ka bill pachaas hazaar. Paanch November tak.") == [5_000_000]
+    assert money_said("Sharma ka bill pachaas hazaar. Kal tak.") == [5_000_000]
     assert money_said("Ashirwad ka bill, ek lakh, pachaas hazaar.") == [15_000_000]
     assert money_said("Rs. 1,50,000 only, 5 November tak") == [15_000_000]
     assert money_said("") == []
 
 
 def test_the_known_false_flags_fail_safe():
-    """D29's trade: with no unit or full stop after it, an amount runs into the next number word, and the
-    owner types it. Never a wrong amount passed."""
+    """D29's trade: with no unit or full stop after it, an amount runs into the next number word; and a
+    number word just after a full stop may be more of the amount before it. The owner types it. Never a
+    wrong amount passed."""
+    assert money_said("Sharma ka bill pachaas hazaar. Paanch November tak.") == [None]
+    _flagged("Sharma ka bill pachaas hazaar. Paanch November tak.", "pachaas hazaar")
     assert money_said("Sharma ka bill, 1.5 lakh, paanch November tak.") == [None]
     _flagged("Sharma ka bill, 1.5 lakh, paanch November tak.", "dedh lakh")
     assert money_said("Sharma ka bill pachaas hazaar paanch November tak") == [5_000_500]
