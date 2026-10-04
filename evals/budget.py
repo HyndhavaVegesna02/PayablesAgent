@@ -111,10 +111,13 @@ def add_max_usd(p: argparse.ArgumentParser) -> None:
                         f"{MAX_MICRO_USD / 1_000_000:.2f}, the default)")
 
 
-def live_backend(app_config: AppConfig, *, confirmed: bool, max_micro_usd: int = MAX_MICRO_USD) -> BudgetGuard:
+def live_backend(app_config: AppConfig, *, confirmed: bool, max_micro_usd: int = MAX_MICRO_USD,
+                 timeout_ms: int | None = None) -> BudgetGuard:
     """Gemini behind one guard for the whole invocation. Refuses to start
     without --yes-spend; reads GEMINI_API_KEY through Settings. `max_micro_usd`
-    (from --max-usd) can only lower the hard cost cap."""
+    (from --max-usd) can only lower the hard cost cap. `timeout_ms` replaces
+    config.yaml's request timeout for this invocation (the ablation's one
+    timeout for every harness, CHG-044)."""
     if not 0 < max_micro_usd <= MAX_MICRO_USD:
         raise SystemExit(f"a cost cap must be above 0 and at most {MAX_MICRO_USD} micro-USD")
     if not confirmed:
@@ -125,8 +128,9 @@ def live_backend(app_config: AppConfig, *, confirmed: bool, max_micro_usd: int =
     from app.config import Settings
 
     settings = Settings()
-    guard = BudgetGuard(GeminiBackend(settings.gemini_api_key, timeout_ms=app_config.ai.timeout_ms), app_config,
+    timeout_ms = timeout_ms or app_config.ai.timeout_ms
+    guard = BudgetGuard(GeminiBackend(settings.gemini_api_key, timeout_ms=timeout_ms), app_config,
                         max_micro_usd=max_micro_usd)
-    print(f"live: {app_config.model.id}; caps {MAX_CALLS} calls, {max_micro_usd} micro-USD; "
+    print(f"live: {app_config.model.id}; caps {MAX_CALLS} calls, {max_micro_usd} micro-USD; timeout {timeout_ms} ms; "
           f"{DELAY_S}s between calls", flush=True)
     return guard

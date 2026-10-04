@@ -41,7 +41,7 @@ def test_the_guard_stops_at_the_lower_cap():
 def test_each_cli_hands_the_cap_to_its_one_guard(module, argv, monkeypatch, tmp_path):
     seen = {}
 
-    def fake_live_backend(app_config, *, confirmed, max_micro_usd=MAX_MICRO_USD):
+    def fake_live_backend(app_config, *, confirmed, max_micro_usd=MAX_MICRO_USD, timeout_ms=None):
         seen.update(confirmed=confirmed, max_micro_usd=max_micro_usd)
         raise SystemExit("stop before any call")
 

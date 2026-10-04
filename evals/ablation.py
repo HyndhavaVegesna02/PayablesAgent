@@ -30,6 +30,10 @@ from evals.scenario import Scenario
 
 HARNESSES = ("full", "bare", *knockouts.KNOCKOUTS)
 MECHANICS_ONLY_IN_FIXTURES = frozenset({"bare", "no_planner"})  # their model calls have no canned reply
+# One request timeout for every harness's live calls (CHG-044): the bare harness sends one growing chat
+# history, which ran past Gemini's deadline at config.yaml's 60 s; the same longer value for all keeps the
+# comparison fair. The product keeps config.yaml's.
+TIMEOUT_MS = 180_000
 FAIRNESS = (
     "**How the harnesses are compared (D24).** Every harness gets the same inputs: the seeded worked example "
     "and the scenario's emails, uploads and owner actions, in the same order. The bare harness is given them as "
@@ -39,7 +43,9 @@ FAIRNESS = (
     "the knock-outs type it into the field the page marks, and the bare harness hears it as a sentence, so no "
     "harness gets more of the document than another (PO, batch 10). The bare harness's every call, and the "
     "no_planner knock-out's plan call, is at medium thinking, the level of the full system's extract and "
-    "exception work; the full system uses config.yaml's level per job. Only the harness differs. Every harness "
+    "exception work; the full system uses config.yaml's level per job. Live, every harness's calls share one "
+    f"request timeout, {TIMEOUT_MS // 1000} seconds, long enough for the bare harness's growing history. Only the "
+    "harness differs. Every harness "
     "is scored on the same `outcome` checks: the business result in its own database (and the week's plan), "
     "never how it got there.")
 
@@ -214,7 +220,7 @@ def main(argv: list[str] | None = None) -> int:
     should_stop: Callable[[], str | None] = never
     if args.ai == "live":
         guard = budget.live_backend(config, confirmed=args.yes_spend,  # one guard for the whole invocation
-                                    max_micro_usd=args.max_micro_usd)
+                                    max_micro_usd=args.max_micro_usd, timeout_ms=TIMEOUT_MS)
         should_stop = guard.should_stop
 
     def backend() -> Backend:
