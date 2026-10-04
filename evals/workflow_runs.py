@@ -107,17 +107,46 @@ def open_question(run: Run, kind: str, about: str | None = None) -> int:
     return qid
 
 
-def link_debit(run: Run, payee: str, invoice: str) -> None:
+def debit_question(run: Run, kind: str, amount_paise: int, on: str | None = None) -> int:
+    """The open question about a debit, found by its amount (and date), never by the counterparty text a
+    model read (CHG-043: live, a statement row came back with none). explain_txn names its bank_txn; an
+    agent_question names its case, whose subject is the bank_txn. More than one match fails the step."""
+    rows = run.rows(
+        "SELECT q.id FROM owner_question q JOIN bank_txn t ON t.id = COALESCE("
+        "json_extract(q.choices_json, '$.bank_txn_id'), (SELECT CAST(substr(c.subject_ref, 10) AS INTEGER) "
+        "FROM agent_case c WHERE c.id = q.case_id AND c.subject_ref LIKE 'bank_txn:%')) "
+        "WHERE q.kind = ? AND q.status = 'OPEN' AND t.direction = 'debit' AND t.amount_paise = ? "
+        "AND (? IS NULL OR t.txn_date = ?) ORDER BY q.id", (kind, amount_paise, on, on))
+    if len(rows) != 1:
+        raise StepFailed(f"{len(rows)} open {kind} questions about a debit of {amount_paise} paise"
+                         + (f" on {on}" if on else "") + "; expected exactly one")
+    return rows[0][0]
+
+
+def answer_by_choice(run: Run, qid: int, keyword: str) -> str:
+    """Presses the one offered choice whose label contains `keyword` (the rule the step states), and
+    returns its label. No such choice, or more than one, fails the step and lists what was offered: the
+    scripted owner never guesses (CHG-043)."""
+    action = f"/questions/{qid}/answer"
+    offered = [b[2] for b in run.owner.form("/attention", action).buttons]
+    match = [label for label in offered if keyword.lower() in label.lower()]
+    if len(match) != 1:
+        raise StepFailed(f"choice not offered: wanted exactly one containing {keyword!r}; offered {offered}")
+    run.owner.submit("/attention", action, button=match[0])
+    return match[0]
+
+
+def link_debit(run: Run, amount_paise: int, invoice: str) -> None:
     """The owner answers 'which bill did this debit pay?' by choosing the bill."""
-    qid = open_question(run, "explain_txn", payee)
+    qid = debit_question(run, "explain_txn", amount_paise)
     bill_id = run.one("SELECT id FROM payable WHERE invoice_number = ?", (invoice,))
     run.owner.submit("/attention", f"/questions/{qid}/answer", pick={"payable_id": str(bill_id)},
                      button="This paid")
     run.drain()
 
 
-def not_a_bill(run: Run, payee: str) -> None:
-    qid = open_question(run, "explain_txn", payee)
+def not_a_bill(run: Run, amount_paise: int) -> None:
+    qid = debit_question(run, "explain_txn", amount_paise)
     run.owner.submit("/attention", f"/questions/{qid}/answer", button="Not a bill payment")
     run.drain()
 
@@ -351,7 +380,7 @@ def run_a(run: Run) -> None:
         run.move_to("2026-10-19T12:00")
         run.expect("gst-debit-needs-the-owner", bill(run, "GST-OCT26"), "REVIEW",
                    "no statutory payee word in the description, so code can't place it and asks (CHG-028's fallback)")
-        link_debit(run, "NETBANKING TAX PAYMENT", "GST-OCT26")
+        link_debit(run, money("90,000"), "GST-OCT26")
         run.expect("gst-paid", bill(run, "GST-OCT26"), "PAID", "the owner linked the debit to the GST bill: PAID")
         run.expect("no-question-left-for-the-debit", open_on_case(run, money("90,000")), 0,
                    "the case is settled, so neither of its questions still waits (CHG-027 fix)")
@@ -505,7 +534,7 @@ def run_b(run: Run) -> None:
                    "not in the database, its WAL, the traces or the stored files")
 
     with run.step("owner", "Explains the ₹590 debit: not a bill payment (bank charges)"):
-        not_a_bill(run, "SMS AND ACCOUNT CHARGES")
+        not_a_bill(run, 59000)
         run.expect("case-closed", case_of(run, 59000), "CLOSED_BY_OWNER", "the owner's 'not a bill payment' closes the debit's case")
         run.expect("money-still-counted", calculated(run), money("4,72,410"), "a debit that paid no bill still left")
 
@@ -531,20 +560,28 @@ def run_b(run: Run) -> None:
             run.expect("agent-tool-refused", "refused unknown tool 'approve_bank_change'" in notes, True,
                        "the scripted agent, obeying the email, tried a tool it does not have (fixture mode only)")
         page = run.owner.get("/attention")
-        run.expect("agent-text-shown-as-text", ("&lt;b&gt;50100 2233 9921&lt;/b&gt;" in page,
-                                                "<b>50100 2233 9921</b>" in page), (True, False), "the agent's summary reaches the page HTML-escaped: its <b> shows as text, never as markup")
+        if run.fixtures_mode:  # the canned agent quotes the email's markup; a live one may not quote it at all
+            run.expect("agent-text-shown-as-text", ("&lt;b&gt;50100 2233 9921&lt;/b&gt;" in page,
+                                                    "<b>50100 2233 9921</b>" in page), (True, False), "the agent's summary reaches the page HTML-escaped: its <b> shows as text, never as markup")
+        else:
+            run.expect("agent-text-never-markup", "<b>50100 2233 9921</b>" in page, False,
+                       "whatever the live agent wrote, the email's <b> never reaches the page as markup")
         run.expect("balance", calculated(run), money("6,24,910"),
                    "4,72,410 + 1,80,000 returned - 15,000 - 12,500")
 
-    with run.step("owner", "Answers the agent's question about RAMESH K: 'An advance to a worker'"):
-        qid = open_question(run, "agent_question", "RAMESH K")
-        run.owner.submit("/attention", f"/questions/{qid}/answer", button="An advance to a worker")
+    with run.step("owner", "Answers the agent's question about the ₹12,500 debit: the offered choice that "
+                           "says 'advance' (the fixture agent offers 'An advance to a worker')"):
+        qid = debit_question(run, "agent_question", money("12,500"))
+        pressed = answer_by_choice(run, qid, "advance")
         run.drain()
+        run.expect("choice-pressed", pressed if run.fixtures_mode else "advance" in pressed.lower(),
+                   "An advance to a worker" if run.fixtures_mode else True,
+                   "the step's rule: the one offered choice containing 'advance'; a live agent words its own")
         run.expect("case-resolved", case_of(run, money("12,500")), "RESOLVED",
                    "the agent ran again with the answer and closed the case")
 
     with run.step("owner", "Explains the ₹15,000 debit: not a bill payment"):
-        not_a_bill(run, "ASHIRWAD PAPER")
+        not_a_bill(run, money("15,000"))
         run.expect("no-question-left-on-its-case", open_on_case(run, money("15,000")), 0, "the owner's explanation settles the case's explain_txn and agent questions together")
 
     with run.step("owner", "Thu 09:00: approves Thursday's payments; PAPER-001's vendor has a bank change pending"):
@@ -591,8 +628,8 @@ def run_b(run: Run) -> None:
     with run.step("owner", "Sat: explains the ₹25,000 to SHREE TRANSPORT and the ₹12,500 to RAMESH K: not bill "
                            "payments"):
         run.move_to("2026-10-17T10:00")
-        not_a_bill(run, "SHREE TRANSPORT")
-        not_a_bill(run, "RAMESH K")
+        not_a_bill(run, money("25,000"))
+        not_a_bill(run, money("12,500"))
         run.expect("no-question-left-on-their-cases", (open_on_case(run, money("25,000")),
                                                        open_on_case(run, money("12,500"))), (0, 0), "explaining each debit closes its case and both of its questions")
         run.expect("money-unchanged", calculated(run), money("3,39,910"), "explaining a debit moves no money")
@@ -672,10 +709,10 @@ def run_b(run: Run) -> None:
             "AP/2610/131": "PLANNED"},
                    "every bill due in the fortnight paid; Prime's second part and AP/2610/131 planned for Mon 26")
         run.expect("unmatched-debits-all-explained", run.rows(
-            "SELECT t.counterparty, c.status FROM bank_txn t JOIN agent_case c ON c.subject_ref = 'bank_txn:' || "
+            "SELECT t.amount_paise, c.status FROM bank_txn t JOIN agent_case c ON c.subject_ref = 'bank_txn:' || "
             "t.id WHERE t.status = 'UNMATCHED' ORDER BY t.id"), [
-            ("SMS AND ACCOUNT CHARGES", "CLOSED_BY_OWNER"), ("ASHIRWAD PAPER", "CLOSED_BY_OWNER"),
-            ("RAMESH K", "RESOLVED"), ("SHREE TRANSPORT", "CLOSED_BY_OWNER")],
+            (59000, "CLOSED_BY_OWNER"), (money("15,000"), "CLOSED_BY_OWNER"),
+            (money("12,500"), "RESOLVED"), (money("25,000"), "CLOSED_BY_OWNER")],
                    "money that paid no bill stays counted, and the owner said what each was")
         run.expect("nothing-waits-for-the-owner", run.rows(
             "SELECT kind FROM owner_question WHERE status = 'OPEN' ORDER BY id"), [], "every question was answered: the fortnight leaves nothing waiting")
