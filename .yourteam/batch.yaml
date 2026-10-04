@@ -10,8 +10,8 @@ changes:
   - id: CHG-040
     lane: direct
     board: in_progress
-    start_commit: null
+    start_commit: f9b5cd4
     blocked_question: null
     gate_evidence: []
-    prepatch: null
+    prepatch: "PASS at f9b5cd4: 6 of 9 tests in tests/test_spend_cap.py fail by assertion on the old tree (the five spend-cap forms and the guard stop); 3 are regression guards (two rate-limit 429s stay retryable, the guard still backs off)"
     notes_resolved: false
