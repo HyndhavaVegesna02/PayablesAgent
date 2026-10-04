@@ -139,6 +139,16 @@ def _said_quantity(tokens: list[str], i: int) -> tuple[Fraction, int]:
     return got
 
 
+def _after_currency(text: str) -> str:
+    """The text after any currency words or signs it starts with: "rupees -5" -> "-5", "Rs.-5" -> "-5"."""
+    rest = text.strip().lower()
+    while m := re.match(r"(₹|[a-z]+\.?)\s*", rest):
+        if m.group(1) != "₹" and not _is_currency_word(m.group(1)):
+            break
+        rest = rest[m.end():]
+    return rest
+
+
 def parse_spoken_inr(text: str) -> int:
     """An amount as said in a voice note, in Hindi, Hinglish or English, ->
     int paise: "dedh lakh" is ₹1,50,000, "sawa do lakh" ₹2,25,000, "45 hazaar"
@@ -152,7 +162,7 @@ def parse_spoken_inr(text: str) -> int:
     except ValueError:
         pass
     text = without_currency_word(text)
-    if re.sub(r"^(?:₹|rs\.?|inr)\s*", "", text.strip().lower()).startswith(("-", "\u2212", "minus")):
+    if _after_currency(text).startswith(("-", "\u2212", "minus")):
         raise ValueError(f"a negative amount is not a bill: {text!r}")
     words = re.sub(r"[,/-]", " ", text.lower().replace("₹", " ")).split()
     tokens = [w.strip(".") if not _DECIMAL.match(w) else w for w in words]
@@ -232,7 +242,7 @@ _HEDGE_AFTER_UNIT = _HEDGE_AFTER - {"to", "ya", "or", "till"}  # after "rupaye":
 _HEDGE_BEFORE = {"lagbhag", "lagbhagh", "kareeb", "karib", "kareeban", "takreeban", "taqreeban", "around",
                  "about", "approx", "approximately", "roughly", "almost", "nearly", "over", "under", "upto",
                  "above", "below", "max", "maximum", "min", "minimum"}
-_DASHES = {"-", "–", "—", "~"}
+_DASHES = {"-", "–", "—", "~", "/", "&"}  # and any run of dashes ("--")
 
 
 def _digits(word: str) -> bool:
@@ -251,11 +261,13 @@ def _number_like(word: str) -> bool:
 
 
 def _money_shaped(word: str) -> bool:
-    """By form: a comma grouping, ₹, a scale or rupee word, paise, a mark after digits ("/-", "/=", "-"), or
-    letters on digits that make them money (_ON_DIGITS)."""
+    """By form: a comma grouping, ₹, a scale or rupee word, paise, five or more bare digits (D30), a mark
+    after digits ("/-", "/=", "-"), or letters on digits that make them money (_ON_DIGITS)."""
     w = word.replace("_", "")
     if "_" in word or "₹" in w or w in ("paise", "paisa") or w in _SCALE_LIKE or _is_currency_word(w):
         return True
+    if _DECIMAL.match(w) and len(w.split(".")[0]) >= 5:
+        return True  # PO D30: five or more bare digits are money; a year (four) is not
     if _digits(w) and (w.endswith(("/", "-", "=")) or any(r in _ON_DIGITS or _is_currency_word(r)
                                                           for r in re.findall(r"[a-z]+", w))):
         return True
@@ -282,9 +294,10 @@ def money_said(text: str) -> list[int | None]:
     ("Rs 1,50,000, 5 November").
 
     Money-shaped means a scale word, a currency word, ₹, paise, Rs or "/-" on
-    the digits, or digits grouped with commas ("1,50,000"); a bare number (a
-    date, an invoice number, a count) is not counted."""
-    text = text.lower().replace("_", " ")
+    the digits, digits grouped with commas ("1,50,000"), or five or more bare
+    digits (PO D30); a shorter bare number (a date, a year, a count) is not
+    counted."""
+    text = text.lower().replace("_", " ").replace("\u2212", "-")
     text = re.sub(r"(?<=\d),(?=\d)", "_", text)  # "1,50,000": one word, its grouping remembered
     text = re.sub(r"\b(rs|inr)\.", r"\1 ", text)
     text = re.sub(r"(?<!\d)\.|\.(?!\d)|[!?;:\n]", " . ", text)
@@ -320,7 +333,7 @@ def money_said(text: str) -> list[int | None]:
             closed = close()
             if closed is not None:
                 watch, soft = closed, False
-        elif tok in _DASHES or tok == "+":
+        elif tok in _DASHES or tok == "+" or set(tok) == {"-"}:
             if numbers:
                 cluster.append("to")  # "25 - 30 lakh", "ek lakh + GST": a range, or not the whole
                 ranged = True

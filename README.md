@@ -233,6 +233,12 @@ More detail on each module is in [app/validate/README.md](app/validate/README.md
   description names none of them, such as a bank's generic "tax payment", goes
   to *Needs attention* as "which bill did this debit pay?". Run A takes both
   paths.
+- **The voice amount check reads form, not meaning (PO D30).** Code passes a
+  voice bill's amount only when the transcript says exactly one amount and it
+  equals the model's. It can't tell a total from a part by meaning ("baaki
+  dedh lakh"), a tail after another word ("ek lakh hai, pachaas"), a comma
+  merge, or a spelling or guess word it has no list for. The owner confirms
+  every voice bill with the transcript beside the amount.
 - **A final answer's evidence rule checks where the evidence came from, not
   whether the answer is true.** A hijacked model can still write a false
   summary. It's shown as the assistant's own words and changes nothing; see

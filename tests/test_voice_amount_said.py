@@ -94,8 +94,8 @@ FLAGGED = [
     ("Bill Rs 1,00,000 pachaas.", "1,00,000", [None]),
     ("Bill 1,50,000 pachaas.", "1,50,000", [None]),
     ("Bill Rs 1,00,000 dus.", "1,00,000", [None]),
-    ("Bill Rs 100000 50000.", "100000", [None]),
-    ("Bill Rs 1,00,000 50000.", "1,00,000", [None]),
+    ("Bill Rs 100000 50000.", "100000", [None, 5_000_000]),  # D30: 50000 is money too
+    ("Bill Rs 1,00,000 50000.", "1,00,000", [None, 5_000_000]),
     ("Bill Rs 1,50,000 50 paise.", "1,50,000", [None, None]),
     ("Bill Rs 1,50,000 aur 50 paise.", "1,50,000", [None, None]),
     # a range or a guess is no one amount (round 3)
