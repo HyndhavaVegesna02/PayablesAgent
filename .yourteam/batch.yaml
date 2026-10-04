@@ -1,6 +1,6 @@
 # Active batch. status: none means no batch is running.
 batch: 10
-status: active      # none | active | review | closed | aborted
+status: review      # none | active | review | closed | aborted
 goal: "PO D28 from the live run's scenario 04 run 4: a cut-short currency word is noise (CHG-033) and the scripted owner fills every marked field (CHG-034); the 11x5 told as one generated page across its two invocations (CHG-035); the eval README tells the live story in order (CHG-036)."
 branch: batch-10
 start_tag: null
