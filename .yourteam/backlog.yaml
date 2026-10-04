@@ -610,7 +610,7 @@ changes:
   - id: CHG-045
     title: Workflow A's new-decisions check finds the voice bill by amount and due date, not the vendor name read (PO)
     file: docs/changes/CHG-045-voice-bill-by-amount.md
-    status: ready
+    status: done
     priority: 45
     type: defect
     lane: direct
