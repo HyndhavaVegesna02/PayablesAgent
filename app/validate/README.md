@@ -24,6 +24,6 @@ Two things enforce this:
 | `arithmetic.py` | invoice arithmetic (exact, plus an explicit round-off line of at most ₹1.00: D19) and statement arithmetic |
 | `invoice.py` | an invoice read from an email, photo or PDF: amounts, GSTIN, arithmetic, dates, duplicates (through a lookup), confidence; bill or sales invoice by name |
 | `statement.py` | a bank statement: account, amounts, balances, arithmetic, dates in the period, duplicates, confidence |
-| `voice.py` | a bill told in a voice note: the spoken amount, read by code from words the transcript holds |
+| `voice.py` | a bill told in a voice note: the spoken amount, read by code, must equal in paise the one money-shaped amount code reads in full from the transcript (D29) |
 | `bank.py` | vendor bank details: last four digits, IFSC, what counts as a change, the owner's question |
 | `summary.py` | a plan's "what changed" text: every amount and date must be one the plan diff holds; no other digit, no markup, at most 600 characters |

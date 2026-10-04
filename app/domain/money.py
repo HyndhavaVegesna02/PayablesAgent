@@ -187,20 +187,41 @@ def parse_spoken_inr(text: str) -> int:
 
 
 _LONGEST_SAID = 16  # words: longer than any amount people say
+_SAID_PART = {*_SAID_NUMBERS, *_SAID_SCALES, *_SAID_WHOLE, *_SAID_SHIFT, "sawa"}
+_BEFORE_AMOUNT = {"rs", "inr"}  # said before an amount; a rupee word comes after it
 
 
-def amounts_said(text: str) -> list[int]:
-    """Every amount a transcript says, in paise, in order, each read in full
-    (CHG-037): from each word, the longest run of words parse_spoken_inr
-    reads, so "do lakh pachaas hazaar" is one amount, ₹2,50,000, never
-    "do lakh". A comma doesn't end an amount ("ek lakh, pachaas hazaar" is
-    one); a currency word after it does, and so does the end of a sentence.
-    Digit groups ("1,50,000") and decimals ("1.5 lakh") stay whole. Words
-    that read as no amount are skipped."""
-    joined = re.sub(r"(?<=\d),(?=\d)", "", text.lower())
-    found: list[int] = []
-    for sentence in re.split(r"(?<!\d)\.|\.(?!\d)|[!?;:\n]", joined):
-        words, i = re.sub(r"[^\w\s.₹/-]", " ", sentence).split(), 0
+def _digits(word: str) -> bool:
+    return bool(_DECIMAL.match(word.lstrip("₹")))
+
+
+def money_said(text: str) -> list[int | None]:
+    """Every money-shaped amount a transcript says, in paise, in order (CHG-037,
+    PO D29). Each is read in full: from each word, the longest run of words
+    parse_spoken_inr reads, so "do lakh pachaas hazaar" is one amount,
+    ₹2,50,000, never "do lakh". When the parser refuses a run that goes on
+    with more of a number ("ek lakh pachaas", "five hundred thousand"), the
+    whole run is an amount code can't read: None, never its leading part.
+
+    Money-shaped means a scale word (sau, hazaar, lakh, crore...), a currency
+    word after it, Rs or ₹ before it, or digits grouped with commas ("1,50,000"); a
+    bare number (a date, an invoice number, a count) is not counted. A comma
+    doesn't end an amount ("ek lakh, pachaas hazaar" is one); a currency word
+    after it does, and so does the end of a sentence."""
+    text = re.sub(r"(?<=\d),(?=\d)", "_", text.lower())  # "1,50,000": one word, its grouping remembered
+    text = re.sub(r"\brs\.", "rs ", text)
+    found: list[int | None] = []
+    for sentence in re.split(r"(?<!\d)\.|\.(?!\d)|[!?;:\n]", text):
+        raw = re.sub(r"[^\w\s.₹/-]", " ", sentence).split()
+        words = [w.replace("_", "") for w in raw]
+        grouped = ["_" in w for w in raw]
+
+        def shaped(i: int, j: int) -> bool:  # a scale, a grouping or ₹ in it; Rs before it; a rupee word after it
+            return (any(words[k] in _SAID_SCALES or grouped[k] or words[k].startswith("₹") for k in range(i, j))
+                    or words[i] in _BEFORE_AMOUNT or (i > 0 and words[i - 1] in _BEFORE_AMOUNT)
+                    or _is_currency_word(words[j - 1]) or (j < len(words) and _is_currency_word(words[j])))
+
+        i = 0
         while i < len(words):
             unit = next((k + 1 for k in range(i + 1, len(words)) if _is_currency_word(words[k])), len(words))
             longest = None
@@ -212,8 +233,24 @@ def amounts_said(text: str) -> list[int]:
                     continue
             if longest is None:
                 i += 1
-            else:
-                found.append(longest[0])
-                i = longest[1]
+                continue
+            paise, j = longest
+            k = j
+            while k < unit and (words[k] in _SAID_NOISE or _is_currency_word(words[k])):
+                k += 1
+            last = next(w for w in reversed(words[i:j]) if w not in _SAID_NOISE and not _is_currency_word(w))
+            # what follows goes on with this amount: after digits only a scale can ("150 dedh lakh" is two)
+            goes_on = k < unit and (words[k] in _SAID_SCALES if _digits(last) else
+                                    words[k] in _SAID_PART or _digits(words[k]))
+            if goes_on:  # the parser refused the rest of this amount: none of it is read
+                while k < len(words) and (words[k] in _SAID_PART or _digits(words[k]) or words[k] in _SAID_NOISE
+                                          or _is_currency_word(words[k])):
+                    k += 1
+                if shaped(i, k):
+                    found.append(None)
+                i = k
+                continue
+            if shaped(i, j):
+                found.append(paise)
+            i = j
     return found
-

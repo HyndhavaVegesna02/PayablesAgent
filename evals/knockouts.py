@@ -127,7 +127,7 @@ def _no_planner(binding: Binding) -> list[tuple[Any, str, Any]]:
 # The checks the no_rule_checks knock-out leaves running: the reply's schema,
 # reading an amount at all, the account and sender of an alert, a statement's
 # dates inside its period, confidence, and whether a voice note's amount is
-# words that were said. They decide whether a record can be read; the ones
+# the one amount its transcript says (D29). They decide whether a record can be read; the ones
 # patched decide whether a record that reads fine is true.
 RULE_CHECKS_LEFT_ON = ("schema", "amount parsing", "account and sender", "statement dates", "confidence",
                        "voice: the amount was said")
