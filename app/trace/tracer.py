@@ -6,7 +6,12 @@ Any field with a word in its name that is, or ends with, password, token,
 key or secret (`api_key`, `refresh_token`, `clientSecret`, `apikey`,
 `dbpassword`) is redacted before it touches disk, top level and nested. The
 TDD's own `tokens` field (token counts) does not end with one of those, so it
-is kept. Redacting a harmless name like `monkey` is the safe side."""
+is kept. Redacting a harmless name like `monkey` is the safe side.
+
+Two clocks (CHG-047): `timestamp` is the business clock (the injected Clock,
+which a demo or an eval moves), and `wall_time` is the wall clock (a
+SystemClock), when the step really ran. `attempt` is set by the worker to the
+job's attempt number; an AI call writes it with its latency and retries."""
 
 from __future__ import annotations
 
@@ -51,6 +56,8 @@ class Tracer:
         self.run_id = run_id
         self.trace_dir = Path(trace_dir or os.environ.get("TRACE_DIR", "./traces"))
         self.clock = clock or SystemClock()
+        self.wall = SystemClock()  # real time, for wall_time and an AI call's latency
+        self.attempt: int | None = None  # the job's attempt number, set by the worker
         self._step_counter = 0
 
     def step(self, **fields: Any) -> dict[str, Any]:
@@ -59,6 +66,7 @@ class Tracer:
             "run_id": self.run_id,
             "step": self._step_counter,
             "timestamp": self.clock.now().isoformat(),
+            "wall_time": self.wall.now().isoformat(),
             **_redact(fields),  # top-level field names are checked too
         }
         day_dir = self.trace_dir / self.clock.today().isoformat()

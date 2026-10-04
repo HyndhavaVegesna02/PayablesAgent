@@ -36,7 +36,7 @@ from app.config import AppConfig
 from app.trace.tracer import Tracer
 
 THINKING_LEVELS = frozenset({"low", "medium", "high"})
-RESULT_PREVIEW_CHARS = 200
+RESULT_PREVIEW_CHARS = 2000  # the reply kept in the trace (CHG-047; the agent's notes fit whole)
 
 
 class AIUnavailable(Exception):
@@ -135,6 +135,14 @@ def call(
 ) -> AIResult:
     if thinking not in THINKING_LEVELS:
         raise ValueError(f"thinking level must be one of {sorted(THINKING_LEVELS)}, got {thinking!r}")
+    started = tracer.wall.now()
+
+    def timing() -> dict[str, Any]:
+        """The call's latency, the job's attempt, and the retries the backend made for it (an eval guard's 429
+        backoffs; the product's SDK retries are off, so 0)."""
+        return {"latency_ms": int((tracer.wall.now() - started).total_seconds() * 1000),
+                "attempt": tracer.attempt, "retries": int(getattr(backend, "last_retries", 0) or 0)}
+
     try:
         raw = backend.generate(
             model=app_config.model.id, system=system, contents=context, thinking=thinking,
@@ -143,7 +151,7 @@ def call(
     except AIUnavailable as e:
         kind = "retryable" if e.retryable else "permanent"
         tracer.step(input_ref=input_ref, model=app_config.model.id, thinking=thinking, tool=f"ai.call:{job}",
-                    result=None, validation=f"not run: AI unavailable ({kind}, {e.code}): {e}", retries=0)
+                    result=None, validation=f"not run: AI unavailable ({kind}, {e.code}): {e}", **timing())
         raise
     parsed, schema_error = None, None
     if schema is not None:
@@ -162,7 +170,7 @@ def call(
                    **({} if isinstance(context, str) else {"contents": describe(context)})},
         result=None if raw.text is None else raw.text[:RESULT_PREVIEW_CHARS],
         validation="schema: passed" if schema_error is None else f"schema: failed: {schema_error}",
-        retries=0,
+        **timing(),
         escalation_rule=None,
         tokens={"input": raw.input_tokens, "output": raw.output_tokens, "thoughts": raw.thought_tokens},
         cost_micro_usd=cost,

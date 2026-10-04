@@ -7,7 +7,9 @@
 
 Each is every trace line the run wrote, in the order it was written, one run
 per file. The fixture AI makes them deterministic, so tests/test_evidence_docs.py
-regenerates them and compares.
+regenerates them and compares. The two wall-clock fields (`wall_time`, and an
+AI call's `latency_ms`, CHG-047) differ on every run, so they are left out
+here; the live traces beside these keep them.
 
     uv run python scripts/make_traces.py            # fixture AI, offline
     uv run python scripts/make_traces.py --check    # exit 1 if docs/traces/ is out of date"""
@@ -42,6 +44,9 @@ def build() -> dict[str, str]:
                                  f"not the {'success' if variant is None else 'path failure'} this trace stands for")
             steps = [json.loads(line) for f in sorted(keep.rglob("*.jsonl"))
                      for line in f.read_text(encoding="utf-8").splitlines() if line.strip()]
+        for s in steps:  # wall-clock fields vary run to run (see above)
+            s.pop("wall_time", None)
+            s.pop("latency_ms", None)
         steps.sort(key=lambda s: (s["timestamp"], int(s["run_id"].split("-")[1]) if s["run_id"].startswith("job-")
                                   else 0, s["run_id"], s["step"]))
         out[name] = "".join(json.dumps(s, ensure_ascii=False) + "\n" for s in steps)

@@ -76,6 +76,7 @@ def process_one(
     if job is None:
         return False
     tracer = Tracer(run_id_for(job), settings.trace_dir, clock)
+    tracer.attempt = job["attempts"] + 1
     try:
         try:
             payload = json.loads(job["payload_json"])

@@ -46,6 +46,7 @@ class BudgetGuard:
         self.micro_usd = 0
         self.dearest_call = 0
         self.rate_limited = 0
+        self.last_retries = 0  # the 429 retries made for the last call (the trace's `retries`, CHG-047)
         self.stopped: str | None = None
 
     def should_stop(self) -> str | None:
@@ -65,7 +66,9 @@ class BudgetGuard:
                              f"{self.dearest_call} (cap {self.max_micro_usd})")
 
     def generate(self, **kwargs: Any) -> RawAIResponse:
+        self.last_retries = 0
         for attempt in range(len(self.backoff_s) + 1):
+            self.last_retries = attempt
             self._check()
             if self.calls and self.delay_s:
                 self.sleep(self.delay_s)

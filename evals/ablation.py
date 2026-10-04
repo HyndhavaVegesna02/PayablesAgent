@@ -76,13 +76,15 @@ class MechanicsModel:
 
 
 def run_harness(name: str, scenario: Scenario, backend: Backend, app_config: AppConfig, run: int, *,
-                should_stop: Callable[[], str | None] = never) -> tuple[RunResult, list[str]]:
-    """One run of one scenario under one harness; the result and the seams it patched."""
+                should_stop: Callable[[], str | None] = never,
+                keep: Path | None = None) -> tuple[RunResult, list[str]]:
+    """One run of one scenario under one harness; the result and the seams it patched. With `keep`, the
+    run's traces are copied there."""
     if name == "full":
         return runner.run_once(scenario, backend, app_config, run, should_stop=should_stop,
-                               inspect=metrics.inspect), []
+                               inspect=metrics.inspect, keep=keep), []
     if name == "bare":
-        return bare.run_once(scenario, backend, app_config, run, should_stop=should_stop), []
+        return bare.run_once(scenario, backend, app_config, run, should_stop=should_stop, keep=keep), []
     binding = knockouts.Binding()
 
     def bind(env: RunEnv) -> None:
@@ -91,7 +93,7 @@ def run_harness(name: str, scenario: Scenario, backend: Backend, app_config: App
 
     with knockouts.applied(name, binding) as seams:
         result = runner.run_once(scenario, backend, app_config, run, should_stop=should_stop,
-                                 inspect=metrics.inspect, setup=bind)
+                                 inspect=metrics.inspect, setup=bind, keep=keep)
     return result, seams
 
 
@@ -209,6 +211,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--label", default="ablation")
     p.add_argument("--out", type=Path, default=runner.ROOT / "docs" / "evals")
     p.add_argument("--yes-spend", action="store_true", help="required with --ai live")
+    p.add_argument("--keep-traces", action="store_true",
+                   help="copy each run's traces next to the report (always on with --ai live)")
     budget.add_max_usd(p)
     args = p.parse_args(argv)
 
@@ -216,6 +220,8 @@ def main(argv: list[str] | None = None) -> int:
     chosen = [scenario_files.load(n) for n in (args.scenario or scenario_files.names())]
     harnesses = args.harness or list(HARNESSES)
     today = SystemClock().now()
+    out_dir = args.out / f"{today.date().isoformat()}-{args.ai}-{args.label}"
+    keep_traces = args.keep_traces or args.ai == "live"  # a live run's traces are kept (CHG-047)
     guard = None
     should_stop: Callable[[], str | None] = never
     if args.ai == "live":
@@ -235,7 +241,8 @@ def main(argv: list[str] | None = None) -> int:
                 stopped = stopped or should_stop()
                 if stopped:
                     break
-                r, seams[h] = run_harness(h, s, backend(), config, i, should_stop=should_stop)
+                keep = out_dir / "traces" / f"{h}-{s.name}-run{i}" if keep_traces else None
+                r, seams[h] = run_harness(h, s, backend(), config, i, should_stop=should_stop, keep=keep)
                 results[h].append(r)
                 print(f"{h:15} {'met' if r.outcome_ok else r.status:8} {s.name} run {i}", flush=True)
     meta = {"label": args.label, "mode": args.ai, "model": config.model.id, "prompt_version": config.prompts.version,
@@ -244,7 +251,7 @@ def main(argv: list[str] | None = None) -> int:
             "status": "COMPLETE" if stopped is None else "ABORTED", "stopped_because": stopped,
             "budget": guard.summary() if guard else None}
     built = build(meta, harnesses, chosen, results, seams)
-    out_dir = write(built, chosen, args.out / f"{today.date().isoformat()}-{args.ai}-{args.label}")
+    out_dir = write(built, chosen, out_dir)
     print(f"report: {out_dir}")
     return 0 if stopped is None else 1  # an ABORTED comparison is not a result
 

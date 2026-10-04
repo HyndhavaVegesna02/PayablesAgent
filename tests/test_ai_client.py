@@ -100,7 +100,7 @@ def test_every_call_writes_one_trace_step_with_tokens_and_cost(tracer):
     assert step["retries"] == 0
     assert step["arguments"] == {"prompt_version": "2026-10-02.1/extract_bank_alert.v1",
                                  "schema": "BankAlertExtract"}
-    assert step["result"] == json.dumps(ALERT)[:200]
+    assert step["result"] == json.dumps(ALERT)[:2000]  # the whole reply: up to 2,000 characters (CHG-047)
 
 
 def test_sort_uses_the_configured_low_thinking_and_its_prompt(tracer):

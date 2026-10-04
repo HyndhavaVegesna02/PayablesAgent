@@ -44,6 +44,26 @@ def test_the_traces_show_the_control_points_their_walkthrough_names():
     assert line("failure.jsonl", 36)["result"] == "run over at high: ask_owner"
 
 
+def test_the_official_live_traces_are_the_reports_own_and_show_what_their_walkthrough_says():
+    """CHG-047: the live pilot's job 11 is the official failure, the AFTER's job 11 the official success."""
+    import json
+
+    pairs = {"live-failure.jsonl": "2026-10-04-live-pilot", "live-success.jsonl": "2026-10-04-live-after-batch-8"}
+    for name, report in pairs.items():
+        source = ROOT / "docs" / "evals" / report / "traces" / "07-missed-alert-causes-drift-run1" / "2026-10-15"
+        assert (ROOT / "docs" / "traces" / name).read_bytes() == (source / "job-11-attempt-1.jsonl").read_bytes()
+
+    def line(name, n):
+        return json.loads((ROOT / "docs" / "traces" / name).read_text(encoding="utf-8").splitlines()[n - 1])
+
+    assert line("live-failure.jsonl", 5)["result"].startswith("refused: ('account',)")
+    assert line("live-failure.jsonl", 11)["result"].startswith("candidate 2: INVALID")
+    assert (line("live-failure.jsonl", 13)["tool"], line("live-failure.jsonl", 13)["result"]) == (
+        "apply_final", "nothing to write")
+    assert line("live-success.jsonl", 7)["result"] == "candidate 2: VALID, every rule check passed"
+    assert line("live-success.jsonl", 9)["result"] == "candidate 2: bank_txn 2 written"
+
+
 def test_the_readme_example_runs_as_written():
     text = (ROOT / "README.md").read_text(encoding="utf-8")
     code = re.search(r"<!-- example: app/validate -->\s*```python\n(.*?)```", text, re.S).group(1)

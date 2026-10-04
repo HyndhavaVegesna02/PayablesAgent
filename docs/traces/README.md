@@ -1,19 +1,58 @@
-# Two curated traces
+# Traces
 
-Both traces are one run of eval scenario 7, *Missed alert causes drift*
-(`evals/scenarios/07-missed-alert-causes-drift/`), on the fixture AI.
-`scripts/make_traces.py` writes them, and `tests/test_evidence_docs.py`
-regenerates them at every commit and fails if they differ, so the files are
-always what the code writes today. The test also pins the control-point lines
-this walkthrough leans on (19, 32 and 45 in the success trace; 18, 19, 20 and
-36 in the failure trace). On the fixture AI the token counts and costs are zero,
-and the `model` field names the configured model, not one that was called; a
-live run writes the same fields with real values.
+Four traces of eval scenario 7, *Missed alert causes drift*
+(`evals/scenarios/07-missed-alert-causes-drift/`): the bank alert for a ₹20,000 debit never reached the
+ledger, so on Thu 15 Oct the 23:00 recheck finds the bank's balance ₹20,000 below the calculated one and
+opens a drift case. Can the exception agent find what's missing?
 
-| File | Config | What it shows |
+| File | Run | What it shows |
 | --- | --- | --- |
-| [`success.jsonl`](success.jsonl) | `config.yaml` as committed | A gap the code can't explain, recovered from the mailbox by the agent and written to the ledger by code. |
-| [`failure.jsonl`](failure.jsonl) | `evals/variants/regress-max-steps.yaml` (the agent's step cap cut to 2) | The same story when the agent runs out of steps, and code's escalation rules take over. |
+| [`live-failure.jsonl`](live-failure.jsonl) | **Official failure.** Gemini, the live pilot (`docs/evals/2026-10-04-live-pilot/`), job 11 | The agent finds the missed alert but proposes it with field names of its own; code refuses the candidate, and then accepted a final answer that relied on nothing. The gap stayed open. |
+| [`live-success.jsonl`](live-success.jsonl) | **Official success.** Gemini, the AFTER (`docs/evals/2026-10-04-live-after-batch-8/`), job 11 | Once batch 8 named the fields and refused an empty resolution: two searches, one VALID candidate, and code writes the transaction. |
+| [`success.jsonl`](success.jsonl) | Fixture AI, `config.yaml` | The scripted run of the whole scenario, every job; deterministic, so a test regenerates it. |
+| [`failure.jsonl`](failure.jsonl) | Fixture AI, `evals/variants/regress-max-steps.yaml` | The same, with the agent's step cap cut to 2: code's escalation takes over. |
+
+The live traces are copies of the job-11 files in those reports' `traces/` folders, which a test checks
+byte for byte. They predate CHG-047, so their lines have no `wall_time`, `latency_ms` or `attempt`; traces
+written since have them.
+
+## live-failure.jsonl, line by line
+
+The job is `run_case` for the drift case, at 23:00 on Thu 15 Oct (business time).
+
+- **Line 1:** code's opening rule starts the agent at `medium` thinking.
+- **Lines 2–3:** the agent reads the case file (the gap, the account, the dates) and searches the mailbox
+  for "4821 20000". Nothing matches.
+- **Lines 4–5:** it asks for the ledger with the account as `XXXX4821`. Code refuses the call: the tool takes
+  the last four digits (`refused: ('account',): String should match pattern '^[0-9]{4}$'`). A refused call is
+  a step the agent reads, not a crash.
+- **Lines 6–7:** it retries with `4821` and reads the one recorded debit (the ₹35,000 electricity bill).
+- **Lines 8–9:** it searches for "4821" and finds the alerts, the missed ₹20,000 one among them.
+- **Line 10:** the agent names the missed alert. Look at `tokens.thoughts` here against the other calls: this
+  is the step where it worked hardest.
+- **Line 11 (the failure):** `add_candidate` with field names of its own (`account`, `amount`...). Code's
+  rule checks refuse it: `candidate 2: INVALID (schema: 9 field error(s): Field required)`. The tool's
+  refusal did not say which fields it wanted.
+- **Lines 12–13 (the second failure):** the agent answers anyway, and `apply_final` records `evidence
+  checked` with `nothing to write`. The answer cited the message but relied on no VALID candidate, so the
+  gap stayed open. That's the hole batch 8 closed (CHG-031): a drift resolution must rely on a VALID
+  candidate, and every refusal names the fields.
+
+## live-success.jsonl, line by line
+
+The same job, with batch 8's fixes in.
+
+- **Line 1:** starts at `medium`.
+- **Lines 2–3:** a Gmail-style search, `from:alerts@hdfcbank.example 4821`. On this build's folder mail source
+  it found nothing (the trace showed it; the folder source has understood `from:` since).
+- **Lines 4–5:** a plain search for "4821" finds the alerts.
+- **Lines 6–7:** the agent proposes the missed alert with the named fields (`account_last4`, `amount_text`...),
+  and code's rule checks pass it: `candidate 2: VALID, every rule check passed`.
+- **Lines 8–9:** the final answer relies on candidate 2. `apply_final` checks the evidence (the cited
+  message came from this case's own search; the candidate is VALID) and code, not the model, writes it:
+  `candidate 2: bank_txn 2 written`. The drift check then finds no gap.
+
+The fixture traces below tell the same story from every job's side.
 
 ## How to read a trace line
 
@@ -34,12 +73,22 @@ fields to look at:
 - `escalation_rule` names the rule that fired, if one did.
 - `thinking`, `tokens` and `cost_micro_usd` are the model's level and what the
   call cost.
+- `timestamp` is business time (the clock a demo or an eval moves); `wall_time` is when the step really ran.
+  An AI call also has `latency_ms`, `attempt` (the job's attempt number) and `retries` (the retries made for
+  that call: an eval guard's 429 backoffs; 0 in the product, whose SDK retries are off).
 
 The trace never holds an API key, a password or a file's bytes. Files are
 recorded by type, size and sha256, and any field whose name ends in
 `password`, `token`, `key` or `secret` is redacted.
 
-## success.jsonl, line by line
+## The fixture traces
+
+`scripts/make_traces.py` writes `success.jsonl` and `failure.jsonl` on the fixture AI, and
+`tests/test_evidence_docs.py` regenerates them at every commit and fails if they differ. On the fixture AI the
+token counts and costs are zero, and the `model` field names the configured model, not one that was called.
+The two wall-clock fields are left out of them, since they differ on every run.
+
+### success.jsonl, line by line
 
 **Lines 1–8: the gap appears.**
 - On Thu 15 Oct at 09:00 the mail check finds nothing new (line 1).
@@ -94,7 +143,7 @@ script:
 **Lines 46–47:** the owner alert waits for SMTP, and the plan's summary has
 nothing new to say.
 
-## failure.jsonl: the same run with the step cap at 2
+### failure.jsonl: the same run with the step cap at 2
 
 Lines 1–17 are the same as in success.jsonl. Then:
 
