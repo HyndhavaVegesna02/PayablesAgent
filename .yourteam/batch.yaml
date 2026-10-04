@@ -4,7 +4,7 @@ status: active      # none | active | review | closed | aborted
 goal: "The evidence keeps itself honest (CHG-032: make check-evidence, required at batch close), and the phase 2 live runs the PO authorised are committed and told in order (CHG-033)."
 branch: batch-9
 start_tag: null
-started: "2026-10-05T08:05:00+05:30"
+started: "2026-10-04T08:05:00+05:30"
 interrupts: []
 changes:
   - id: CHG-032
