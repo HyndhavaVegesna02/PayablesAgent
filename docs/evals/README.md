@@ -14,7 +14,7 @@ hand.
 | `2026-10-04-live-pilot/` | The first live run, 11 scenarios once each on Gemini (PO-authorised): the BEFORE for batch 8's fixes. `traces/` holds the rerun of its two failures with traces kept. |
 | `2026-10-04-live-after-batch-8/` | The AFTER: scenarios 04 and 07 rerun live once batch 8's fixes were in (PO-authorised), traces kept. Its README says what the traces show. |
 | `2026-10-04-live-baseline/` | Phase 2's 11x5 on Gemini, first invocation: scenarios 01 to 07, stopped by a rate limit (status ABORTED). The rest runs as `baseline-part2`, and one generated page combines the two. |
-| `superseded/before-review-round-1/`, `superseded/before-review-round-2/`, `superseded/before-batch-8/`, `superseded/before-batch-8-review-round-1/` | The reports as they were before each of batch 7's review rounds, before batch 8, and (the ablation) before batch 8's review round 1, kept and marked; each README says what changed. |
+| `superseded/before-review-round-1/`, `superseded/before-review-round-2/`, `superseded/before-batch-8/`, `superseded/before-batch-8-review-round-1/`, `superseded/before-batch-10/` | The reports as they were before each of batch 7's review rounds, before batch 8, (the ablation) before batch 8's review round 1, and (workflow A) before batch 10, kept and marked; each README says what changed. |
 
 ## The live runs, in order
 

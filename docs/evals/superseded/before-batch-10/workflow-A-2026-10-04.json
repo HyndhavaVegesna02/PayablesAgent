@@ -5,8 +5,8 @@
     "model": "gemini-3.8-flash",
     "prompt_version": "2026-10-04.2",
     "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
-    "commit": "c88f511",
-    "date": "2026-10-04T09:26:03+05:30",
+    "commit": "2142c95",
+    "date": "2026-10-04T04:14:16+05:30",
     "budget": null
   },
   "repeats": [
@@ -494,7 +494,7 @@
           "n": 13,
           "at": "Sat 17 Oct 10:00",
           "actor": "owner",
-          "action": "Sat: confirms the four new bills on Needs attention, typing in the voice note's due date (Thu 5 Nov) and whatever else the page marks",
+          "action": "Sat: confirms the four new bills on Needs attention, typing in the voice note's due date (Thu 5 Nov), the one field marked for them",
           "error": null,
           "checks": [
             {
