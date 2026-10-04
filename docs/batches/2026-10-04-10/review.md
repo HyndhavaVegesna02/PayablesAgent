@@ -62,3 +62,11 @@ extraction (one payable; bank details flagged), so this is a deliberate choice, 
   asserts FAILED at extract;
 - the prose, the description and the wording are corrected.
 
+
+## Round 3: APPROVE
+
+Re-review of e424841 and 6dbd5c6. The reviewer ran the full suite (1343 passed), lint-imports (9 kept),
+ruff (clean) and check-evidence ("all 5 reports reproduce"). The new test fails before e424841 on its
+assertion. The superseded copies are byte-identical to the reports as they stood at 94e46d8. In the
+regenerated reports only the commit, the date and fields-read's recorded value changed; every result is the
+same. No critical or major findings. The one minor is the decision on 05 and 09 already recorded in round 2.
