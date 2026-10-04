@@ -1,6 +1,6 @@
 # Every change, ever. Entries are never deleted -- done and rejected are history.
 # Status is a field, never a folder.
-next_id: 41
+next_id: 42
 changes:
   - id: CHG-001
     title: Repo skeleton — layout, config, schema, Clock, tracer, job table, CI
@@ -567,6 +567,16 @@ changes:
     expected_paths: ['app/ai/client.py', 'evals/budget.py', 'tests/test_spend_cap.py']
     depends_on: null
     batch: 13
+  - id: CHG-041
+    title: A per-invocation cost cap flag (--max-usd) for the live evals, below the hard $5 cap (user)
+    file: docs/changes/CHG-041-max-usd-flag.md
+    status: ready
+    priority: 41
+    type: feature
+    lane: direct
+    expected_paths: ['evals/budget.py', 'evals/runner.py', 'evals/ablation.py', 'evals/workflow.py', 'Makefile', 'tests/test_max_usd.py']
+    depends_on: null
+    batch: 14
 
 # Shape of an entry:
 #   - id: CHG-001

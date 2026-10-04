@@ -1,19 +1,17 @@
 # Active batch. status: none means no batch is running.
-batch: 13
-status: closed      # none | active | review | closed | aborted
-goal: "A 429 for Gemini's monthly spending cap is permanent, and the eval guard stops at once on it, naming the cap (CHG-040; PO, direct accept on a green gate)."
-branch: batch-13
+batch: 14
+status: active      # none | active | review | closed | aborted
+goal: "A per-invocation cost cap flag for the live evals (CHG-041), so the user's reduced phase 2 runs under its own caps."
+branch: batch-14
 start_tag: null
-started: "2026-10-04T15:00:00+05:30"
+started: "2026-10-04T16:10:00+05:30"
 interrupts: []
 changes:
-  - id: CHG-040
+  - id: CHG-041
     lane: direct
-    board: done
-    start_commit: f9b5cd4
+    board: in_progress
+    start_commit: null
     blocked_question: null
-    gate_evidence:
-      - {command: "make test", exit_code: 0, output_tail: "es, 284 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | agent never imports the ledger writer, web or the pipeline KEPT | the AI and the agent never reach owner email KEPT | notify is pure text and sending: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 9 kept, 0 broken. | Uninstalled 1 package in 1ms | Installed 1 package in 9ms", commit: 2631417, at: 2026-10-04T08:21:07+00:00}
-      - {command: "make check-evidence", exit_code: 0, output_tail: "crge2d77\\3\\workflow-A-2026-10-04.md | checked docs/evals/workflow-A-2026-10-04.json | run B: 1/1 passed; report: C:\\Users\\Hyndhava\\AppData\\Local\\Temp\\check-evidence-crge2d77\\4\\workflow-B-2026-10-04.md | checked docs/evals/workflow-B-2026-10-04.json | all 5 reports reproduce: fixture-mode ones below their commit and date, combined ones exactly (md and json) | C:\\Hyn\\PayablesAgent\\.venv\\Lib\\site-packages\\fastapi\\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead. | from starlette.testclient import TestClient as TestClient  # noqa", commit: 2631417, at: 2026-10-04T08:22:38+00:00}
-    prepatch: "PASS at f9b5cd4: 6 of 9 tests in tests/test_spend_cap.py fail by assertion on the old tree (the five spend-cap forms and the guard stop); 3 are regression guards (two rate-limit 429s stay retryable, the guard still backs off)"
+    gate_evidence: []
+    prepatch: null
     notes_resolved: false
