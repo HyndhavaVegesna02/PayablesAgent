@@ -19,6 +19,7 @@ from tests.planner_fixtures import worked_example
 from tests.test_planner_properties import snapshots
 from tests.web_helpers import (
     current_run,
+    day_row,
     last_event_id,
     login,
     make_web_env,
@@ -128,7 +129,7 @@ def test_choosing_authorise_records_a_bounded_override_and_replans(web):
     page = client.get("/attention").text
     assert "Your choices in force" in page and "at or above ₹1,83,000" in page
     assert "Authorise going below" not in page  # not offered again
-    assert "Prime Chem Industries ₹1,20,000 <small>(authorised below the safety amount)</small>" in client.get("/").text
+    assert "Prime Chem Industries ₹1,20,000 Authorised below the safety amount" in day_row(client.get("/").text, "2026-10-22")
 
 
 def test_a_deeper_breach_lapses_the_override_with_an_event(web):

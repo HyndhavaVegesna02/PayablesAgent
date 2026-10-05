@@ -28,9 +28,11 @@ from tests.web_helpers import (
     HELPER,
     approve_form,
     current_run,
+    day_row,
     last_event_id,
     login,
     make_web_env,
+    page_text,
     plan_lines,
     plan_now,
     post,
@@ -100,7 +102,7 @@ def test_the_owner_plays_through_the_worked_example(web):
     sharma = env.conn.execute("SELECT id FROM payable WHERE invoice_number = 'SP-7'").fetchone()[0]
     assert current_run(env)["id"] != before  # the plan updated
     assert plan_lines(env)[sharma][0] == "WAIT"
-    assert "Sharma Packaging ₹12,000" in owner.get("/").text
+    assert "Sharma Packaging ₹12,000" in page_text(owner.get("/").text)
     helper_sees_only_add(helper)
 
     # The owner approves Monday: only Paper.
@@ -149,7 +151,7 @@ def test_the_owner_plays_through_the_worked_example(web):
     assert plan_lines(env)[GST] == ("PAY", "2026-10-19")
     page = owner.get("/").text
     assert lowest(page) == ("₹3,83,000", "Thu 22 Oct")
-    thursday = page.split("<td>Thu 22 Oct</td>")[1].split("</tr>")[0]
+    thursday = day_row(page, "2026-10-22")
     assert "Prime Chem Industries ₹1,20,000" in thursday and "₹3,83,000" in thursday
     helper_sees_only_add(helper)
 

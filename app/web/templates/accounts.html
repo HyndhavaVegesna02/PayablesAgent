@@ -1,30 +1,60 @@
 {% extends "base.html" %}
+{% from "_ui.html" import icon, chip with context %}
 {% block title %}Accounts{% endblock %}
 {% block main %}
-<h1>Accounts</h1>
+<div class="page-head">
+  <span class="eyebrow">Bank accounts</span>
+  <h1>Accounts</h1>
+  <p class="lede">We keep our own running balance from your bank alerts and confirmed entries, and check it against what the bank reports.</p>
+</div>
 {% for a in accounts %}
-<article>
-  <header><strong>{{ a.bank_name }}</strong> {{ a.account_name }} {{ a.account_mask }}</header>
-  <table>
-    <tbody>
-      <tr><td>Calculated balance</td><td class="amount">{{ a.calculated_paise | inr }}</td></tr>
-      <tr><td>Bank reported</td><td class="amount">{% if a.reported_balance_paise is not none %}{{ a.reported_balance_paise | inr }}{% else %}not yet{% endif %}</td></tr>
-      <tr><td>Status</td><td class="amount">{% if a.drift_status == "OK" %}Matches{% elif a.drift_status == "CHECKING" %}Checking a difference{% else %}<span class="below">Needs your confirmation</span>{% endif %}</td></tr>
-      <tr><td>Last reconciled</td><td class="amount">{% if a.last_reconciled_at %}{{ a.last_reconciled_at[:16] | replace("T", " ") }}{% else %}never{% endif %}</td></tr>
-    </tbody>
-  </table>
+<article class="card account">
+  {% set reported = a.reported_balance_paise is not none %}
+  {% set checked = a.last_reconciled_at or a.reported_at %}
+  <header>
+    <h2>{{ icon("bank", 20) }} {{ a.bank_name }} <span class="muted">{{ a.account_name }} {{ a.account_mask }}</span></h2>
+    <span class="aside">{% if a.drift_status == "CHECKING" %}{{ chip("waiting", "Checking a difference") }}{% elif a.drift_status == "ASK_OWNER" %}{{ chip("mismatch", "Needs your confirmation") }}{% elif reported and checked %}{{ chip("covered", "Matched at last check · " ~ (checked | when_day)) }}{% else %}{{ chip("waiting", "Nothing to check yet") }}{% endif %}</span>
+  </header>
+  <div class="balances">
+    <div>
+      <span class="eyebrow">Calculated balance now</span>
+      <span class="balance-figure">{{ a.calculated_paise | inr }}</span>
+      <span class="muted small">From your bank alerts and confirmed entries</span>
+    </div>
+    <div>
+      <span class="eyebrow">Bank's last reported balance</span>
+      <span class="balance-figure balance-figure-2{% if not reported %} is-none{% endif %}">{% if reported %}{{ a.reported_balance_paise | inr }}{% else %}not yet{% endif %}</span>
+      <span class="muted small">{% if reported and a.reported_at %}Reported by your bank on {{ a.reported_at | when }}{% else %}No bank alert with a balance has arrived yet{% endif %}</span>
+    </div>
+  </div>
+  {% if a.drift_status == "CHECKING" %}
+  <p class="provenance">{{ icon("clock", 14) }}<span>Our figure and the bank's last reported balance differ. The missing transactions may still arrive; we check again as alerts come in.</span></p>
+  {% elif a.drift_status == "ASK_OWNER" %}
+  <div class="notice notice-bad">{{ icon("mismatch", 18) }}<p>Our figure and the bank's last reported balance still differ after checking. Type the balance your bank app shows, and we correct our figure to match.</p></div>
+  {% elif reported and a.calculated_paise != a.reported_balance_paise %}
+  <p class="provenance">{{ icon("bank", 14) }}<span>Money in and out since then is counted from later bank alerts and entries you confirmed.</span></p>
+  {% elif not reported %}
+  <p class="provenance">{{ icon("bank", 14) }}<span>The calculated balance starts from the opening balance you gave and counts every alert and confirmed entry since.</span></p>
+  {% endif %}
   {% if a.drift_status == "ASK_OWNER" %}
-  <form method="post" action="/accounts/{{ a.id }}/confirm-balance" hx-post="/accounts/{{ a.id }}/confirm-balance" hx-target="#main">
+  <form method="post" action="/accounts/{{ a.id }}/confirm-balance" hx-post="/accounts/{{ a.id }}/confirm-balance" hx-target="#main" class="confirm-balance">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <label>Actual balance in your bank app (₹) <input name="amount" required>
-      {% if errors.get(a.id) %}<small class="below">{{ errors[a.id] }}</small>{% endif %}</label>
+    <label>Actual balance in your bank app (₹) <input name="amount" inputmode="decimal" required{% if errors.get(a.id) %} aria-invalid="true" aria-describedby="err-balance-{{ a.id }}"{% endif %}>
+      {% if errors.get(a.id) %}<small class="field-error" id="err-balance-{{ a.id }}">{{ icon("alert", 14) }}<span>{{ errors[a.id] }}</span></small>{% endif %}</label>
     <button type="submit">Confirm balance</button>
   </form>
   {% endif %}
 </article>
+{% else %}
+<div class="empty">
+  {{ icon("bank", 32) }}
+  <h2>No bank accounts yet</h2>
+  <p>Accounts are set up with the business. Once one exists, its balance shows here.</p>
+</div>
 {% endfor %}
-<article>
-  <header><strong>Gmail</strong></header>
+<article class="card">
+  <header><h2>{{ icon("note", 20) }} Gmail</h2><span class="aside">{{ chip("waiting", "Not connected") }}</span></header>
   <p>Not connected (set up later)</p>
+  <p class="muted small">Once connected, bank alerts and bills that arrive by email are read automatically.</p>
 </article>
 {% endblock %}

@@ -109,3 +109,13 @@ def add_second_business(env: Env) -> int:
     writer.transition(EntityRef("payable", p.id), "CONFIRMED", "owner:3", "test", None, conn=env.conn,
                       expected_version=p.version, clock=env.clock)
     return p.id
+
+
+def page_text(html: str) -> str:
+    """The page as a reader sees it: tags removed, whitespace collapsed."""
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html)).strip()
+
+
+def day_row(html: str, iso: str) -> str:
+    """The text of one day's row under Payments by day on the week page."""
+    return page_text(html.split(f'data-day="{iso}">')[1].split('<li class="day')[0].split("</ol>")[0])

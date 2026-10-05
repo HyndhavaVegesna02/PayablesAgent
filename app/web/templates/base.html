@@ -1,50 +1,54 @@
-{% if partial %}{{ self.main() }}{% else %}<!doctype html>
-<html lang="en">
+{% from "_ui.html" import icon, mark with context %}{% if partial %}{{ self.main() }}{% else %}<!doctype html>
+<html lang="en-IN" data-theme="light">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="csrf-token" content="{{ csrf_token }}">
   <meta name="htmx-config" content='{"responseHandling": [{"code": "204", "swap": false}, {"code": "[23]..", "swap": true}, {"code": "(403|409|413|422)", "swap": true, "error": false}, {"code": "...", "swap": false, "error": true}]}'>
+  <meta name="theme-color" content="#F6F7F9">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231D4ED8'/%3E%3Cpath d='M6 10.5l5.5 5 4.5-3 4 6 6-9.5' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <title>{% block title %}PayablesAgent{% endblock %} · PayablesAgent</title>
+  <link rel="preload" href="/static/fonts/plex-sans.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/pico.min.css">
-  <style>
-    main.container { max-width: 960px; }
-    .muted { color: var(--pico-muted-color); }
-    .demo { background: var(--pico-mark-background-color); padding: .4rem .8rem; margin: 0; }
-    .below { color: var(--pico-del-color); }
-    table td.amount, table th.amount { text-align: right; white-space: nowrap; }
-    @media (max-width: 600px) { nav ul:last-child { flex-wrap: wrap; } }
-  </style>
+  <link rel="stylesheet" href="/static/app.css">
   <script src="/static/htmx.min.js" defer></script>
 </head>
 <body hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'>
-  <header class="container">
-    <nav>
-      <ul><li><strong>PayablesAgent</strong></li></ul>
+  <a class="visually-hidden" href="#main">Skip to content</a>
+  {% set owner = user and user.role == "owner" %}
+  {% set sections = [("/", "This week", "Week", "week"), ("/attention", "Needs attention", "Attention", "attention"),
+                     ("/add", "Add", "Add", "add"), ("/accounts", "Accounts", "Accounts", "accounts"),
+                     ("/settings", "Settings", "Settings", "settings")] if owner else [("/add", "Add", "Add", "add")] %}
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="{{ '/' if owner else ('/add' if user else '/login') }}">{{ mark() }}<span>PayablesAgent</span></a>
       {% if user %}
-      <ul>
-        {% if user.role == "owner" %}
-        <li><a href="/">This week</a></li>
-        <li><a href="/attention">Needs attention</a></li>
-        {% endif %}
-        <li><a href="/add">Add</a></li>
-        {% if user.role == "owner" %}
-        <li><a href="/accounts">Accounts</a></li>
-        <li><a href="/settings">Settings</a></li>
-        {% endif %}
-        <li>
-          <form method="post" action="/logout" style="margin:0">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <button class="secondary outline" type="submit" style="padding:.2rem .6rem">Log out</button>
-          </form>
-        </li>
-      </ul>
+      <nav class="topnav" aria-label="Main">
+        <ul>
+          {% for href, long, short, ico in sections %}
+          <li><a href="{{ href }}"{% if path == href %} aria-current="page"{% endif %}>{{ long }}{% if href == "/attention" and needs_you %} <span class="badge" aria-hidden="true">{{ needs_you }}</span><span class="visually-hidden">, {{ needs_you }} waiting for you</span>{% endif %}</a></li>
+          {% endfor %}
+        </ul>
+      </nav>
+      <form method="post" action="/logout" class="logout">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="secondary outline" type="submit">Log out</button>
+      </form>
       {% endif %}
-    </nav>
+    </div>
   </header>
   {% if demo_now %}
-  <div class="container"><p class="demo" role="status">Demo mode: it is {{ demo_now.strftime("%a %d %b %Y, %H:%M") }}.{% if demo_ai %} AI replies are canned fixtures.{% endif %}</p></div>
+  <div class="demo-strip"><p role="status">Demo mode: it is {{ demo_now.strftime("%a %d %b %Y, %H:%M") }}.{% if demo_ai %} AI replies are canned fixtures.{% endif %}{% if owner %} <a href="/settings#demo-clock">Move the clock</a>{% endif %}</p></div>
   {% endif %}
-  <main class="container" id="main">{% block main %}{% endblock %}</main>
+  <main class="page reveal" id="main">{% block main %}{% endblock %}</main>
+  {% if owner %}
+  <nav class="tabbar" aria-label="Sections">
+    <ul>
+      {% for href, long, short, ico in sections %}
+      <li><a href="{{ href }}"{% if path == href %} aria-current="page"{% endif %}>{{ icon(ico, 22) }}<span>{{ short }}</span>{% if href == "/attention" and needs_you %}<span class="badge" aria-hidden="true">{{ needs_you }}</span><span class="visually-hidden">, {{ needs_you }} waiting for you</span>{% endif %}</a></li>
+      {% endfor %}
+    </ul>
+  </nav>
+  {% endif %}
 </body>
 </html>{% endif %}

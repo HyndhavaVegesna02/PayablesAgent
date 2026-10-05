@@ -1,61 +1,87 @@
 {% extends "base.html" %}
-{% from "_fields.html" import err with context %}
+{% from "_ui.html" import icon, chip, err, inv with context %}
 {% block title %}Settings{% endblock %}
 {% block main %}
-<h1>Settings</h1>
-<article>
-  <form method="post" action="/settings" hx-post="/settings" hx-target="#main">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <div class="grid">
-      <label>Safety amount (₹) <input name="safety_amount" value="{{ v.get('safety_amount', '') }}" required>{{ err(e, "safety_amount") }}</label>
-      <label>Escalation amount (₹) <input name="escalation_amount" value="{{ v.get('escalation_amount', '') }}" required>{{ err(e, "escalation_amount") }}</label>
-    </div>
-    <label>Plan this many days ahead <input type="number" name="horizon_days" min="1" max="60" value="{{ v.get('horizon_days', '') }}" required>{{ err(e, "horizon_days") }}</label>
-    <fieldset>
-      <legend>Payment days</legend>
-      {% set chosen = v.get('payment_days', '').split(",") %}
-      {% for d in days %}<label><input type="checkbox" name="payment_days" value="{{ d }}"{% if d in chosen %} checked{% endif %}> {{ d | capitalize }}</label>{% endfor %}
-      {{ err(e, "payment_days") }}
-    </fieldset>
-    <label>Language
-      <select name="language"><option value="en" selected>English</option></select>{{ err(e, "language") }}</label>
-    <button type="submit">Save settings</button>
-  </form>
-</article>
+<div class="page-head">
+  <span class="eyebrow">Your rules</span>
+  <h1>Settings</h1>
+  <p class="lede">The plan follows these rules. Saving a change replans straight away.</p>
+</div>
 
-{% if demo_now %}
-<article>
-  <header>Demo clock</header>
-  <form method="post" action="/demo/time" hx-post="/demo/time" hx-target="#main">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <label>Move the demo forward to (India time)
-      <input type="datetime-local" name="to" value="{{ demo_now.strftime('%Y-%m-%dT%H:%M') }}" required></label>
-    <button type="submit" class="outline">Move the clock</button>
-  </form>
-  <p class="muted">Time stands still between moves. Moving past a Monday 07:00 makes that Monday's plan.</p>
-</article>
-{% endif %}
+<div class="layout">
+  <div>
+    <section class="card" aria-labelledby="rules-h">
+      <header><h2 id="rules-h">Plan rules</h2></header>
+      <form method="post" action="/settings" hx-post="/settings" hx-target="#main">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="grid">
+          <div>
+            <label>Safety amount (₹) <input name="safety_amount" inputmode="decimal" value="{{ v.get('safety_amount', '') }}" required{{ inv(e, "safety_amount") }}>{{ err(e, "safety_amount") }}</label>
+            <small class="hint">The plan keeps your balance at or above this on every day.</small>
+          </div>
+          <div>
+            <label>Escalation amount (₹) <input name="escalation_amount" inputmode="decimal" value="{{ v.get('escalation_amount', '') }}" required{{ inv(e, "escalation_amount") }}>{{ err(e, "escalation_amount") }}</label>
+            <small class="hint">Unexplained money above this gets the assistant's most careful look.</small>
+          </div>
+        </div>
+        <label>Plan this many days ahead <input type="number" name="horizon_days" min="1" max="60" value="{{ v.get('horizon_days', '') }}" required{{ inv(e, "horizon_days") }}>{{ err(e, "horizon_days") }}</label>
+        <fieldset>
+          <legend>Payment days</legend>
+          <small class="hint hint-tight">The days you pay bills. Payments are planned only on these days.</small>
+          {% set chosen = v.get('payment_days', '').split(",") %}
+          <div class="days-pick">
+            {% for d in days %}<label><input type="checkbox" name="payment_days" value="{{ d }}"{% if d in chosen %} checked{% endif %}> {{ d | capitalize }}</label>{% endfor %}
+          </div>
+          {{ err(e, "payment_days") }}
+        </fieldset>
+        <label>Language
+          <select name="language"><option value="en" selected>English</option></select>{{ err(e, "language") }}</label>
+        <button type="submit" class="btn-full">Save settings</button>
+      </form>
+    </section>
+  </div>
 
-<h2>Bill priorities</h2>
-{{ err(e, "priority") }}
-<table>
-  <tbody>
-  {% for b in bills %}
-    <tr>
-      <td>{{ b.name }} {{ b.amount_paise | inr }} <small class="muted">due {{ b.due_date | day }}</small></td>
-      <td>
-        <form method="post" action="/settings" hx-post="/settings" hx-target="#main" style="margin:0; display:flex; gap:.5rem">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-          <input type="hidden" name="payable_id" value="{{ b.id }}">
-          <input type="hidden" name="version" value="{{ b.version }}">
-          <select name="priority" aria-label="Priority for {{ b.name }}" style="margin:0">
-            {% for p in priorities %}<option value="{{ p }}"{% if p == b.priority %} selected{% endif %}>{{ p }}</option>{% endfor %}
-          </select>
-          <button type="submit" class="outline" style="margin:0; padding:.2rem .6rem">Set</button>
-        </form>
-      </td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
+  <div>
+    {% if demo_now %}
+    <section class="card" id="demo-clock" aria-labelledby="clock-h">
+      <header><h2 id="clock-h">{{ icon("clock", 20) }} Demo clock</h2></header>
+      <form method="post" action="/demo/time" hx-post="/demo/time" hx-target="#main">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <label>Move the demo forward to (India time)
+          <input type="datetime-local" name="to" value="{{ demo_now.strftime('%Y-%m-%dT%H:%M') }}" required></label>
+        <button type="submit" class="secondary outline btn-full">Move the clock</button>
+      </form>
+      <p class="provenance">{{ icon("info", 14) }}<span>Time stands still between moves. Moving past a Monday 07:00 makes that Monday's plan.</span></p>
+    </section>
+    {% endif %}
+
+    <section class="card" aria-labelledby="prio-h">
+      <header><h2 id="prio-h">Bill priorities</h2></header>
+      <p class="muted small">When cash is short, statutory and critical bills are paid first and flexible ones wait.</p>
+      {{ err(e, "priority") }}
+      {% if bills %}
+      <ul class="rows">
+        {% for b in bills %}
+        <li>
+          <span class="name">{{ b.name }}</span>
+          <span class="amt">{{ b.amount_paise | inr }}</span>
+          <span class="meta">due {{ b.due_date | day }}</span>
+          <form method="post" action="/settings" hx-post="/settings" hx-target="#main" class="prio-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="payable_id" value="{{ b.id }}">
+            <input type="hidden" name="version" value="{{ b.version }}">
+            <select name="priority" aria-label="Priority for {{ b.name }}">
+              {% for p in priorities %}<option value="{{ p }}"{% if p == b.priority %} selected{% endif %}>{{ p | capitalize }}</option>{% endfor %}
+            </select>
+            <button type="submit" class="secondary outline">Set</button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="muted">No open bills. Bills you add show here so you can change their priority.</p>
+      {% endif %}
+    </section>
+  </div>
+</div>
 {% endblock %}

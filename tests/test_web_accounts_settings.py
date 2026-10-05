@@ -45,7 +45,7 @@ def test_accounts_shows_balances_drift_and_gmail_not_connected(web):
     _, client, _ = web
     page = client.get("/accounts").text
     assert "HDFC Bank" in page and "XXXX4821" in page
-    assert "₹6,20,000" in page and "Matches" in page
+    assert "₹6,20,000" in page and "Nothing to check yet" in page  # drift OK, before any bank balance
     assert "Not connected (set up later)" in page
     assert "/gmail/" not in page
 

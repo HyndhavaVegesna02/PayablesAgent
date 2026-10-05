@@ -6,6 +6,7 @@ email or the AI is always shown as plain text."""
 
 from __future__ import annotations
 
+import sqlite3
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +21,7 @@ from starlette.exceptions import HTTPException
 from app.domain.money import format_inr
 from app.domain.states import StaleVersion, TransitionRefused, VersionRequired
 from app.planner.plan import format_day
+from app.web import present
 from app.web.actions import FieldErrors, Refused, Stale
 from app.web.auth import NotLoggedIn
 from app.web.repo import NotFound
@@ -34,21 +36,46 @@ _env = jinja2.Environment(
 )
 _env.filters["inr"] = format_inr
 _env.filters["day"] = format_day
+_env.filters["when"] = present.when
+_env.filters["when_day"] = present.when_day
 templates = Jinja2Templates(env=_env)
 
 
 def render(request: Request, name: str, context: dict[str, Any] | None = None, status: int = 200) -> HTMLResponse:
     """A full page, or only its main block for an HTMX request."""
     settings = request.app.state.settings
+    user = getattr(request.state, "user", None)
+    partial = is_htmx(request)
+    today = request.app.state.clock.today()
     ctx = {
         "demo_now": request.app.state.clock.now() if settings.demo_now else None,
         "demo_ai": settings.demo_ai == "fixtures",
-        "user": getattr(request.state, "user", None),
+        "user": user,
         "csrf_token": getattr(request.state, "csrf", ""),
-        "partial": is_htmx(request),
+        "partial": partial,
+        "today": today,
+        "path": request.url.path,
+        "needs_you": 0 if partial else _needs_you(settings.database_path, user, today),
         **(context or {}),
     }
     return templates.TemplateResponse(request, name, ctx, status_code=status)
+
+
+def _needs_you(database_path: Any, user: Any, today: Any) -> int:
+    """The nav badge's count, on its own short connection; only the owner has
+    Needs attention. A badge is not worth failing a page (or an error page) over."""
+    if getattr(user, "role", None) != "owner":
+        return 0
+    from app.db.connection import write_connection
+
+    try:
+        conn = write_connection(database_path, check_same_thread=False)
+        try:
+            return present.needs_you(conn, user.business_id, today)
+        finally:
+            conn.close()
+    except sqlite3.Error:
+        return 0
 
 
 def install(app: FastAPI) -> None:

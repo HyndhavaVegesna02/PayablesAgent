@@ -198,3 +198,27 @@ def test_this_week_shows_the_note_as_plain_text(web):
     assert "What changed" in page and "&lt;b&gt;Prime&lt;/b&gt; Chem: PAY on Thu 22 Oct" in page
     assert "<b>Prime</b>" not in page
     assert "From the plan&#39;s own figures." in page
+
+
+def test_the_owner_reads_decisions_in_plain_words_and_the_model_keeps_the_planners_terms():
+    from app.jobs.explain import change_lines
+    from app.planner.diff import Change, PlanDiff
+
+    thu22 = date(2026, 10, 22)
+    d = PlanDiff(changes=(
+        Change("line_changed", 5, {"decision": "ESCALATE", "pay_on": None, "amount_paise": 12_000_000},
+               {"decision": "PAY", "pay_on": thu22, "amount_paise": 12_000_000}),
+        Change("line_added", 6, None, {"decision": "WAIT", "pay_on": None, "amount_paise": 1_200_000}),
+        Change("line_removed", 7, {"decision": "PAY", "pay_on": thu22, "amount_paise": 500_000}, None),
+    ), amounts_paise=frozenset(), dates=frozenset({thu22}))
+    names = {5: "Prime Chem Industries", 6: "Sharma Packaging", 7: "Old Vendor"}
+    assert change_lines(d, names) == [
+        "Prime Chem Industries: PAY on Thu 22 Oct (was ESCALATE).",
+        "Sharma Packaging ₹12,000: WAIT (new in the plan).",
+        "Old Vendor: no longer in the plan (was PAY on Thu 22 Oct).",
+    ]
+    assert change_lines(d, names, owner_words=True) == [
+        "Prime Chem Industries: now paid on Thu 22 Oct (was waiting for your decision).",
+        "Sharma Packaging ₹12,000: waits (new in the plan).",
+        "Old Vendor: no longer in the plan (was to be paid on Thu 22 Oct).",
+    ]

@@ -1,99 +1,184 @@
 {% extends "base.html" %}
+{% from "_ui.html" import icon, chip with context %}
 {% block title %}This week{% endblock %}
 {% block main %}
-<h1>This week</h1>
-{% if message %}<p class="below" role="alert">{{ message }}</p>{% endif %}
+<div class="page-head">
+  <span class="eyebrow">{{ today | day }}{% if view %} · the next {{ view.days | length }} days{% endif %}</span>
+  <h1>This week</h1>
+</div>
+{% if message %}<div class="notice notice-warn" role="alert">{{ icon("info", 18) }}<p>{{ message }}</p></div>{% endif %}
 {% if view is none %}
-<article><p>No plan yet. The Monday plan runs at 07:00, and every change you make here replans.</p></article>
+<div class="empty">
+  {{ icon("week", 32) }}
+  <h2>No plan yet</h2>
+  <p>The first plan is made on Monday at 07:00. After that, every change you make here replans straight away.</p>
+  <a role="button" href="/add">Add a bill</a>
+</div>
 {% else %}
-<article>
-  <header>Lowest projected balance</header>
-  <p style="font-size:1.4rem; margin:0">
-    <strong class="{{ 'below' if view.gap_paise else '' }}">{{ view.lowest_balance_paise | inr }}</strong>
-    on {{ view.lowest_on | day }}
-  </p>
-  <p class="muted" style="margin:0">
-    Safety amount {{ view.safety_paise | inr }}{% if view.gap_paise %}: {{ view.gap_paise | inr }} below{% endif %}.
-    {% if view.options %}<a href="/attention">Choose an option</a>.{% endif %}
-  </p>
-</article>
+{% set short = view.gap_paise > 0 %}
+{% set waiting_on = options | selectattr("pending") | list %}
+{% set open_choice = options and not (options | selectattr("chosen") | list) and not waiting_on %}
+{% set n_days = view.days | length %}
 
-{% if view.run.summary_text %}
-<article>
-  <header>What changed</header>
-  <p>{{ view.run.summary_text }}</p>
-  <small class="muted">{{ "Written by the assistant; every amount and date checked against the plan." if view.run.summary_source == "gemini" else "From the plan's own figures." }}</small>
-</article>
-{% endif %}
+<section class="hero {{ 'is-short' if short else 'is-ok' }}" aria-labelledby="verdict">
+  <div class="hero-grid">
+    <div>
+      {% if short %}
+      {{ chip("below", "Below your safety amount") }}
+      <p class="hero-verdict" id="verdict"><span class="hero-figure">{{ view.gap_paise | inr }}</span>
+        below your safety amount on {{ view.lowest_on | day }}</p>
+      {% else %}
+      {{ chip("covered", "Covered for " ~ n_days ~ " days") }}
+      <p class="hero-verdict" id="verdict"><span class="hero-ok-line">You stay above your safety amount for the next {{ n_days }} days.</span>
+        Lowest: <strong class="amt">{{ view.lowest_balance_paise | inr }}</strong> on {{ view.lowest_on | day }}.</p>
+      {% endif %}
+      <dl class="facts">
+        <div><dt>Lowest balance</dt><dd><strong class="amt">{{ view.lowest_balance_paise | inr }}</strong> on {{ view.lowest_on | day }}</dd></div>
+        <div><dt>Safety amount</dt><dd><strong class="amt">{{ view.safety_paise | inr }}</strong> set by you in Settings</dd></div>
+      </dl>
+      <div class="next-step">
+        {% if open_choice %}
+        <p>{% for ln in view.escalations %}{{ ln.name }}{% if not loop.last %} and {% endif %}{% endfor %}{% if view.escalations %} {{ "needs" if view.escalations | length == 1 else "need" }} your decision.{% else %}The plan needs your decision.{% endif %} Pick how to cover the gap.</p>
+        <a role="button" href="/attention">Choose an option</a>
+        {% elif waiting_on %}
+        <p>{{ waiting_on[0].pending }}</p>
+        <a role="button" class="secondary outline" href="/attention">See the options</a>
+        {% elif view.to_approve %}
+        <p>Next: approve {{ view.to_approve | length }} payment{{ "s" if view.to_approve | length != 1 else "" }} for {{ view.next_pay_day | day }}.</p>
+        <a role="button" href="#approve">Review and approve</a>
+        {% elif awaiting %}
+        <p>Pay the approved bills in your bank app. We match each bank alert as it arrives.</p>
+        {% else %}
+        <p>Nothing needs you right now. The plan updates itself when anything changes.</p>
+        {% endif %}
+      </div>
+    </div>
+    {% if chart %}
+    <figure class="chart">
+      <svg viewBox="0 0 {{ chart.width }} {{ chart.height }}" role="img" aria-label="{{ chart.summary }}">
+        <defs>
+          <pattern id="below-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect width="6" height="6" fill="#FDEEEC"/><line x1="1.5" y1="0" x2="1.5" y2="6" stroke="#B42318" stroke-width="2.2"/>
+          </pattern>
+        </defs>
+        <line x1="0" x2="{{ chart.width }}" y1="{{ chart.baseline }}" y2="{{ chart.baseline }}" stroke="#D9DEE5" stroke-width="1.5"/>
+        {% for b in chart.bars %}
+        <rect class="bar" x="{{ b.x }}" y="{{ b.y }}" width="{{ chart.bar_width }}" height="{{ b.height }}" rx="3"
+              {% if b.below %}fill="url(#below-hatch)" stroke="#B42318" stroke-width="1.5"{% else %}fill="#4F74DB"{% endif %}/>
+        <text x="{{ b.x + chart.bar_width // 2 }}" y="{{ chart.baseline + 19 }}" text-anchor="middle" font-size="13"
+              fill="{{ '#1D4ED8' if b.today else '#5B6573' }}" font-weight="{{ 700 if b.today else 500 }}">{{ b.label }}</text>
+        {% if b.lowest %}<path d="M{{ b.x + chart.bar_width // 2 - 6 }} {{ b.y - 11 }}h12l-6 7z" fill="#1B2430"/>{% endif %}
+        {% endfor %}
+        <line x1="0" x2="{{ chart.width }}" y1="{{ chart.safety_y }}" y2="{{ chart.safety_y }}" stroke="#1B2430" stroke-width="2" stroke-dasharray="7 5"/>
+      </svg>
+      <figcaption class="legend">
+        <span><span class="key key-bar"></span>Balance at day end</span>
+        <span><span class="key key-safety"></span>Safety amount</span>
+        {% if below_span %}<span><span class="key key-below"></span>Below safety, {{ below_span[0] | day }}{% if below_span[1] != below_span[0] %} to {{ below_span[1] | day }}{% endif %}</span>{% endif %}
+        <span>▼ Lowest day</span>
+      </figcaption>
+    </figure>
+    {% endif %}
+  </div>
+  <p class="provenance">{{ icon("bank", 14) }}<span>Plan made {{ view.run.created_at | when }}, starting from <span class="amt">{{ view.run.opening_cash_paise | inr }}</span> in your bank accounts.</span></p>
+</section>
 
-{% for w in view.warnings %}<p class="below" role="note">{{ w }}</p>{% endfor %}
+{% for w in view.warnings %}<div class="notice notice-warn" role="note">{{ icon("alert", 18) }}<p>{{ w }}</p></div>{% endfor %}
 
-{% if view.to_approve %}
-<article>
-  <header>Approve payments for {{ view.next_pay_day | day }}</header>
-  <ul>
-    {% for ln in view.to_approve %}<li>{{ ln.name }} {{ ln.amount_paise | inr }}{% if ln.payable_id in view.bank_pending %} <strong class="below">Vendor bank details change pending: verify before paying</strong>{% endif %}</li>{% endfor %}
-  </ul>
-  <form method="post" action="/plans/{{ view.run.id }}/approve" hx-post="/plans/{{ view.run.id }}/approve" hx-target="#main">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    {% for ln in view.to_approve %}<input type="hidden" name="version_{{ ln.payable_id }}" value="{{ ln.version }}">{% endfor %}
-    {% for ln in view.to_approve if ln.payable_id in view.bank_pending %}
-    <label><input type="checkbox" name="bank_ok_{{ ln.payable_id }}" value="1"> I have verified {{ ln.name }}'s new bank details with them</label>
-    {% endfor %}
-    <button type="submit">Approve {{ view.next_pay_day | day }}</button>
-  </form>
-  <p class="muted">You pay through your own bank app; approving tells the plan to expect these payments.</p>
-</article>
-{% endif %}
+<div class="layout">
+  <div>
+    {% if view.to_approve %}
+    {% set n = view.to_approve | length %}
+    <section class="card" id="approve" aria-labelledby="approve-h">
+      <header><h2 id="approve-h">Approve payments for {{ view.next_pay_day | day }}</h2></header>
+      <ul class="rows">
+        {% for ln in view.to_approve %}
+        <li><span class="name">{{ ln.name }}</span><span class="amt out">{{ ln.amount_paise | inr }}</span>
+          {% if ln.payable_id in view.bank_pending %}<span class="meta">{{ chip("needs", "Vendor bank details change pending: verify before paying") }}</span>{% endif %}</li>
+        {% endfor %}
+      </ul>
+      <form method="post" action="/plans/{{ view.run.id }}/approve" hx-post="/plans/{{ view.run.id }}/approve" hx-target="#main">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        {% for ln in view.to_approve %}<input type="hidden" name="version_{{ ln.payable_id }}" value="{{ ln.version }}">{% endfor %}
+        {% for ln in view.to_approve if ln.payable_id in view.bank_pending %}
+        <label><input type="checkbox" name="bank_ok_{{ ln.payable_id }}" value="1"> I have verified {{ ln.name }}'s new bank details with them</label>
+        {% endfor %}
+        <p class="summary">{{ icon("info", 18) }}<span>You're approving <strong>{{ n }} payment{{ "s" if n != 1 else "" }}, {{ approve_total_paise | inr }}</strong>, for {{ view.next_pay_day | day }}. You pay {{ "them" if n != 1 else "it" }} in your bank app; we never move money.</span></p>
+        <button type="submit" class="btn-full">Approve {{ view.next_pay_day | day }}</button>
+      </form>
+    </section>
+    {% endif %}
 
-{% if awaiting %}
-<article>
-  <header>Approved, waiting to be paid</header>
-  <table>
-    <tbody>
-    {% for b in awaiting %}
-      <tr>
-        <td>{{ b.name }}{% if b.status == "REVIEW" %} <small class="below">(payment not matched)</small>{% endif %}{% if b.id in view.bank_pending %} <strong class="below">Vendor bank details change pending: verify before paying</strong>{% endif %}</td>
-        <td class="amount">{{ b.amount_paise | inr }}</td>
-        <td>{% if b.planned_date %}{{ b.planned_date | day }}{% endif %}</td>
-        <td>
-          <form method="post" action="/payables/{{ b.id }}/mark-paid" hx-post="/payables/{{ b.id }}/mark-paid" hx-target="#main" style="margin:0">
+    {% if awaiting %}
+    <section class="card" aria-labelledby="awaiting-h">
+      <header><h2 id="awaiting-h">Approved, waiting to be paid</h2></header>
+      <ul class="rows">
+        {% for b in awaiting %}
+        <li>
+          <span class="name">{{ b.name }}</span>
+          <span class="amt out">{{ b.amount_paise | inr }}</span>
+          <span class="meta">
+            {% if b.status == "REVIEW" %}{{ chip("mismatch", "Payment not matched") }}{% else %}{{ chip("approved", "Waiting for the bank alert") }}{% endif %}
+            {% if b.id in view.bank_pending %}{{ chip("needs", "Vendor bank details change pending: verify before paying") }}{% endif %}
+            {% if b.planned_date %}· to pay {{ b.planned_date | day }}{% endif %}
+          </span>
+          <form method="post" action="/payables/{{ b.id }}/mark-paid" hx-post="/payables/{{ b.id }}/mark-paid" hx-target="#main">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="version" value="{{ b.version }}">
-            <button type="submit" class="outline" style="padding:.2rem .6rem">Mark paid</button>
+            <button type="submit" class="secondary outline">Mark paid</button>
           </form>
-        </td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-</article>
-{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      <p class="provenance">{{ icon("bank", 14) }}<span>Pay these in your bank app. When the bank alert arrives we match it to the bill. Use Mark paid only if no alert will come.</span></p>
+    </section>
+    {% endif %}
 
-<h2>Payments by day</h2>
-<div class="overflow-auto">
-<table>
-  <thead><tr><th>Day</th><th>Pay</th><th class="amount">End-of-day balance</th></tr></thead>
-  <tbody>
-  {% for d in view.days %}
-    <tr>
-      <td>{{ d.day | day }}</td>
-      <td>{% for ln in d.pays %}{{ ln.name }} {{ ln.amount_paise | inr }}{% if ln.payable_id in view.authorised %} <small>(authorised below the safety amount)</small>{% endif %}{% if ln.payable_id in view.bank_pending %} <small class="below">(Vendor bank details change pending: verify before paying)</small>{% endif %}{% if ln.status == "PAYMENT_EXPECTED" %} <small>(approved)</small>{% elif ln.status == "PAID" %} <small>(paid; bank debit not linked yet)</small>{% endif %}{% if not loop.last %}<br>{% endif %}{% endfor %}</td>
-      <td class="amount {{ 'below' if d.below else '' }}">{{ d.balance_paise | inr }}</td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
+    <section class="card" aria-labelledby="days-h">
+      <header><h2 id="days-h">Payments by day</h2></header>
+      <div class="days-head" aria-hidden="true"><span>Day</span><span>Money out and in</span><span>Balance at day end</span></div>
+      <ol class="days">
+        {% for d in view.days %}
+        {% set ins = money_in.get(d.day, []) %}
+        <li class="day{% if d.below %} is-below{% endif %}{% if not d.pays and not ins %} is-quiet{% endif %}{% if d.day == today %} is-today{% endif %}" data-day="{{ d.day.isoformat() }}">
+          <span class="day-date">{{ d.day | day }}</span>
+          <ul class="day-pays">{% for ln in d.pays %}<li><span class="pay-name">{{ ln.name }}</span> <span class="amt out">{{ ln.amount_paise | inr }}</span>{% if ln.payable_id in view.authorised %} {{ chip("needs", "Authorised below the safety amount") }}{% endif %}{% if ln.payable_id in view.bank_pending %} {{ chip("needs", "Vendor bank details change pending: verify before paying") }}{% endif %}{% if ln.status == "PAYMENT_EXPECTED" %} {{ chip("approved", "Approved") }}{% elif ln.status == "PAID" %} {{ chip("paid", "Paid; bank debit not linked yet") }}{% endif %}</li>{% endfor %}</ul>
+          <span class="day-bal"><span class="amt">{{ d.balance_paise | inr }}</span>{% if d.below %} {{ chip("below", "Below safety") }}{% endif %}</span>
+          {% if ins %}<ul class="day-ins" aria-label="Money in on {{ d.day | day }}">{% for m in ins %}<li><span class="amt">+{{ m.amount_paise | inr }}</span> <span class="pay-name">{{ m.name }} · in</span> {{ chip("approved", "Expected in") }}</li>{% endfor %}</ul>{% endif %}
+        </li>
+        {% endfor %}
+      </ol>
+      <p class="provenance">{{ icon("bank", 14) }}<span>Your bank balance carried forward: planned and approved payments out, customer payments marked committed in.</span></p>
+    </section>
+  </div>
+
+  <div>
+    {% if view.escalations or view.waits %}
+    <section class="card" aria-labelledby="unpaid-h">
+      <header><h2 id="unpaid-h">Not paid in this plan</h2></header>
+      <ul class="rows">
+        {% for ln in view.escalations %}
+        <li><span class="name">{{ ln.name }}</span> <span class="amt">{{ ln.amount_paise | inr }}</span>
+          <span class="meta">{{ chip("needs", "Needs your decision") }}</span><span class="meta">{{ ln.reason }}</span></li>
+        {% endfor %}
+        {% for ln in view.waits %}
+        <li><span class="name">{{ ln.name }}</span> <span class="amt">{{ ln.amount_paise | inr }}</span>
+          <span class="meta">{{ chip("waiting", "Waits") }}</span><span class="meta">{{ ln.reason }}</span></li>
+        {% endfor %}
+      </ul>
+      {% if open_choice %}<div class="actions"><a role="button" class="secondary outline" href="/attention">Choose an option</a></div>{% endif %}
+    </section>
+    {% endif %}
+
+    {% if view.run.summary_text %}
+    {% set ai = view.run.summary_source == "gemini" %}
+    <section class="card{% if ai %} assistant{% endif %}" aria-labelledby="changed-h">
+      <header><h2 id="changed-h">What changed</h2>{% if ai %}<span class="who aside">{{ icon("note", 14) }}Assistant's words</span>{% endif %}</header>
+      <p class="said">{{ view.run.summary_text }}</p>
+      <p class="provenance">{{ icon("check-circle" if ai else "bank", 14) }}<span>{{ "Written by the assistant; every amount and date checked against the plan." if ai else "From the plan's own figures." }}</span></p>
+    </section>
+    {% endif %}
+  </div>
 </div>
-
-{% if view.escalations or view.waits %}
-<h2>Not paid in this plan</h2>
-{% for ln in view.escalations %}
-<article><strong>{{ ln.name }} {{ ln.amount_paise | inr }}</strong> <small class="below">needs your decision</small><p>{{ ln.reason }}</p></article>
-{% endfor %}
-{% for ln in view.waits %}
-<article><strong>{{ ln.name }} {{ ln.amount_paise | inr }}</strong> <small class="muted">waits</small><p>{{ ln.reason }}</p></article>
-{% endfor %}
-{% endif %}
 {% endif %}
 {% endblock %}

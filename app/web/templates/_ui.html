@@ -1,0 +1,47 @@
+{# Shared pieces of the design system: line icons and status chips. Icons are
+   decoration next to words, so they are hidden from screen readers. #}
+{% macro icon(name, size=16) -%}
+<svg width="{{ size }}" height="{{ size }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+{%- if name == "check" %}<path d="M20 6 9 17l-5-5"/>
+{%- elif name == "check-circle" %}<circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.5 2.5L16 9.5"/>
+{%- elif name == "clock" %}<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
+{%- elif name == "alert" %}<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5"/><path d="M12 16.5h.01"/>
+{%- elif name == "below" %}<path d="M12 4v12"/><path d="m6 10 6 6 6-6"/><path d="M4 20h16"/>
+{%- elif name == "mismatch" %}<path d="M5 9h14"/><path d="M5 15h14"/><path d="M16 4 8 20"/>
+{%- elif name == "pause" %}<circle cx="12" cy="12" r="9"/><path d="M10 9v6"/><path d="M14 9v6"/>
+{%- elif name == "shield" %}<path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z"/><path d="m9 12 2 2 4-4"/>
+{%- elif name == "info" %}<circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.5h.01"/>
+{%- elif name == "x" %}<path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+{%- elif name == "arrow" %}<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>
+{%- elif name == "bank" %}<path d="M3 10h18"/><path d="m12 3 9 5H3z"/><path d="M5 10v8"/><path d="M10 10v8"/><path d="M14 10v8"/><path d="M19 10v8"/><path d="M3 21h18"/>
+{%- elif name == "doc" %}<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/>
+{%- elif name == "note" %}<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8"/><path d="M8 12h5"/>
+{%- elif name == "lock" %}<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+{%- elif name == "upload" %}<path d="M12 16V4"/><path d="m6 10 6-6 6 6"/><path d="M4 20h16"/>
+{%- elif name == "week" %}<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/><path d="M8 15h3"/>
+{%- elif name == "attention" %}<path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 21h4"/>
+{%- elif name == "add" %}<circle cx="12" cy="12" r="9"/><path d="M12 8v8"/><path d="M8 12h8"/>
+{%- elif name == "accounts" %}<path d="M3 10h18"/><path d="m12 3 9 5H3z"/><path d="M6 10v7"/><path d="M12 10v7"/><path d="M18 10v7"/><path d="M3 20h18"/>
+{%- elif name == "settings" %}<path d="M4 7h10"/><path d="M18 7h2"/><circle cx="16" cy="7" r="2"/><path d="M4 17h4"/><path d="M12 17h8"/><circle cx="10" cy="17" r="2"/>
+{%- elif name == "logout" %}<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l5-5-5-5"/><path d="M15 12H4"/>
+{%- endif %}</svg>
+{%- endmacro %}
+
+{# The brand mark: a balance line that dips toward a dashed floor and recovers. #}
+{% macro mark() -%}
+<svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><rect width="32" height="32" rx="8" fill="#1D4ED8"/><path d="M6 23.5h20" stroke="#fff" stroke-opacity=".55" stroke-width="1.6" stroke-dasharray="2.4 2.4"/><path d="M6 10.5l5.5 5 4.5-3 4 6 6-9.5" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+{%- endmacro %}
+
+{# A status chip: a shape and a word, never colour alone. #}
+{% macro chip(kind, text) -%}
+{%- set look = {"paid": ("good", "check-circle"), "covered": ("good", "shield"), "approved": ("info", "clock"),
+                "needs": ("warn", "alert"), "below": ("bad", "below"), "mismatch": ("bad", "mismatch"),
+                "waiting": ("plain", "pause"), "failed": ("bad", "x")}[kind] -%}
+<span class="chip chip-{{ look[0] }}">{{ icon(look[1], 13) }}{{ text }}</span>
+{%- endmacro %}
+
+{# A field's error, right under the field: what is wrong and how to fix it. #}
+{% macro err(e, name) %}{% if e.get(name) %}<small class="field-error" id="err-{{ name }}">{{ icon("alert", 14) }}<span>{{ e[name] }}</span></small>{% endif %}{% endmacro %}
+
+{# aria for a field that has an error #}
+{% macro inv(e, name) %}{% if e.get(name) %} aria-invalid="true" aria-describedby="err-{{ name }}"{% endif %}{% endmacro %}

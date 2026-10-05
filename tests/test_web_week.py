@@ -10,9 +10,11 @@ from app.ledger.writer import EntityRef
 from tests.web_helpers import (
     approve_form,
     current_run,
+    day_row,
     login,
     make_web_env,
     owner_events,
+    page_text,
     last_event_id,
     plan_now,
     post,
@@ -36,15 +38,29 @@ def web(tmp_path):
 def test_this_week_shows_the_worked_example_figures(web):
     _, client, _ = web
     page = client.get("/").text
-    assert "₹1,83,000</strong>\n    on Thu 22 Oct" in page
-    assert "Safety amount ₹2,50,000: ₹67,000 below." in page
+    text = page_text(page)
+    assert "Lowest balance ₹1,83,000 on Thu 22 Oct" in text
+    assert "₹67,000 below your safety amount on Thu 22 Oct" in text and "Safety amount ₹2,50,000" in text
     assert "Approve Mon 12 Oct" in page
-    assert "Ashirwad Paper Suppliers ₹1,80,000" in page  # under Mon 12
-    assert "Prime Chem Industries ₹1,20,000</strong> <small class=\"below\">needs your decision" in page
-    for day, balance in (("Mon 12 Oct", "₹4,40,000"), ("Thu 15 Oct", "₹3,93,000"), ("Mon 19 Oct", "₹3,03,000"),
-                         ("Thu 22 Oct", "₹1,83,000")):
-        row = page.split(f"<td>{day}</td>")[1].split("</tr>")[0]
-        assert balance in row
+    assert "Ashirwad Paper Suppliers ₹1,80,000" in day_row(page, "2026-10-12")  # under Mon 12
+    assert "Prime Chem Industries ₹1,20,000 Needs your decision" in text
+    for day, iso, balance in (("Mon 12 Oct", "2026-10-12", "₹4,40,000"), ("Thu 15 Oct", "2026-10-15", "₹3,93,000"),
+                              ("Mon 19 Oct", "2026-10-19", "₹3,03,000"), ("Thu 22 Oct", "2026-10-22", "₹1,83,000")):
+        row = day_row(page, iso)
+        assert row.startswith(day) and balance in row
+
+
+def test_money_in_the_plan_counted_shows_on_its_day_and_the_balance_is_the_plans(web):
+    env, client, _ = web
+    page = client.get("/").text
+    tuesday = day_row(page, "2026-10-13")
+    # The row still reads day, payments, balance first; Kaveri's committed ₹33,000 follows as money in.
+    assert tuesday.startswith("Tue 13 Oct ₹4,73,000")
+    assert "+₹33,000 Kaveri Traders · in Expected in" in tuesday
+    balances = dict(env.conn.execute("SELECT day, balance_paise FROM plan_day WHERE plan_run_id = ?",
+                                     (current_run(env)["id"],)).fetchall())
+    assert balances["2026-10-13"] - balances["2026-10-12"] == 3_300_000  # what the row shows coming in
+    assert "· in" not in day_row(page, "2026-10-12")
 
 
 def test_no_plan_yet_offers_no_approval(tmp_path):

@@ -1,45 +1,69 @@
 {% extends "base.html" %}
-{% from "_fields.html" import entry_fields, err with context %}
+{% from "_fields.html" import entry_fields with context %}
+{% from "_ui.html" import icon, chip, err with context %}
 {% block title %}Add{% endblock %}
 {% block main %}
-<h1>Add</h1>
-{% if message %}<p role="alert">{{ message }}</p>{% endif %}
-<article>
-  <header>
-    Type a {% if kind == "bill" %}bill{% else %}sales invoice{% endif %}
-    <small>· <a href="/add?kind={{ 'invoice' if kind == 'bill' else 'bill' }}">type a {{ 'sales invoice' if kind == 'bill' else 'bill' }} instead</a></small>
-  </header>
-  <form method="post" action="/entries" hx-post="/entries" hx-target="#main">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <input type="hidden" name="kind" value="{{ kind }}">
-    {{ err(e, "kind") }}
-    {{ entry_fields(kind, v, e) }}
-    <button type="submit">Add</button>
-  </form>
-</article>
-<article>
-  <header>Upload a photo, PDF or voice note</header>
-  <form method="post" action="/uploads" enctype="multipart/form-data" hx-post="/uploads" hx-encoding="multipart/form-data" hx-target="#main">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <input type="file" name="file" accept="image/*,application/pdf,audio/*" required>{{ err(e, "file") }}
-    <button type="submit">Upload</button>
-  </form>
-  <p class="muted">Uploads are stored encrypted. Reading them comes with a later change, so they wait for now.</p>
-</article>
+{% set owner = user.role == "owner" %}
+<div class="page-head">
+  <span class="eyebrow">{{ "Bills and invoices" if owner else "For " ~ user.email }}</span>
+  <h1>Add</h1>
+  <p class="lede">{% if owner %}Type a bill or a sales invoice, or upload one. Nothing counts in the plan until you confirm it on Needs attention.{% else %}Type a bill, or upload a photo, PDF or voice note. The owner checks everything you add before it counts.{% endif %}</p>
+</div>
+{% if message %}<div class="notice notice-good" role="status">{{ icon("check-circle", 18) }}<p>{{ message }}</p></div>{% endif %}
 
-<h2>{% if user.role == "owner" %}Submissions{% else %}Your submissions{% endif %}</h2>
-{% if submissions %}
-<table>
-  <thead><tr><th>Added</th><th>What</th><th>Status</th></tr></thead>
-  <tbody>
-  {% for s in submissions %}
-    <tr>
-      <td>{{ s.received_at[:10] }}</td>
-      <td>{% if s.kind == "typed" %}{{ s.record.get("party", "") }} {% if s.record.get("amount_paise") is integer %}{{ s.record.amount_paise | inr }}{% endif %}{% else %}{{ s.kind }}{% endif %}</td>
-      <td>{{ s.status_text }}</td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
-{% else %}<p class="muted">Nothing yet.</p>{% endif %}
+<div class="layout">
+  <div>
+    <section class="card" aria-labelledby="type-h">
+      <header><h2 id="type-h">Type a {% if kind == "bill" %}bill{% else %}sales invoice{% endif %}</h2></header>
+      <nav class="segmented" aria-label="What to type">
+        <a href="/add?kind=bill"{% if kind == "bill" %} aria-current="page"{% endif %}>Bill <span class="tag">you pay</span></a>
+        <a href="/add?kind=invoice"{% if kind != "bill" %} aria-current="page"{% endif %}>Sales invoice <span class="tag">you get paid</span></a>
+      </nav>
+      <form method="post" action="/entries" hx-post="/entries" hx-target="#main">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="kind" value="{{ kind }}">
+        {{ err(e, "kind") }}
+        {{ entry_fields(kind, v, e) }}
+        <button type="submit" class="btn-full">Add {{ "bill" if kind == "bill" else "sales invoice" }}</button>
+      </form>
+    </section>
+  </div>
+
+  <div>
+    <section class="card" aria-labelledby="upload-h">
+      <header><h2 id="upload-h">Upload a photo, PDF or voice note</h2></header>
+      <form method="post" action="/uploads" enctype="multipart/form-data" hx-post="/uploads" hx-encoding="multipart/form-data" hx-target="#main">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <label class="dropzone">
+          <span>Choose a file <span class="tag">up to 10 MB</span></span>
+          <input type="file" name="file" accept="image/*,application/pdf,audio/*" required{% if e.get("file") %} aria-invalid="true" aria-describedby="err-file"{% endif %}>
+        </label>
+        {{ err(e, "file") }}
+        <button type="submit" class="btn-full secondary outline">Upload</button>
+      </form>
+      <p class="provenance">{{ icon("lock", 14) }}<span>Stored encrypted. The assistant reads it, and {{ "you confirm" if owner else "the owner confirms" }} what it found before anything counts.</span></p>
+    </section>
+
+    <section class="card" aria-labelledby="subs-h">
+      <header><h2 id="subs-h">{% if owner %}Submissions{% else %}Your submissions{% endif %}</h2></header>
+      {% if submissions %}
+      <ul class="rows">
+        {% for s in submissions %}
+        <li>
+          <span class="name">{% if s.kind == "typed" %}{{ s.record.get("party", "") }}{% else %}{{ {"photo": "Photo", "pdf": "PDF", "voice": "Voice note"}.get(s.kind, s.kind) }}{% endif %}</span>
+          {% if s.kind == "typed" and s.record.get("amount_paise") is integer %}<span class="amt">{{ s.record.amount_paise | inr }}</span>{% endif %}
+          <span class="meta">
+            {% set st = s.candidate_status or s.document_status %}
+            {% if st == "ACCEPTED" %}{{ chip("paid", s.status_text) }}{% elif st in ("REJECTED", "INVALID") %}{{ chip("failed", s.status_text) }}{% else %}{{ chip("waiting", s.status_text) }}{% endif %}
+            · added {{ s.received_at[:10] }}
+          </span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="muted">Nothing added yet. What you add shows up here with its status.</p>
+      {% endif %}
+    </section>
+  </div>
+</div>
 {% endblock %}

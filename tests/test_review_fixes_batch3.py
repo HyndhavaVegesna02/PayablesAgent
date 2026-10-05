@@ -21,6 +21,7 @@ from tests.web_helpers import (
     add_second_business,
     approve_form,
     current_run,
+    day_row,
     login,
     make_web_env,
     plan_now,
@@ -137,7 +138,7 @@ def test_a_paid_bill_waiting_for_its_debit_shows_on_its_day(web):
     run_id, versions = approve_form(client.get("/").text)
     post(client, f"/plans/{run_id}/approve", csrf, versions)
     post(client, f"/payables/{PAPER}/mark-paid", csrf, {"version": str(version(env, PAPER))})
-    row = client.get("/").text.split("<td>Mon 12 Oct</td>")[1].split("</tr>")[0]
+    row = day_row(client.get("/").text, "2026-10-12")
     assert "Ashirwad Paper Suppliers ₹1,80,000" in row and "bank debit not linked yet" in row
 
 

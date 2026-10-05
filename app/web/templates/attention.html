@@ -1,165 +1,217 @@
 {% extends "base.html" %}
 {% from "_fields.html" import entry_fields, txn_fields with context %}
+{% from "_ui.html" import icon, chip with context %}
 {% block title %}Needs attention{% endblock %}
 {% block main %}
-<h1>Needs attention</h1>
-{% if message %}<p class="below" role="alert">{{ message }}</p>{% endif %}
-{% if not (questions or candidates or accounts or options or overrides or findings) %}<p>Nothing needs you right now.</p>{% endif %}
-
-{% if findings %}
-<h2>What the assistant found</h2>
-<p class="muted">The assistant's own words. They change nothing: only what you confirm or approve does.</p>
-{% for f in findings %}<article><p>{{ f.summary }}</p><small class="muted">case {{ f.id }}, {{ f.kind | replace("_", " ") }}</small></article>{% endfor %}
-{% endif %}
-
-{% if overrides %}
-<h2>Your choices in force</h2>
-{% for o in overrides %}
-<article>
-  <p>
-    {% if o.kind == "authorise_breach" %}<strong>{{ o.name }}</strong> is paid below the safety amount, as you authorised on {{ o.created_on | day }}, while the lowest balance stays at or above {{ o.floor_paise | inr }}.
-    {% else %}<strong>{{ o.name }}</strong> is paid within its grace days, as you chose on {{ o.created_on | day }}.{% endif %}
-  </p>
-  {% if o.shortfall_option_id and o.show_undo %}
-  <form method="post" action="/options/{{ o.shortfall_option_id }}/choose" hx-post="/options/{{ o.shortfall_option_id }}/choose" hx-target="#main">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <input type="hidden" name="undo" value="1">
-    <button type="submit" class="secondary outline">Undo</button>
-  </form>
-  {% endif %}
-</article>
-{% endfor %}
+{% set to_decide = (candidates | length) + (questions | rejectattr("kind", "equalto", "confirm_record") | list | length) + (accounts | length) + (1 if options and not (options | selectattr("chosen") | list) and not (options | selectattr("pending") | list) else 0) %}
+<div class="page-head">
+  <span class="eyebrow">{% if to_decide %}{{ to_decide }} waiting for you{% else %}All clear{% endif %}</span>
+  <h1>Needs attention</h1>
+  <p class="lede">Decisions only you can make. Nothing changes in the plan until you confirm, choose or approve.</p>
+</div>
+{% if message %}<div class="notice notice-bad" role="alert">{{ icon("alert", 18) }}<p>{{ message }}</p></div>{% endif %}
+{% if not (questions or candidates or accounts or options or overrides or findings) %}
+<div class="empty">
+  {{ icon("check-circle", 32) }}
+  <h2>Nothing needs you right now.</h2>
+  <p>When a bill, a bank alert or a question needs your decision, it appears here.</p>
+  <a role="button" class="secondary outline" href="/">Back to This week</a>
+</div>
 {% endif %}
 
 {% if options %}
-<h2>Shortfall options</h2>
-{% for o in options %}
-<article>
-  <p><strong>{{ o.label }}</strong></p>
-  <p class="muted">
-    {% if o.lowest_balance_paise is not none %}Lowest balance {{ o.lowest_balance_paise | inr }}. {% endif %}
-    {% if o.meets_rule %}Meets the safety amount.{% else %}Does not meet the safety amount.{% endif %}
-  </p>
-  {% if o.asked_note %}<p class="muted">{{ o.asked_note }}</p>{% endif %}
-  {% if o.pending %}<p><mark>{{ o.pending }}</mark></p>
-  {% elif o.chosen %}<p><mark>Chosen</mark></p>{% else %}
-  <form method="post" action="/options/{{ o.id }}/choose" hx-post="/options/{{ o.id }}/choose" hx-target="#main">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <button type="submit" class="outline">Choose this</button>
-  </form>
-  {% endif %}
-</article>
-{% endfor %}
+<section aria-labelledby="options-h">
+  <div class="section-title"><h2 id="options-h">Shortfall options</h2></div>
+  <p class="muted">The plan can't pay every bill and stay above your safety amount. Each option shows where your lowest balance would land. Choosing one replans straight away and takes you back to This week.</p>
+  <div class="options">
+    {% for o in options %}
+    <article class="card option{% if o.chosen %} is-chosen{% endif %}">
+      <p><strong>{{ o.label }}</strong></p>
+      <dl class="facts">
+        {% if o.lowest_balance_paise is not none %}<div><dt>Lowest balance</dt><dd><strong class="amt">{{ o.lowest_balance_paise | inr }}</strong></dd></div>{% endif %}
+        <div><dt>Safety amount</dt><dd>{% if o.meets_rule %}{{ chip("covered", "Meets the safety amount") }}{% else %}{{ chip("below", "Does not meet the safety amount") }}{% endif %}</dd></div>
+      </dl>
+      {% if o.asked_note %}<p class="muted small">{{ o.asked_note }}</p>{% endif %}
+      <div class="push">
+        {% if o.pending %}<p>{{ chip("approved", "Chosen") }} <span class="small">{{ o.pending }}</span></p>
+        {% elif o.chosen %}<p>{{ chip("paid", "Chosen") }}</p>{% else %}
+        <form method="post" action="/options/{{ o.id }}/choose" hx-post="/options/{{ o.id }}/choose" hx-target="#main">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button type="submit" class="btn-full{% if not o.meets_rule %} secondary{% endif %} outline">Choose this</button>
+        </form>
+        {% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
 {% endif %}
 
 {% if candidates %}
-<h2>Entries to confirm</h2>
-{% for c in candidates %}
-{% set e = errors.get(c.id, {}) %}
-<article>
-  <header>
-    {% if c.record_type == "payable" %}Bill{% elif c.record_type == "receivable" %}Sales invoice{% elif c.record_type == "statement" %}Bank statement{% else %}Bank email{% endif %}
-    <small class="muted">entry {{ c.id }}, {{ c.document_kind }}</small>
-  </header>
-  {% set failing = [] %}{% for name, result in c.checks.items() %}{% if result.startswith("failed") %}{% set _ = failing.append(name ~ ": " ~ result[8:]) %}{% endif %}{% endfor %}
-  {% if failing %}<p class="below">Checks that failed: {{ failing | join("; ") }}</p>{% endif %}
-  {% if c.payee_text %}<p><strong>Bank details on this bill:</strong> {{ c.payee_text }}</p>{% endif %}
-  {% if c.transcript %}<blockquote><small class="muted">What was said:</small><br>{{ c.transcript }}</blockquote>{% endif %}
-  {% if c.record_type == "statement" %}<p class="muted">A statement that could not be read reliably: nothing from it was written.</p>{% else %}
-  <form method="post" action="/candidates/{{ c.id }}/confirm" hx-post="/candidates/{{ c.id }}/confirm" hx-target="#main">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    {% if c.record_type == "txn" %}{{ txn_fields(shown[c.id], e, all_accounts) }}
-    {% else %}{{ entry_fields("bill" if c.record_type == "payable" else "invoice", shown[c.id], e) }}{% endif %}
-    <button type="submit">Confirm</button>
-  </form>
-  {% endif %}
-  <form method="post" action="/candidates/{{ c.id }}/reject" hx-post="/candidates/{{ c.id }}/reject" hx-target="#main">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <button type="submit" class="secondary outline">Reject</button>
-  </form>
-</article>
-{% endfor %}
+<section aria-labelledby="entries-h">
+  <div class="section-title"><h2 id="entries-h">Entries to confirm</h2></div>
+  <p class="muted">Read from your documents and bank emails. Check each one against the original, fix anything wrong, then confirm.</p>
+  {% for c in candidates %}
+  {% set e = errors.get(c.id, {}) %}
+  <article class="card">
+    <header>
+      {{ icon("bank" if c.record_type in ("txn", "statement") else "doc", 18) }}
+      <h3>{% if c.record_type == "payable" %}Bill{% elif c.record_type == "receivable" %}Sales invoice{% elif c.record_type == "statement" %}Bank statement{% else %}Bank email{% endif %}</h3>
+      <span class="tag aside">entry {{ c.id }}, {{ c.document_kind }}</span>
+    </header>
+    {% set failing = [] %}{% for name, result in c.checks.items() %}{% if result.startswith("failed") %}{% set _ = failing.append(name ~ ": " ~ result[8:]) %}{% endif %}{% endfor %}
+    {% if failing %}<div class="notice notice-bad">{{ icon("x", 18) }}<p><strong>Checks that failed:</strong> {{ failing | join("; ") }}</p></div>{% endif %}
+    {% if c.payee_text %}<div class="notice notice-warn">{{ icon("bank", 18) }}<p><strong>Bank details on this bill:</strong> {{ c.payee_text }}</p></div>{% endif %}
+    {% if c.transcript %}<div class="card assistant"><span class="who">{{ icon("note", 14) }}Transcribed by the assistant</span><blockquote><small class="muted">What was said:</small><br>{{ c.transcript }}</blockquote></div>{% endif %}
+    {% if c.record_type == "statement" %}<p class="muted">A statement that could not be read reliably: nothing from it was written.</p>{% else %}
+    <form method="post" action="/candidates/{{ c.id }}/confirm" hx-post="/candidates/{{ c.id }}/confirm" hx-target="#main">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      {% if c.record_type == "txn" %}{{ txn_fields(shown[c.id], e, all_accounts) }}
+      {% else %}{{ entry_fields("bill" if c.record_type == "payable" else "invoice", shown[c.id], e) }}{% endif %}
+      <button type="submit" class="btn-full">Confirm</button>
+    </form>
+    {% endif %}
+    <form method="post" action="/candidates/{{ c.id }}/reject" hx-post="/candidates/{{ c.id }}/reject" hx-target="#main" class="actions">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="secondary outline">Reject</button>
+      <span class="muted small">Rejecting writes nothing to your books.</span>
+    </form>
+  </article>
+  {% endfor %}
+</section>
 {% endif %}
 
 {% if questions %}
-<h2>Questions</h2>
-{% for q in questions %}
-<article>
-  <p>{{ q.body_text }}</p>
-  {% if q.kind == "confirm_record" %}<p class="muted">Confirm or reject the entry above.</p>
-  {% elif q.kind == "ca_reminder" and q.choices.get("tax_obligation_id") %}
-  <form method="post" action="/questions/{{ q.id }}/answer" hx-post="/questions/{{ q.id }}/answer" hx-target="#main">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <label>Amount (₹) <input name="amount" required></label>
-    <label><input type="radio" name="amount_status" value="CONFIRMED" checked> Confirmed by the CA</label>
-    <label><input type="radio" name="amount_status" value="ESTIMATED"> An estimate</label>
-    <button type="submit">Add to the plan</button>
-  </form>
-  {% elif q.kind == "agent_question" %}
-  <form method="post" action="/questions/{{ q.id }}/answer" hx-post="/questions/{{ q.id }}/answer" hx-target="#main">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    {% for c in q.choices.get("choices", []) %}<button type="submit" name="choice" value="{{ c }}" class="outline">{{ c }}</button> {% endfor %}
-    {% if not q.choices.get("choices") %}<button type="submit" name="choice" value="" class="secondary outline">Close this case</button>{% endif %}
-  </form>
-  {% elif q.kind == "unlock_pdf" and q.choices.get("document_id") %}
-  <form method="post" action="/documents/{{ q.choices.document_id }}/unlock" hx-post="/documents/{{ q.choices.document_id }}/unlock" hx-target="#main">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <label>PDF password <input type="password" name="password" autocomplete="off" required></label>
-    <button type="submit">Open the PDF</button>
-  </form>
-  {% elif q.kind == "approve_bank_change" and q.choices.get("party_id") %}
-  <form method="post" action="/parties/{{ q.choices.party_id }}/bank-change" hx-post="/parties/{{ q.choices.party_id }}/bank-change" hx-target="#main">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <input type="hidden" name="candidate_id" value="{{ q.choices.candidate_id }}">
-    <button type="submit" name="decision" value="approve">Approve the new details</button>
-    <button type="submit" name="decision" value="reject" class="secondary outline">Reject: keep the old details</button>
-  </form>
-  {% elif q.kind == "confirm_balance" %}
-  <form method="post" action="/questions/{{ q.id }}/answer" hx-post="/questions/{{ q.id }}/answer" hx-target="#main">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <label>Actual balance (₹) <input name="amount" required></label>
-    <button type="submit">Confirm balance</button>
-  </form>
-  {% elif q.kind == "explain_txn" and q.get("debit") and (q.debit.status != "UNMATCHED" or q.held_by) %}
-  <form method="post" action="/questions/{{ q.id }}/answer" hx-post="/questions/{{ q.id }}/answer" hx-target="#main">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <p class="muted">This debit has been settled another way{% if q.held_by %} (it already pays a bill){% endif %}.</p>
-    <button type="submit" name="decision" value="settled" class="secondary outline">Close this question</button>
-  </form>
-  {% elif q.kind == "explain_txn" and q.get("debit") %}
-  <form method="post" action="/questions/{{ q.id }}/answer" hx-post="/questions/{{ q.id }}/answer" hx-target="#main">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <fieldset>
-      <legend>This debit paid</legend>
-      {% for b in q.bills %}
-      <label>
-        <input type="radio" name="payable_id" value="{{ b.id }}">
-        {{ b.name }} {{ b.amount_paise | inr }}
-        <small class="muted">({{ b.status | replace("_", " ") | lower }}{% if b.planned_date %}, planned {{ b.planned_date | day }}{% endif %}{% if b.difference_paise %}; differs by {{ (b.difference_paise if b.difference_paise > 0 else -b.difference_paise) | inr }}{% endif %})</small>
-        <input type="hidden" name="version_{{ b.id }}" value="{{ b.version }}">
-      </label>
-      {% else %}<p class="muted">No open bill is waiting for a payment.</p>{% endfor %}
-    </fieldset>
-    {% if q.debit.counterparty %}
-    <label><input type="checkbox" name="alias" value="1"> Also treat "{{ q.debit.counterparty }}" as this vendor's name in future alerts</label>
-    {% endif %}
-    {% if q.bills %}<button type="submit" name="decision" value="paid">This paid the chosen bill</button>{% endif %}
-    <button type="submit" name="decision" value="not_a_bill" class="secondary outline">Not a bill payment</button>
-  </form>
-  {% else %}<p class="muted">Answering this comes with a later change.</p>{% endif %}
-</article>
-{% endfor %}
+<section aria-labelledby="questions-h">
+  <div class="section-title"><h2 id="questions-h">Questions</h2></div>
+  {% for q in questions %}
+  {% set ai = q.kind == "agent_question" %}
+  <article class="card{% if ai %} assistant{% endif %}">
+    {% if ai %}<span class="who">{{ icon("note", 14) }}The assistant asks</span>{% endif %}
+    <p class="{{ 'said' if ai else '' }}">{{ q.body_text }}</p>
+    {% if q.kind == "confirm_record" %}<p class="muted">Confirm or reject the entry above.</p>
+    {% elif q.kind == "ca_reminder" and q.choices.get("tax_obligation_id") %}
+    <form method="post" action="/questions/{{ q.id }}/answer" hx-post="/questions/{{ q.id }}/answer" hx-target="#main">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>Amount (₹) <input name="amount" inputmode="decimal" required></label>
+      <fieldset>
+        <legend>Where the amount comes from</legend>
+        <label><input type="radio" name="amount_status" value="CONFIRMED" checked> Confirmed by the CA</label>
+        <label><input type="radio" name="amount_status" value="ESTIMATED"> An estimate</label>
+      </fieldset>
+      <button type="submit">Add to the plan</button>
+    </form>
+    {% elif q.kind == "agent_question" %}
+    <form method="post" action="/questions/{{ q.id }}/answer" hx-post="/questions/{{ q.id }}/answer" hx-target="#main" class="actions">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      {% for c in q.choices.get("choices", []) %}<button type="submit" name="choice" value="{{ c }}" class="outline">{{ c }}</button> {% endfor %}
+      {% if not q.choices.get("choices") %}<button type="submit" name="choice" value="" class="secondary outline">Close this case</button>{% endif %}
+    </form>
+    {% elif q.kind == "unlock_pdf" and q.choices.get("document_id") %}
+    <form method="post" action="/documents/{{ q.choices.document_id }}/unlock" hx-post="/documents/{{ q.choices.document_id }}/unlock" hx-target="#main">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>PDF password <input type="password" name="password" autocomplete="off" required></label>
+      <small class="hint">Used once to open the file, then forgotten. It is never stored.</small>
+      <button type="submit">{{ icon("lock", 16) }} Open the PDF</button>
+    </form>
+    {% elif q.kind == "approve_bank_change" and q.choices.get("party_id") %}
+    <div class="notice notice-warn">{{ icon("alert", 18) }}<p>Call the vendor on a number you already have before approving. Changed bank details are a common fraud.</p></div>
+    <form method="post" action="/parties/{{ q.choices.party_id }}/bank-change" hx-post="/parties/{{ q.choices.party_id }}/bank-change" hx-target="#main" class="actions">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="candidate_id" value="{{ q.choices.candidate_id }}">
+      <button type="submit" name="decision" value="approve">Approve the new details</button>
+      <button type="submit" name="decision" value="reject" class="secondary outline">Reject: keep the old details</button>
+    </form>
+    {% elif q.kind == "confirm_balance" %}
+    <form method="post" action="/questions/{{ q.id }}/answer" hx-post="/questions/{{ q.id }}/answer" hx-target="#main">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>Actual balance (₹) <input name="amount" inputmode="decimal" required></label>
+      <small class="hint">As your bank app shows it right now.</small>
+      <button type="submit">Confirm balance</button>
+    </form>
+    {% elif q.kind == "explain_txn" and q.get("debit") and (q.debit.status != "UNMATCHED" or q.held_by) %}
+    <form method="post" action="/questions/{{ q.id }}/answer" hx-post="/questions/{{ q.id }}/answer" hx-target="#main">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <p class="muted">This debit has been settled another way{% if q.held_by %} (it already pays a bill){% endif %}.</p>
+      <button type="submit" name="decision" value="settled" class="secondary outline">Close this question</button>
+    </form>
+    {% elif q.kind == "explain_txn" and q.get("debit") %}
+    <form method="post" action="/questions/{{ q.id }}/answer" hx-post="/questions/{{ q.id }}/answer" hx-target="#main">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <fieldset>
+        <legend>This debit paid</legend>
+        {% for b in q.bills %}
+        <label>
+          <input type="radio" name="payable_id" value="{{ b.id }}">
+          <span>{{ b.name }} {{ b.amount_paise | inr }}
+          <small class="muted">({{ b.status | replace("_", " ") | lower }}{% if b.planned_date %}, planned {{ b.planned_date | day }}{% endif %}{% if b.difference_paise %}; differs by {{ (b.difference_paise if b.difference_paise > 0 else -b.difference_paise) | inr }}{% endif %})</small></span>
+          <input type="hidden" name="version_{{ b.id }}" value="{{ b.version }}">
+        </label>
+        {% else %}<p class="muted">No open bill is waiting for a payment.</p>{% endfor %}
+      </fieldset>
+      {% if q.debit.counterparty %}
+      <label><input type="checkbox" name="alias" value="1"> Also treat "{{ q.debit.counterparty }}" as this vendor's name in future alerts</label>
+      {% endif %}
+      <div class="actions">
+        {% if q.bills %}<button type="submit" name="decision" value="paid">This paid the chosen bill</button>{% endif %}
+        <button type="submit" name="decision" value="not_a_bill" class="secondary outline">Not a bill payment</button>
+      </div>
+    </form>
+    {% else %}<p class="muted">Answering this comes with a later change.</p>{% endif %}
+  </article>
+  {% endfor %}
+</section>
 {% endif %}
 
 {% if accounts %}
-<h2>Balance mismatches</h2>
-{% for a in accounts %}
-<article>
-  <p>{{ a.bank_name }} {{ a.account_mask }}: the bank shows {% if a.reported_balance_paise is not none %}{{ a.reported_balance_paise | inr }}{% else %}no balance{% endif %};
-     I calculate {{ a.calculated_paise | inr }}.</p>
-  {% if a.drift_status == "ASK_OWNER" %}<p><a href="/accounts">Confirm the real balance</a></p>
-  {% else %}<p class="muted">Checking: the missing transactions may still arrive.</p>{% endif %}
-</article>
-{% endfor %}
+<section aria-labelledby="mismatch-h">
+  <div class="section-title"><h2 id="mismatch-h">Balance mismatches</h2></div>
+  {% for a in accounts %}
+  <article class="card">
+    <header><h3>{{ icon("bank", 18) }} {{ a.bank_name }} {{ a.account_mask }}</h3><span class="aside">{% if a.drift_status == "ASK_OWNER" %}{{ chip("mismatch", "Mismatch") }}{% else %}{{ chip("waiting", "Checking") }}{% endif %}</span></header>
+    <dl class="kv">
+      <dt>The bank's last reported balance{% if a.reported_at %} <span class="tag">{{ a.reported_at | when }}</span>{% endif %}</dt><dd>{% if a.reported_balance_paise is not none %}{{ a.reported_balance_paise | inr }}{% else %}no balance{% endif %}</dd>
+      <dt>We calculate now</dt><dd>{{ a.calculated_paise | inr }}</dd>
+    </dl>
+    {% if a.drift_status == "ASK_OWNER" %}<div class="actions"><a role="button" href="/accounts">Confirm the real balance</a></div>
+    {% else %}<p class="provenance">{{ icon("clock", 14) }}<span>Checking: the missing transactions may still arrive.</span></p>{% endif %}
+  </article>
+  {% endfor %}
+</section>
+{% endif %}
+
+{% if overrides %}
+<section aria-labelledby="overrides-h">
+  <div class="section-title"><h2 id="overrides-h">Your choices in force</h2></div>
+  {% for o in overrides %}
+  <article class="card">
+    <p>
+      {% if o.kind == "authorise_breach" %}<strong>{{ o.name }}</strong> is paid below the safety amount, as you authorised on {{ o.created_on | day }}, while the lowest balance stays at or above {{ o.floor_paise | inr }}.
+      {% else %}<strong>{{ o.name }}</strong> is paid within its grace days, as you chose on {{ o.created_on | day }}.{% endif %}
+    </p>
+    {% if o.shortfall_option_id and o.show_undo %}
+    <form method="post" action="/options/{{ o.shortfall_option_id }}/choose" hx-post="/options/{{ o.shortfall_option_id }}/choose" hx-target="#main">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="undo" value="1">
+      <button type="submit" class="secondary outline">Undo</button>
+    </form>
+    {% endif %}
+  </article>
+  {% endfor %}
+</section>
+{% endif %}
+
+{% if findings %}
+<section aria-labelledby="findings-h">
+  <div class="section-title"><h2 id="findings-h">What the assistant found</h2></div>
+  <p class="muted">The assistant's own words. They change nothing: only what you confirm or approve does.</p>
+  {% for f in findings %}
+  <article class="card assistant">
+    <span class="who">{{ icon("note", 14) }}Assistant's words</span>
+    <p class="said">{{ f.summary }}</p>
+    <small class="muted">case {{ f.id }}, {{ f.kind | replace("_", " ") }}</small>
+  </article>
+  {% endfor %}
+</section>
 {% endif %}
 {% endblock %}

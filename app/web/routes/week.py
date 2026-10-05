@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import Response
 
 from app.domain.states import StaleVersion, VersionRequired
-from app.web import actions, repo
+from app.web import actions, present, repo
 from app.web.app import render
 from app.web.auth import User, db, owner_only
 from app.web.routes._common import done, form_values, int_or_none
@@ -19,11 +19,19 @@ router = APIRouter()
 
 def week_page(request: Request, conn: sqlite3.Connection, user: User, *, message: str | None = None,
               status: int = 200) -> Response:
+    view = repo.plan_view(conn, user.business_id)
+    today = request.app.state.clock.today()
     return render(request, "week.html", {
-        "view": repo.plan_view(conn, user.business_id),
+        "view": view,
         "business": repo.business(conn, user.business_id),
         "awaiting": repo.awaiting_payment(conn, user.business_id),
         "message": message,
+        "chart": present.chart(view, today) if view else None,
+        "money_in": present.money_in(conn, user.business_id, view) if view else {},
+        "below_span": present.below_span(view) if view else None,
+        "approve_total_paise": present.total_paise(view.to_approve) if view else 0,
+        # as Needs attention shows them: dated, so a choice waiting on a customer reads as waiting
+        "options": repo.options(conn, user.business_id, view.run["id"], today=today) if view else [],
     }, status=status)
 
 

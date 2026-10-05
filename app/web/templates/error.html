@@ -1,5 +1,11 @@
 {% extends "base.html" %}
+{% from "_ui.html" import icon with context %}
 {% block title %}Not available{% endblock %}
 {% block main %}
-<article><p role="alert">{{ message }}</p><p><a href="/">Back</a></p></article>
+<div class="empty error-state">
+  {{ icon("alert", 32) }}
+  <h1>We couldn't do that</h1>
+  <p role="alert">{{ message }}</p>
+  <a role="button" class="secondary outline" href="{{ '/add' if user and user.role != 'owner' else '/' }}">{% if user and user.role != "owner" %}Back to Add{% else %}Back to This week{% endif %}</a>
+</div>
 {% endblock %}

@@ -34,8 +34,25 @@ def _decision(side: dict[str, Any]) -> str:
     return f"{side['decision']} on {format_day(side['pay_on'])}" if side.get("pay_on") else side["decision"]
 
 
-def change_lines(d: PlanDiff, names: dict[int, str]) -> list[str]:
-    """One sentence per change, every figure formatted from the diff."""
+# The planner's decisions in the owner's words, as the note says them now and before.
+_NOW = {"PAY": "paid on {on}", "WAIT": "waits", "ESCALATE": "needs your decision"}
+_WAS = {"PAY": "to be paid on {on}", "WAIT": "waiting", "ESCALATE": "waiting for your decision"}
+
+
+def _said(side: dict[str, Any], words: dict[str, str]) -> str:
+    phrase = words.get(side["decision"])
+    if phrase is None or ("{on}" in phrase and not side.get("pay_on")):
+        return _decision(side)
+    return phrase.format(on=format_day(side["pay_on"]) if side.get("pay_on") else "")
+
+
+def change_lines(d: PlanDiff, names: dict[int, str], *, owner_words: bool = False) -> list[str]:
+    """One sentence per change, every figure formatted from the diff. The
+    model is given the planner's own terms (PAY, WAIT, ESCALATE); the note the
+    owner reads when there is no model note (owner_words) says them in plain
+    words. Amounts and dates are the same either way."""
+    now = (lambda side: _said(side, _NOW)) if owner_words else _decision
+    was = (lambda side: _said(side, _WAS)) if owner_words else _decision
     out = []
     for c in d.changes:
         b, a = c.before or {}, c.after or {}
@@ -49,13 +66,14 @@ def change_lines(d: PlanDiff, names: dict[int, str]) -> list[str]:
             out.append("The plan now stays above the safety amount." if a["valid"]
                        else "The plan now goes below the safety amount.")
         elif c.kind == "line_added":
-            out.append(f"{name} {format_inr(a['amount_paise'])}: {_decision(a)} (new in the plan).")
+            out.append(f"{name} {format_inr(a['amount_paise'])}: {now(a)} (new in the plan).")
         elif c.kind == "line_removed":
-            out.append(f"{name}: no longer in the plan (was {_decision(b)}).")
+            out.append(f"{name}: no longer in the plan (was {was(b)}).")
         else:
             amount = (f" now {format_inr(a['amount_paise'])} (was {format_inr(b['amount_paise'])})"
                       if a["amount_paise"] != b["amount_paise"] else "")
-            out.append(f"{name}{amount}: {_decision(a)} (was {_decision(b)}).")
+            lead = "" if amount or not owner_words else "now "
+            out.append(f"{name}{amount}: {lead}{now(a)} (was {was(b)}).")
     return out
 
 
@@ -76,7 +94,8 @@ def explain_plan(conn: sqlite3.Connection, run_id: int, previous_run_id: int, *,
         tracer.step(input_ref=input_ref, tool="explain_plan", result=f"no changes since plan_run {previous_run_id}")
         return None
     (business_id,) = conn.execute("SELECT business_id FROM plan_run WHERE id = ?", (run_id,)).fetchone()
-    lines = change_lines(d, bill_names(conn, business_id))
+    names = bill_names(conn, business_id)
+    lines = change_lines(d, names)
     text, source = None, "template"
     if backend is not None:
         try:
@@ -94,7 +113,7 @@ def explain_plan(conn: sqlite3.Connection, run_id: int, previous_run_id: int, *,
             if verdict == PASSED:
                 text, source = summary, "gemini"
     if text is None:
-        text = template_summary(lines)
+        text = template_summary(change_lines(d, names, owner_words=True))
     conn.execute("UPDATE plan_run SET summary_text = ?, summary_source = ? WHERE id = ?", (text, source, run_id))
     tracer.step(input_ref=input_ref, tool="explain_plan", result=f"summary from {source}")
     return source

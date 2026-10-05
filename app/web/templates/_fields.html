@@ -1,30 +1,30 @@
 {# Form fields shared by Add and Needs attention. `v` holds the values to show,
    `e` the field errors. Every value is escaped by autoescape. #}
-{% macro err(e, name) %}{% if e.get(name) %}<small class="below" id="err-{{ name }}">{{ e[name] }}</small>{% endif %}{% endmacro %}
+{% from "_ui.html" import err, inv %}
 
 {% macro entry_fields(kind, v, e) %}
   <label>{% if kind == "bill" %}From (vendor){% else %}To (customer){% endif %}
-    <input name="party" value="{{ v.get('party', '') }}" required>{{ err(e, "party") }}</label>
+    <input name="party" value="{{ v.get('party', '') }}" autocomplete="off" required{{ inv(e, "party") }}>{{ err(e, "party") }}</label>
   <div class="grid">
-    <label>Invoice number <input name="invoice_number" value="{{ v.get('invoice_number') or '' }}"></label>
-    <label>Invoice date <input type="date" name="invoice_date" value="{{ v.get('invoice_date') or '' }}">{{ err(e, "invoice_date") }}</label>
+    <label>Amount (₹) <input name="amount" inputmode="decimal" placeholder="1,20,000" value="{{ v.get('amount', '') }}" required{{ inv(e, "amount") }}>{{ err(e, "amount") }}</label>
+    <label>Due date <input type="date" name="due_date" value="{{ v.get('due_date') or '' }}"{% if kind == "bill" %} required{% endif %}{{ inv(e, "due_date") }}>{{ err(e, "due_date") }}</label>
   </div>
   <div class="grid">
-    <label>Amount (₹) <input name="amount" inputmode="decimal" value="{{ v.get('amount', '') }}" required>{{ err(e, "amount") }}</label>
-    <label>Due date <input type="date" name="due_date" value="{{ v.get('due_date') or '' }}"{% if kind == "bill" %} required{% endif %}>{{ err(e, "due_date") }}</label>
+    <label>Invoice number <span class="tag">optional</span> <input name="invoice_number" value="{{ v.get('invoice_number') or '' }}" autocomplete="off"></label>
+    <label>Invoice date <span class="tag">optional</span> <input type="date" name="invoice_date" value="{{ v.get('invoice_date') or '' }}"{{ inv(e, "invoice_date") }}>{{ err(e, "invoice_date") }}</label>
   </div>
   {% if kind == "bill" %}
   <label>Priority
-    <select name="priority">
-      {% for p in ["statutory", "critical", "normal", "flexible"] %}
-      <option value="{{ p }}"{% if v.get('priority', 'normal') == p %} selected{% endif %}>{{ p }}</option>
+    <select name="priority"{{ inv(e, "priority") }}>
+      {% for p, text in [("statutory", "Statutory: tax, PF and other dues by law"), ("critical", "Critical: must be paid on time"), ("normal", "Normal"), ("flexible", "Flexible: can wait if cash is short")] %}
+      <option value="{{ p }}"{% if v.get('priority', 'normal') == p %} selected{% endif %}>{{ text }}</option>
       {% endfor %}
     </select>{{ err(e, "priority") }}</label>
   {% else %}
   <div class="grid">
-    <label>Expected payment date <input type="date" name="expected_date" value="{{ v.get('expected_date') or '' }}">{{ err(e, "expected_date") }}</label>
+    <label>Expected payment date <input type="date" name="expected_date" value="{{ v.get('expected_date') or '' }}"{{ inv(e, "expected_date") }}>{{ err(e, "expected_date") }}</label>
     <label>How sure
-      <select name="confidence">
+      <select name="confidence"{{ inv(e, "confidence") }}>
         {% for c, text in [("COMMITTED", "Committed: counted in the plan"), ("EXPECTED", "Expected: not counted yet"), ("UNKNOWN", "Unknown")] %}
         <option value="{{ c }}"{% if v.get('confidence', 'EXPECTED') == c %} selected{% endif %}>{{ text }}</option>
         {% endfor %}
@@ -37,18 +37,18 @@
 {% macro txn_fields(v, e, accounts) %}
   <div class="grid">
     <label>Account
-      <select name="account_id">
+      <select name="account_id"{{ inv(e, "account_id") }}>
         {% for a in accounts %}<option value="{{ a.id }}"{% if (v.get('account_id') | string) == (a.id | string) %} selected{% endif %}>{{ a.bank_name }} {{ a.account_mask }}</option>{% endfor %}
       </select>{{ err(e, "account_id") }}</label>
     <label>Money
-      <select name="direction">
-        <option value="credit"{% if v.get('direction') == 'credit' %} selected{% endif %}>in (credit)</option>
-        <option value="debit"{% if v.get('direction') == 'debit' %} selected{% endif %}>out (debit)</option>
+      <select name="direction"{{ inv(e, "direction") }}>
+        <option value="credit"{% if v.get('direction') == 'credit' %} selected{% endif %}>In (credit)</option>
+        <option value="debit"{% if v.get('direction') == 'debit' %} selected{% endif %}>Out (debit)</option>
       </select>{{ err(e, "direction") }}</label>
   </div>
   <div class="grid">
-    <label>Amount (₹) <input name="amount" value="{{ v.get('amount', '') }}" required>{{ err(e, "amount") }}</label>
-    <label>Date <input type="date" name="txn_date" value="{{ v.get('txn_date') or '' }}" required>{{ err(e, "txn_date") }}</label>
+    <label>Amount (₹) <input name="amount" inputmode="decimal" value="{{ v.get('amount', '') }}" required{{ inv(e, "amount") }}>{{ err(e, "amount") }}</label>
+    <label>Date <input type="date" name="txn_date" value="{{ v.get('txn_date') or '' }}" required{{ inv(e, "txn_date") }}>{{ err(e, "txn_date") }}</label>
   </div>
   <div class="grid">
     <label>From or to <input name="counterparty" value="{{ v.get('counterparty') or '' }}"></label>
