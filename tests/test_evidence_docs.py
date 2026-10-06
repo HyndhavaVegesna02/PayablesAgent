@@ -200,7 +200,9 @@ def dead_links(page: Path) -> list[str]:
     return dead
 
 
-MARKDOWN = [ROOT / "README.md", *sorted((ROOT / "docs").rglob("*.md"))]
+# A superseded snapshot of a generated page keeps the links it had where it was generated; its README says so.
+MARKDOWN = [ROOT / "README.md", *sorted(p for p in (ROOT / "docs").rglob("*.md")
+                                        if not ("superseded" in p.parts and p.name == "report.md"))]
 
 
 @pytest.mark.parametrize("page", MARKDOWN, ids=lambda p: p.relative_to(ROOT).as_posix())

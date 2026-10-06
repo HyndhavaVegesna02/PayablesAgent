@@ -1,0 +1,1198 @@
+{
+  "meta": {
+    "kind": "ablation-combined",
+    "label": "ablation-v2",
+    "mode": "live",
+    "model": "gemini-3.8-flash",
+    "folder": "2-harness-ablation/live",
+    "plan": {
+      "scenarios": [
+        "01-debit-alert-for-a-planned-payment",
+        "02-password-protected-statement",
+        "03-handwritten-bill-photo",
+        "04-hinglish-voice-note",
+        "05-same-invoice-by-email-and-photo",
+        "06-payment-returned-by-the-bank",
+        "07-missed-alert-causes-drift",
+        "08-drift-with-no-explanation",
+        "09-vendor-email-changes-bank-details",
+        "10-hidden-instruction-in-a-vendor-email",
+        "11-shortfall-week"
+      ]
+    },
+    "sources": [
+      {
+        "report": "raw-runs/2026-10-04-live-ablation-v2-full",
+        "mode": "live",
+        "model": "gemini-3.8-flash",
+        "prompt_version": "2026-10-04.2",
+        "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
+        "variant": null,
+        "commit": "c4cf5f2",
+        "date": "2026-10-04T21:00:53+05:30",
+        "status": "ABORTED",
+        "stopped_because": "cost cap reached: 700642 micro-USD spent, and the next call could cost 50316 (cap 750000)",
+        "runs_per_scenario": 3,
+        "harnesses": [
+          "full"
+        ],
+        "stopped": "cost cap reached: 700642 micro-USD spent, and the next call could cost 50316 (cap 750000)",
+        "runs_used": 30,
+        "calls": 225,
+        "micro_usd": 700642
+      },
+      {
+        "report": "raw-runs/2026-10-04-live-ablation-v2-full-11",
+        "mode": "live",
+        "model": "gemini-3.8-flash",
+        "prompt_version": "2026-10-04.2",
+        "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
+        "variant": null,
+        "commit": "c4cf5f2",
+        "date": "2026-10-04T22:21:17+05:30",
+        "status": "COMPLETE",
+        "stopped_because": null,
+        "runs_per_scenario": 2,
+        "harnesses": [
+          "full"
+        ],
+        "stopped": null,
+        "runs_used": 2,
+        "calls": 6,
+        "micro_usd": 6169
+      },
+      {
+        "report": "raw-runs/2026-10-04-live-ablation-v2-no_planner",
+        "mode": "live",
+        "model": "gemini-3.8-flash",
+        "prompt_version": "2026-10-04.2",
+        "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
+        "variant": null,
+        "commit": "154293e",
+        "date": "2026-10-04T23:35:13+05:30",
+        "status": "ABORTED",
+        "stopped_because": "cost cap reached: 202676 micro-USD spent, and the next call could cost 131211 (cap 280000)",
+        "runs_per_scenario": 1,
+        "harnesses": [
+          "no_planner"
+        ],
+        "stopped": "cost cap reached: 202676 micro-USD spent, and the next call could cost 131211 (cap 280000)",
+        "runs_used": 1,
+        "calls": 10,
+        "micro_usd": 202676
+      },
+      {
+        "report": "raw-runs/2026-10-04-live-ablation-v2-no_rule_checks",
+        "mode": "live",
+        "model": "gemini-3.8-flash",
+        "prompt_version": "2026-10-04.2",
+        "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
+        "variant": null,
+        "commit": "154293e",
+        "date": "2026-10-04T23:38:41+05:30",
+        "status": "COMPLETE",
+        "stopped_because": null,
+        "runs_per_scenario": 1,
+        "harnesses": [
+          "no_rule_checks"
+        ],
+        "stopped": null,
+        "runs_used": 11,
+        "calls": 75,
+        "micro_usd": 198374
+      },
+      {
+        "report": "raw-runs/2026-10-04-live-ablation-v2-no_escalation",
+        "mode": "live",
+        "model": "gemini-3.8-flash",
+        "prompt_version": "2026-10-04.2",
+        "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
+        "variant": null,
+        "commit": "154293e",
+        "date": "2026-10-04T23:43:33+05:30",
+        "status": "COMPLETE",
+        "stopped_because": null,
+        "runs_per_scenario": 1,
+        "harnesses": [
+          "no_escalation"
+        ],
+        "stopped": null,
+        "runs_used": 11,
+        "calls": 79,
+        "micro_usd": 221386
+      },
+      {
+        "report": "raw-runs/2026-10-04-live-ablation-v2-no_drift_rule",
+        "mode": "live",
+        "model": "gemini-3.8-flash",
+        "prompt_version": "2026-10-04.2",
+        "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
+        "variant": null,
+        "commit": "154293e",
+        "date": "2026-10-04T23:48:41+05:30",
+        "status": "ABORTED",
+        "stopped_because": "spend cap: Google refused the call (429) and waiting can't help: Your project has exceeded its monthly spending cap. Please go to AI Studio at https://ai.studio/spend to manage your project spend cap. Learn more at https://ai.google.dev/gemini-api/docs/billing#proj",
+        "runs_per_scenario": 1,
+        "harnesses": [
+          "no_drift_rule"
+        ],
+        "stopped": "spend cap: Google refused the call (429) and waiting can't help: Your project has exceeded its monthly spending cap. Please go to AI Studio at https://ai.studio/spend to manage your project spend cap. Learn more at https://ai.google.dev/gemini-api/docs/billing#proj",
+        "runs_used": 1,
+        "calls": 12,
+        "micro_usd": 37224
+      },
+      {
+        "report": "raw-runs/2026-10-04-live-ablation-v2-no_evidence_gate",
+        "mode": "live",
+        "model": "gemini-3.8-flash",
+        "prompt_version": "2026-10-04.2",
+        "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
+        "variant": null,
+        "commit": "154293e",
+        "date": "2026-10-04T23:49:34+05:30",
+        "status": "ABORTED",
+        "stopped_because": "spend cap: Google refused the call (429) and waiting can't help: Your project has exceeded its monthly spending cap. Please go to AI Studio at https://ai.studio/spend to manage your project spend cap. Learn more at https://ai.google.dev/gemini-api/docs/billing#proj",
+        "runs_per_scenario": 1,
+        "harnesses": [
+          "no_evidence_gate"
+        ],
+        "stopped": "spend cap: Google refused the call (429) and waiting can't help: Your project has exceeded its monthly spending cap. Please go to AI Studio at https://ai.studio/spend to manage your project spend cap. Learn more at https://ai.google.dev/gemini-api/docs/billing#proj",
+        "runs_used": 0,
+        "calls": 1,
+        "micro_usd": 0
+      },
+      {
+        "report": "raw-runs/2026-10-04-live-ablation-v2-all_tools",
+        "mode": "live",
+        "model": "gemini-3.8-flash",
+        "prompt_version": "2026-10-04.2",
+        "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
+        "variant": null,
+        "commit": "154293e",
+        "date": "2026-10-04T23:49:36+05:30",
+        "status": "ABORTED",
+        "stopped_because": "spend cap: Google refused the call (429) and waiting can't help: Your project has exceeded its monthly spending cap. Please go to AI Studio at https://ai.studio/spend to manage your project spend cap. Learn more at https://ai.google.dev/gemini-api/docs/billing#proj",
+        "runs_per_scenario": 1,
+        "harnesses": [
+          "all_tools"
+        ],
+        "stopped": "spend cap: Google refused the call (429) and waiting can't help: Your project has exceeded its monthly spending cap. Please go to AI Studio at https://ai.studio/spend to manage your project spend cap. Learn more at https://ai.google.dev/gemini-api/docs/billing#proj",
+        "runs_used": 0,
+        "calls": 1,
+        "micro_usd": 0
+      },
+      {
+        "report": "raw-runs/2026-10-04-live-ablation-v2-no_case_file",
+        "mode": "live",
+        "model": "gemini-3.8-flash",
+        "prompt_version": "2026-10-04.2",
+        "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
+        "variant": null,
+        "commit": "154293e",
+        "date": "2026-10-04T23:49:38+05:30",
+        "status": "ABORTED",
+        "stopped_because": "spend cap: Google refused the call (429) and waiting can't help: Your project has exceeded its monthly spending cap. Please go to AI Studio at https://ai.studio/spend to manage your project spend cap. Learn more at https://ai.google.dev/gemini-api/docs/billing#proj",
+        "runs_per_scenario": 1,
+        "harnesses": [
+          "no_case_file"
+        ],
+        "stopped": "spend cap: Google refused the call (429) and waiting can't help: Your project has exceeded its monthly spending cap. Please go to AI Studio at https://ai.studio/spend to manage your project spend cap. Learn more at https://ai.google.dev/gemini-api/docs/billing#proj",
+        "runs_used": 0,
+        "calls": 1,
+        "micro_usd": 0
+      },
+      {
+        "report": "raw-runs/2026-10-04-live-ablation-v2-bare",
+        "mode": "live",
+        "model": "gemini-3.8-flash",
+        "prompt_version": "2026-10-04.2",
+        "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
+        "variant": null,
+        "commit": "154293e",
+        "date": "2026-10-04T23:49:40+05:30",
+        "status": "ABORTED",
+        "stopped_because": "spend cap: Google refused the call (429) and waiting can't help: Your project has exceeded its monthly spending cap. Please go to AI Studio at https://ai.studio/spend to manage your project spend cap. Learn more at https://ai.google.dev/gemini-api/docs/billing#proj",
+        "runs_per_scenario": 1,
+        "harnesses": [
+          "bare"
+        ],
+        "stopped": "spend cap: Google refused the call (429) and waiting can't help: Your project has exceeded its monthly spending cap. Please go to AI Studio at https://ai.studio/spend to manage your project spend cap. Learn more at https://ai.google.dev/gemini-api/docs/billing#proj",
+        "runs_used": 0,
+        "calls": 1,
+        "micro_usd": 0
+      },
+      {
+        "report": "raw-runs/2026-10-05-live-ablation-v2-no_evidence_gate",
+        "mode": "live",
+        "model": "gemini-3.8-flash",
+        "prompt_version": "2026-10-04.2",
+        "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
+        "variant": null,
+        "commit": "24f7028",
+        "date": "2026-10-05T00:02:40+05:30",
+        "status": "ABORTED",
+        "stopped_because": "cost cap reached: 217922 micro-USD spent, and the next call could cost 65337 (cap 280000)",
+        "runs_per_scenario": 1,
+        "harnesses": [
+          "no_evidence_gate"
+        ],
+        "stopped": "cost cap reached: 217922 micro-USD spent, and the next call could cost 65337 (cap 280000)",
+        "runs_used": 7,
+        "calls": 58,
+        "micro_usd": 217922
+      },
+      {
+        "report": "raw-runs/2026-10-05-live-ablation-v2-all_tools",
+        "mode": "live",
+        "model": "gemini-3.8-flash",
+        "prompt_version": "2026-10-04.2",
+        "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
+        "variant": null,
+        "commit": "24f7028",
+        "date": "2026-10-05T00:07:10+05:30",
+        "status": "ABORTED",
+        "stopped_because": "cost cap reached: 178384 micro-USD spent, and the next call could cost 135045 (cap 280000)",
+        "runs_per_scenario": 1,
+        "harnesses": [
+          "all_tools"
+        ],
+        "stopped": "cost cap reached: 178384 micro-USD spent, and the next call could cost 135045 (cap 280000)",
+        "runs_used": 1,
+        "calls": 12,
+        "micro_usd": 178384
+      },
+      {
+        "report": "raw-runs/2026-10-05-live-ablation-v2-no_planner",
+        "mode": "live",
+        "model": "gemini-3.8-flash",
+        "prompt_version": "2026-10-04.2",
+        "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
+        "variant": null,
+        "commit": "24f7028",
+        "date": "2026-10-05T00:10:02+05:30",
+        "status": "ABORTED",
+        "stopped_because": "cost cap reached: 147589 micro-USD spent, and the next call could cost 142063 (cap 280000)",
+        "runs_per_scenario": 1,
+        "harnesses": [
+          "no_planner"
+        ],
+        "stopped": "cost cap reached: 147589 micro-USD spent, and the next call could cost 142063 (cap 280000)",
+        "runs_used": 0,
+        "calls": 3,
+        "micro_usd": 147589
+      },
+      {
+        "report": "raw-runs/2026-10-05-live-ablation-v2-no_drift_rule",
+        "mode": "live",
+        "model": "gemini-3.8-flash",
+        "prompt_version": "2026-10-04.2",
+        "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
+        "variant": null,
+        "commit": "24f7028",
+        "date": "2026-10-05T00:12:23+05:30",
+        "status": "COMPLETE",
+        "stopped_because": null,
+        "runs_per_scenario": 1,
+        "harnesses": [
+          "no_drift_rule"
+        ],
+        "stopped": null,
+        "runs_used": 10,
+        "calls": 74,
+        "micro_usd": 205960
+      },
+      {
+        "report": "raw-runs/2026-10-05-live-ablation-v2-no_case_file",
+        "mode": "live",
+        "model": "gemini-3.8-flash",
+        "prompt_version": "2026-10-04.2",
+        "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
+        "variant": null,
+        "commit": "24f7028",
+        "date": "2026-10-05T00:17:11+05:30",
+        "status": "COMPLETE",
+        "stopped_because": null,
+        "runs_per_scenario": 1,
+        "harnesses": [
+          "no_case_file"
+        ],
+        "stopped": null,
+        "runs_used": 11,
+        "calls": 76,
+        "micro_usd": 269813
+      },
+      {
+        "report": "raw-runs/2026-10-05-live-ablation-v2-bare",
+        "mode": "live",
+        "model": "gemini-3.8-flash",
+        "prompt_version": "2026-10-04.2",
+        "config_sha256": "51f54558b58108fae4af35cf3a2e36b23e992628ec39e87a4aa6a3eae9040681",
+        "variant": null,
+        "commit": "24f7028",
+        "date": "2026-10-05T00:22:57+05:30",
+        "status": "COMPLETE",
+        "stopped_because": null,
+        "runs_per_scenario": 1,
+        "harnesses": [
+          "bare"
+        ],
+        "stopped": "cost cap reached: 899154 micro-USD spent, and the next call could cost 151547 (cap 1050000)",
+        "runs_used": 10,
+        "calls": 21,
+        "micro_usd": 899154
+      }
+    ]
+  },
+  "harnesses": {
+    "full": {
+      "met": 32,
+      "scored": 32,
+      "success": 1.0,
+      "spread": [
+        1.0,
+        1.0
+      ],
+      "scenarios_scored": [
+        "01-debit-alert-for-a-planned-payment",
+        "02-password-protected-statement",
+        "03-handwritten-bill-photo",
+        "04-hinglish-voice-note",
+        "05-same-invoice-by-email-and-photo",
+        "06-payment-returned-by-the-bank",
+        "07-missed-alert-causes-drift",
+        "08-drift-with-no-explanation",
+        "09-vendor-email-changes-bank-details",
+        "10-hidden-instruction-in-a-vendor-email",
+        "11-shortfall-week"
+      ],
+      "runs_per_cell": {
+        "01-debit-alert-for-a-planned-payment": 3,
+        "02-password-protected-statement": 3,
+        "03-handwritten-bill-photo": 3,
+        "04-hinglish-voice-note": 3,
+        "05-same-invoice-by-email-and-photo": 3,
+        "06-payment-returned-by-the-bank": 3,
+        "07-missed-alert-causes-drift": 3,
+        "08-drift-with-no-explanation": 3,
+        "09-vendor-email-changes-bank-details": 3,
+        "10-hidden-instruction-in-a-vendor-email": 3,
+        "11-shortfall-week": 2
+      }
+    },
+    "bare": {
+      "met": 2,
+      "scored": 10,
+      "success": 0.2,
+      "spread": [
+        0.0,
+        1.0
+      ],
+      "scenarios_scored": [
+        "01-debit-alert-for-a-planned-payment",
+        "02-password-protected-statement",
+        "03-handwritten-bill-photo",
+        "04-hinglish-voice-note",
+        "05-same-invoice-by-email-and-photo",
+        "06-payment-returned-by-the-bank",
+        "07-missed-alert-causes-drift",
+        "08-drift-with-no-explanation",
+        "09-vendor-email-changes-bank-details",
+        "10-hidden-instruction-in-a-vendor-email"
+      ],
+      "runs_per_cell": {
+        "01-debit-alert-for-a-planned-payment": 1,
+        "02-password-protected-statement": 1,
+        "03-handwritten-bill-photo": 1,
+        "04-hinglish-voice-note": 1,
+        "05-same-invoice-by-email-and-photo": 1,
+        "06-payment-returned-by-the-bank": 1,
+        "07-missed-alert-causes-drift": 1,
+        "08-drift-with-no-explanation": 1,
+        "09-vendor-email-changes-bank-details": 1,
+        "10-hidden-instruction-in-a-vendor-email": 1
+      }
+    },
+    "all_tools": {
+      "met": 1,
+      "scored": 1,
+      "success": 1.0,
+      "spread": [
+        1.0,
+        1.0
+      ],
+      "scenarios_scored": [
+        "01-debit-alert-for-a-planned-payment"
+      ],
+      "runs_per_cell": {
+        "01-debit-alert-for-a-planned-payment": 1
+      }
+    },
+    "no_case_file": {
+      "met": 11,
+      "scored": 11,
+      "success": 1.0,
+      "spread": [
+        1.0,
+        1.0
+      ],
+      "scenarios_scored": [
+        "01-debit-alert-for-a-planned-payment",
+        "02-password-protected-statement",
+        "03-handwritten-bill-photo",
+        "04-hinglish-voice-note",
+        "05-same-invoice-by-email-and-photo",
+        "06-payment-returned-by-the-bank",
+        "07-missed-alert-causes-drift",
+        "08-drift-with-no-explanation",
+        "09-vendor-email-changes-bank-details",
+        "10-hidden-instruction-in-a-vendor-email",
+        "11-shortfall-week"
+      ],
+      "runs_per_cell": {
+        "01-debit-alert-for-a-planned-payment": 1,
+        "02-password-protected-statement": 1,
+        "03-handwritten-bill-photo": 1,
+        "04-hinglish-voice-note": 1,
+        "05-same-invoice-by-email-and-photo": 1,
+        "06-payment-returned-by-the-bank": 1,
+        "07-missed-alert-causes-drift": 1,
+        "08-drift-with-no-explanation": 1,
+        "09-vendor-email-changes-bank-details": 1,
+        "10-hidden-instruction-in-a-vendor-email": 1,
+        "11-shortfall-week": 1
+      }
+    },
+    "no_drift_rule": {
+      "met": 10,
+      "scored": 11,
+      "success": 0.909,
+      "spread": [
+        0.0,
+        1.0
+      ],
+      "scenarios_scored": [
+        "01-debit-alert-for-a-planned-payment",
+        "02-password-protected-statement",
+        "03-handwritten-bill-photo",
+        "04-hinglish-voice-note",
+        "05-same-invoice-by-email-and-photo",
+        "06-payment-returned-by-the-bank",
+        "07-missed-alert-causes-drift",
+        "08-drift-with-no-explanation",
+        "09-vendor-email-changes-bank-details",
+        "10-hidden-instruction-in-a-vendor-email",
+        "11-shortfall-week"
+      ],
+      "runs_per_cell": {
+        "01-debit-alert-for-a-planned-payment": 1,
+        "02-password-protected-statement": 1,
+        "03-handwritten-bill-photo": 1,
+        "04-hinglish-voice-note": 1,
+        "05-same-invoice-by-email-and-photo": 1,
+        "06-payment-returned-by-the-bank": 1,
+        "07-missed-alert-causes-drift": 1,
+        "08-drift-with-no-explanation": 1,
+        "09-vendor-email-changes-bank-details": 1,
+        "10-hidden-instruction-in-a-vendor-email": 1,
+        "11-shortfall-week": 1
+      }
+    },
+    "no_escalation": {
+      "met": 11,
+      "scored": 11,
+      "success": 1.0,
+      "spread": [
+        1.0,
+        1.0
+      ],
+      "scenarios_scored": [
+        "01-debit-alert-for-a-planned-payment",
+        "02-password-protected-statement",
+        "03-handwritten-bill-photo",
+        "04-hinglish-voice-note",
+        "05-same-invoice-by-email-and-photo",
+        "06-payment-returned-by-the-bank",
+        "07-missed-alert-causes-drift",
+        "08-drift-with-no-explanation",
+        "09-vendor-email-changes-bank-details",
+        "10-hidden-instruction-in-a-vendor-email",
+        "11-shortfall-week"
+      ],
+      "runs_per_cell": {
+        "01-debit-alert-for-a-planned-payment": 1,
+        "02-password-protected-statement": 1,
+        "03-handwritten-bill-photo": 1,
+        "04-hinglish-voice-note": 1,
+        "05-same-invoice-by-email-and-photo": 1,
+        "06-payment-returned-by-the-bank": 1,
+        "07-missed-alert-causes-drift": 1,
+        "08-drift-with-no-explanation": 1,
+        "09-vendor-email-changes-bank-details": 1,
+        "10-hidden-instruction-in-a-vendor-email": 1,
+        "11-shortfall-week": 1
+      }
+    },
+    "no_evidence_gate": {
+      "met": 7,
+      "scored": 7,
+      "success": 1.0,
+      "spread": [
+        1.0,
+        1.0
+      ],
+      "scenarios_scored": [
+        "01-debit-alert-for-a-planned-payment",
+        "02-password-protected-statement",
+        "03-handwritten-bill-photo",
+        "04-hinglish-voice-note",
+        "05-same-invoice-by-email-and-photo",
+        "06-payment-returned-by-the-bank",
+        "07-missed-alert-causes-drift"
+      ],
+      "runs_per_cell": {
+        "01-debit-alert-for-a-planned-payment": 1,
+        "02-password-protected-statement": 1,
+        "03-handwritten-bill-photo": 1,
+        "04-hinglish-voice-note": 1,
+        "05-same-invoice-by-email-and-photo": 1,
+        "06-payment-returned-by-the-bank": 1,
+        "07-missed-alert-causes-drift": 1
+      }
+    },
+    "no_planner": {
+      "met": 1,
+      "scored": 1,
+      "success": 1.0,
+      "spread": [
+        1.0,
+        1.0
+      ],
+      "scenarios_scored": [
+        "01-debit-alert-for-a-planned-payment"
+      ],
+      "runs_per_cell": {
+        "01-debit-alert-for-a-planned-payment": 1
+      }
+    },
+    "no_rule_checks": {
+      "met": 10,
+      "scored": 11,
+      "success": 0.909,
+      "spread": [
+        0.0,
+        1.0
+      ],
+      "scenarios_scored": [
+        "01-debit-alert-for-a-planned-payment",
+        "02-password-protected-statement",
+        "03-handwritten-bill-photo",
+        "04-hinglish-voice-note",
+        "05-same-invoice-by-email-and-photo",
+        "06-payment-returned-by-the-bank",
+        "07-missed-alert-causes-drift",
+        "08-drift-with-no-explanation",
+        "09-vendor-email-changes-bank-details",
+        "10-hidden-instruction-in-a-vendor-email",
+        "11-shortfall-week"
+      ],
+      "runs_per_cell": {
+        "01-debit-alert-for-a-planned-payment": 1,
+        "02-password-protected-statement": 1,
+        "03-handwritten-bill-photo": 1,
+        "04-hinglish-voice-note": 1,
+        "05-same-invoice-by-email-and-photo": 1,
+        "06-payment-returned-by-the-bank": 1,
+        "07-missed-alert-causes-drift": 1,
+        "08-drift-with-no-explanation": 1,
+        "09-vendor-email-changes-bank-details": 1,
+        "10-hidden-instruction-in-a-vendor-email": 1,
+        "11-shortfall-week": 1
+      }
+    }
+  },
+  "scenarios": [
+    "01-debit-alert-for-a-planned-payment",
+    "02-password-protected-statement",
+    "03-handwritten-bill-photo",
+    "04-hinglish-voice-note",
+    "05-same-invoice-by-email-and-photo",
+    "06-payment-returned-by-the-bank",
+    "07-missed-alert-causes-drift",
+    "08-drift-with-no-explanation",
+    "09-vendor-email-changes-bank-details",
+    "10-hidden-instruction-in-a-vendor-email",
+    "11-shortfall-week"
+  ],
+  "cells": {
+    "full": {
+      "01-debit-alert-for-a-planned-payment": {
+        "met": 3,
+        "scored": 3,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-full"
+      },
+      "02-password-protected-statement": {
+        "met": 3,
+        "scored": 3,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-full"
+      },
+      "03-handwritten-bill-photo": {
+        "met": 3,
+        "scored": 3,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-full"
+      },
+      "04-hinglish-voice-note": {
+        "met": 3,
+        "scored": 3,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-full"
+      },
+      "05-same-invoice-by-email-and-photo": {
+        "met": 3,
+        "scored": 3,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-full"
+      },
+      "06-payment-returned-by-the-bank": {
+        "met": 3,
+        "scored": 3,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-full"
+      },
+      "07-missed-alert-causes-drift": {
+        "met": 3,
+        "scored": 3,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-full"
+      },
+      "08-drift-with-no-explanation": {
+        "met": 3,
+        "scored": 3,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-full"
+      },
+      "09-vendor-email-changes-bank-details": {
+        "met": 3,
+        "scored": 3,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-full"
+      },
+      "10-hidden-instruction-in-a-vendor-email": {
+        "met": 3,
+        "scored": 3,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-full"
+      },
+      "11-shortfall-week": {
+        "met": 2,
+        "scored": 2,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-full-11"
+      }
+    },
+    "bare": {
+      "01-debit-alert-for-a-planned-payment": {
+        "met": 0,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-bare"
+      },
+      "02-password-protected-statement": {
+        "met": 0,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-bare"
+      },
+      "03-handwritten-bill-photo": {
+        "met": 0,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-bare"
+      },
+      "04-hinglish-voice-note": {
+        "met": 0,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-bare"
+      },
+      "05-same-invoice-by-email-and-photo": {
+        "met": 0,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-bare"
+      },
+      "06-payment-returned-by-the-bank": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-bare"
+      },
+      "07-missed-alert-causes-drift": {
+        "met": 0,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-bare"
+      },
+      "08-drift-with-no-explanation": {
+        "met": 0,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-bare"
+      },
+      "09-vendor-email-changes-bank-details": {
+        "met": 0,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-bare"
+      },
+      "10-hidden-instruction-in-a-vendor-email": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-bare"
+      },
+      "11-shortfall-week": {
+        "met": 0,
+        "scored": 0,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-bare"
+      }
+    },
+    "all_tools": {
+      "01-debit-alert-for-a-planned-payment": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-all_tools"
+      },
+      "02-password-protected-statement": {
+        "met": 0,
+        "scored": 0,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-all_tools"
+      },
+      "03-handwritten-bill-photo": {
+        "met": 0,
+        "scored": 0,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-all_tools"
+      },
+      "04-hinglish-voice-note": {
+        "met": 0,
+        "scored": 0,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-all_tools"
+      },
+      "05-same-invoice-by-email-and-photo": {
+        "met": 0,
+        "scored": 0,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-all_tools"
+      },
+      "06-payment-returned-by-the-bank": {
+        "met": 0,
+        "scored": 0,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-all_tools"
+      },
+      "07-missed-alert-causes-drift": {
+        "met": 0,
+        "scored": 0,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-all_tools"
+      },
+      "08-drift-with-no-explanation": {
+        "met": 0,
+        "scored": 0,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-all_tools"
+      },
+      "09-vendor-email-changes-bank-details": {
+        "met": 0,
+        "scored": 0,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-all_tools"
+      },
+      "10-hidden-instruction-in-a-vendor-email": {
+        "met": 0,
+        "scored": 0,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-all_tools"
+      },
+      "11-shortfall-week": {
+        "met": 0,
+        "scored": 0,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-all_tools"
+      }
+    },
+    "no_case_file": {
+      "01-debit-alert-for-a-planned-payment": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-no_case_file"
+      },
+      "02-password-protected-statement": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-no_case_file"
+      },
+      "03-handwritten-bill-photo": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-no_case_file"
+      },
+      "04-hinglish-voice-note": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-no_case_file"
+      },
+      "05-same-invoice-by-email-and-photo": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-no_case_file"
+      },
+      "06-payment-returned-by-the-bank": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-no_case_file"
+      },
+      "07-missed-alert-causes-drift": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-no_case_file"
+      },
+      "08-drift-with-no-explanation": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-no_case_file"
+      },
+      "09-vendor-email-changes-bank-details": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-no_case_file"
+      },
+      "10-hidden-instruction-in-a-vendor-email": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-no_case_file"
+      },
+      "11-shortfall-week": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-no_case_file"
+      }
+    },
+    "no_drift_rule": {
+      "01-debit-alert-for-a-planned-payment": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_drift_rule"
+      },
+      "02-password-protected-statement": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-no_drift_rule"
+      },
+      "03-handwritten-bill-photo": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-no_drift_rule"
+      },
+      "04-hinglish-voice-note": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-no_drift_rule"
+      },
+      "05-same-invoice-by-email-and-photo": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-no_drift_rule"
+      },
+      "06-payment-returned-by-the-bank": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-no_drift_rule"
+      },
+      "07-missed-alert-causes-drift": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-no_drift_rule"
+      },
+      "08-drift-with-no-explanation": {
+        "met": 0,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-no_drift_rule"
+      },
+      "09-vendor-email-changes-bank-details": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-no_drift_rule"
+      },
+      "10-hidden-instruction-in-a-vendor-email": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-no_drift_rule"
+      },
+      "11-shortfall-week": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-no_drift_rule"
+      }
+    },
+    "no_escalation": {
+      "01-debit-alert-for-a-planned-payment": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_escalation"
+      },
+      "02-password-protected-statement": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_escalation"
+      },
+      "03-handwritten-bill-photo": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_escalation"
+      },
+      "04-hinglish-voice-note": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_escalation"
+      },
+      "05-same-invoice-by-email-and-photo": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_escalation"
+      },
+      "06-payment-returned-by-the-bank": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_escalation"
+      },
+      "07-missed-alert-causes-drift": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_escalation"
+      },
+      "08-drift-with-no-explanation": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_escalation"
+      },
+      "09-vendor-email-changes-bank-details": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_escalation"
+      },
+      "10-hidden-instruction-in-a-vendor-email": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_escalation"
+      },
+      "11-shortfall-week": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_escalation"
+      }
+    },
+    "no_evidence_gate": {
+      "01-debit-alert-for-a-planned-payment": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-no_evidence_gate"
+      },
+      "02-password-protected-statement": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-no_evidence_gate"
+      },
+      "03-handwritten-bill-photo": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-no_evidence_gate"
+      },
+      "04-hinglish-voice-note": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-no_evidence_gate"
+      },
+      "05-same-invoice-by-email-and-photo": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-no_evidence_gate"
+      },
+      "06-payment-returned-by-the-bank": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-no_evidence_gate"
+      },
+      "07-missed-alert-causes-drift": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-05-live-ablation-v2-no_evidence_gate"
+      },
+      "08-drift-with-no-explanation": {
+        "met": 0,
+        "scored": 0,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_evidence_gate"
+      },
+      "09-vendor-email-changes-bank-details": {
+        "met": 0,
+        "scored": 0,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_evidence_gate"
+      },
+      "10-hidden-instruction-in-a-vendor-email": {
+        "met": 0,
+        "scored": 0,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_evidence_gate"
+      },
+      "11-shortfall-week": {
+        "met": 0,
+        "scored": 0,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_evidence_gate"
+      }
+    },
+    "no_planner": {
+      "01-debit-alert-for-a-planned-payment": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_planner"
+      },
+      "02-password-protected-statement": {
+        "met": 0,
+        "scored": 0,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_planner"
+      },
+      "03-handwritten-bill-photo": {
+        "met": 0,
+        "scored": 0,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_planner"
+      },
+      "04-hinglish-voice-note": {
+        "met": 0,
+        "scored": 0,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_planner"
+      },
+      "05-same-invoice-by-email-and-photo": {
+        "met": 0,
+        "scored": 0,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_planner"
+      },
+      "06-payment-returned-by-the-bank": {
+        "met": 0,
+        "scored": 0,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_planner"
+      },
+      "07-missed-alert-causes-drift": {
+        "met": 0,
+        "scored": 0,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_planner"
+      },
+      "08-drift-with-no-explanation": {
+        "met": 0,
+        "scored": 0,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_planner"
+      },
+      "09-vendor-email-changes-bank-details": {
+        "met": 0,
+        "scored": 0,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_planner"
+      },
+      "10-hidden-instruction-in-a-vendor-email": {
+        "met": 0,
+        "scored": 0,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_planner"
+      },
+      "11-shortfall-week": {
+        "met": 0,
+        "scored": 0,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_planner"
+      }
+    },
+    "no_rule_checks": {
+      "01-debit-alert-for-a-planned-payment": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_rule_checks"
+      },
+      "02-password-protected-statement": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_rule_checks"
+      },
+      "03-handwritten-bill-photo": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_rule_checks"
+      },
+      "04-hinglish-voice-note": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_rule_checks"
+      },
+      "05-same-invoice-by-email-and-photo": {
+        "met": 0,
+        "scored": 1,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_rule_checks"
+      },
+      "06-payment-returned-by-the-bank": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_rule_checks"
+      },
+      "07-missed-alert-causes-drift": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_rule_checks"
+      },
+      "08-drift-with-no-explanation": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_rule_checks"
+      },
+      "09-vendor-email-changes-bank-details": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_rule_checks"
+      },
+      "10-hidden-instruction-in-a-vendor-email": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_rule_checks"
+      },
+      "11-shortfall-week": {
+        "met": 1,
+        "scored": 1,
+        "source": "raw-runs/2026-10-04-live-ablation-v2-no_rule_checks"
+      }
+    }
+  },
+  "full_vs_bare": 0.8,
+  "drops": {
+    "no_case_file": 0.0,
+    "no_drift_rule": 0.091,
+    "no_escalation": 0.0,
+    "no_evidence_gate": 0.0,
+    "no_rule_checks": 0.091
+  },
+  "paired_on": {
+    "bare": 10,
+    "no_case_file": 11,
+    "no_drift_rule": 11,
+    "no_escalation": 11,
+    "no_evidence_gate": 7,
+    "no_rule_checks": 11
+  },
+  "lost": {
+    "bare": [
+      "01-debit-alert-for-a-planned-payment",
+      "02-password-protected-statement",
+      "03-handwritten-bill-photo",
+      "04-hinglish-voice-note",
+      "05-same-invoice-by-email-and-photo",
+      "07-missed-alert-causes-drift",
+      "08-drift-with-no-explanation",
+      "09-vendor-email-changes-bank-details"
+    ],
+    "no_case_file": [],
+    "no_drift_rule": [
+      "08-drift-with-no-explanation"
+    ],
+    "no_escalation": [],
+    "no_evidence_gate": [],
+    "no_rule_checks": [
+      "05-same-invoice-by-email-and-photo"
+    ]
+  },
+  "gained": {
+    "bare": [],
+    "no_case_file": [],
+    "no_drift_rule": [],
+    "no_escalation": [],
+    "no_evidence_gate": [],
+    "no_rule_checks": []
+  },
+  "not_measured": {
+    "all_tools": 1,
+    "no_planner": 1
+  },
+  "earned_most": [
+    "no_drift_rule",
+    "no_rule_checks"
+  ],
+  "spent": {
+    "calls": 655,
+    "micro_usd": 3285293
+  }
+}
