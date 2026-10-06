@@ -30,8 +30,9 @@ def test_every_fixture_mode_report_is_found_and_live_and_superseded_ones_are_not
     found = {(kind, path.relative_to(check_evidence.EVALS).as_posix()) for kind, path, _ in check_evidence.committed()}
     kinds = {kind for kind, _ in found}
     assert kinds == {"suite", "ablation", "workflow", "combined", "ablation-combined"}  # derived pages re-derived
-    assert all("superseded" not in p and ("live" not in p or k in ("combined", "ablation-combined")) for k, p in found)
-    assert any(p.endswith("fixtures-regress-max-steps/report.json") for _, p in found)
+    assert all("superseded" not in p and "invalid" not in p and ("live" not in p or k in ("combined",
+               "ablation-combined")) for k, p in found)
+    assert ("suite", "3-improvement-and-regression/regression-caught/report.json") in found
 
 
 def test_the_target_and_the_batch_close_gate_run_it():

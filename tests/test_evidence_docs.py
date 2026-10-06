@@ -217,8 +217,8 @@ def test_the_link_check_sees_a_dead_file_and_a_dead_anchor(tmp_path):
 
 # --- the figures the eval READMEs quote are their reports' own (CHG-055; D25) -------------------------------
 
-_EVAL_FIGURE = re.compile(r"\b\d+\s*/\s*\d+\b|\b\d+\s+points?\b|\b\d+\s+(?:scenarios?|runs?|failed checks?)\b",
-                          re.I)
+_EVAL_FIGURE = re.compile(r"\b\d+\s*/\s*\d+\b|\b\d+\s+of\s+\d+\b|\b\d+\s+points?\b"
+                          r"|\b\d+\s+(?:scenarios?|runs?|failed checks?)\b", re.I)
 
 
 def _report(folder: str) -> dict:
