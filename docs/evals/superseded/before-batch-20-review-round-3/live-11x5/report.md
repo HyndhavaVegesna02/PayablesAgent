@@ -1,6 +1,6 @@
 # Eval report: baseline-11x5 (combined)
 
-**Coverage:** 55 of 55 planned runs scored (11 scenarios × 5 runs, the most any invocation set out to run), from 3 invocations at commits aba59bd, 3ad8e01 and feba8d0. Scenarios a later invocation ran again, with every result: 04-hinglish-voice-note: 4/5 in `2026-10-04-live-baseline`, 0/5 in `2026-10-04-live-baseline-part2`, then 5/5 in `2026-10-04-live-baseline-04-after`; 08-drift-with-no-explanation: no run finished (1 errored) in `2026-10-04-live-baseline`, then 5/5 in `2026-10-04-live-baseline-part2`.
+**Coverage:** 55 of 55 planned runs scored (11 scenarios × 5 runs), from 3 invocations at commits aba59bd, 3ad8e01 and feba8d0. Scenarios a later invocation ran again, with every result: 04-hinglish-voice-note: 4/5 in `2026-10-04-live-baseline`, 0/5 in `2026-10-04-live-baseline-part2`, then 5/5 in `2026-10-04-live-baseline-04-after`; 08-drift-with-no-explanation: no run finished (1 errored) in `2026-10-04-live-baseline`, then 5/5 in `2026-10-04-live-baseline-part2`.
 
 **Totals:** 55 of 55 finished runs passed (100%), 0 errored; 11 of 11 scenarios passed every run; path checks held in 5 of the 5 runs that have them; 393 model calls; 1163657 micro-USD in the rows shown, 416 calls and 1196633 micro-USD spent across the invocations.
 

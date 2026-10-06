@@ -19,8 +19,7 @@
         "10-hidden-instruction-in-a-vendor-email",
         "11-shortfall-week"
       ],
-      "runs_per_scenario": 5,
-      "runs_from_sources": true
+      "runs_per_scenario": 5
     },
     "sources": [
       {
@@ -78,7 +77,6 @@
   },
   "coverage": {
     "from_plan": true,
-    "runs_from_sources": true,
     "scenarios": 11,
     "planned": 55,
     "scored": 55,
