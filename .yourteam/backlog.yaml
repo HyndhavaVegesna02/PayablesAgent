@@ -724,7 +724,7 @@ changes:
   - id: CHG-055
     title: docs/evals by deliverable, and the stopped invocations told plainly (PO, batch 20)
     file: docs/changes/CHG-055.md
-    status: ready
+    status: done
     priority: 55
     type: chore
     lane: planned
@@ -732,7 +732,7 @@ changes:
     depends_on: null
     batch: 20
   - id: CHG-056
-    title: The README figure check's last narrow allowances, and two small test gaps (batch 20 review round 4 minors)
+    title: The README figure check's last narrow allowances, two small test gaps, and a test-derived headline for 2-harness-ablation's offline row (batch 20 review round 4 minors; PO)
     file: docs/batches/2026-10-06-20/review.md
     status: draft
     priority: 56

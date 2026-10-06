@@ -71,3 +71,12 @@ start of a wrapped prose line; bare "one" and some fraction words; a message che
 mixed-mode test for ablation_combine; two long README lines.
 
 Ready for the PO's verdict. Gates of record: make test and make check-evidence green at d01e0a8 (c6b8ac5).
+
+## Verdict
+
+PO (payablesagent-ac), 2026-10-06: CHG-055 ACCEPTED. Verified independently at the public commit ce968db: pytest
+1770 passed, 9 import contracts kept, check-evidence 7 of 7; only comment lines changed in app/; 749 live files
+R100; the only process word left is the live report's own label. Accepted: the figure rule leaves the two notes
+kept inside run folders out; the 8 public rewordings. Pushes authorised: public-ui to the public remote's main,
+dev to origin main, both fast-forwards. CHG-056 also takes a test-derived headline for 2-harness-ablation's
+offline row (empty today).
