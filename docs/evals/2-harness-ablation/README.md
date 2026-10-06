@@ -16,9 +16,10 @@ harness differs. Every harness is scored on the same `outcome` checks: the busin
   were scored on. A knock-out's drop is paired the same way: the full system's success on the scenarios that
   knock-out was scored on, less the knock-out's own.
 - **Coverage first:** the full system ran 3 runs per scenario (2 on 11-shortfall-week), and
-  the bare harness and the knock-outs ran 1 run per scenario, each under its own cost cap. The Coverage table gives each harness's scenarios scored and runs per
-  cell. A drop is shown only for a harness scored on more than half the scenarios: one that stopped after a
-  scenario or two is *not measured live*, and can't be the component that earned the most.
+  the bare harness and the knock-outs ran 1 run per scenario, each under its own cost cap.
+  The Coverage table gives each harness's scenarios scored and runs per cell. A drop is shown only for a
+  harness scored on more than half the scenarios: one that stopped after a few scenarios is *not measured
+  live*, and can't be the component that earned the most.
 - **A knock-out's drop rests on single runs.** At its runs per scenario, a scenario it lost is a single run
   that failed. The
   offline ablation runs every scenario, but on canned replies, so it shows that a control is wired in, not
@@ -54,7 +55,7 @@ These are results, not gaps to hide.
   chat holds what the case file holds. The case file should earn its place across jobs (a retry, or a resume
   after the owner answers), where a chat starts again and the case file doesn't.
 - **no_planner** (the plan comes from the model, given the planner's snapshot as text). The planner earns its
-  place when the arithmetic is long: many bills, two payment days, a floor that only a split keeps. Workflow
+  place when the arithmetic is long: many bills, more than one payment day, a floor that only a split keeps. Workflow
   A's fortnight is that case, and it is where a no_planner run should be scored next.
 
 ## Fixture mode, and what it does not show

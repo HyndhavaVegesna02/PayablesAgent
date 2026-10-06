@@ -2,7 +2,7 @@
 
 ## Full-workflow runs
 
-`make workflow` plays two scripted fortnights, Mon 12 to Sun 25 Oct 2026, through the real web app (owner and
+`make workflow` plays the scripted fortnights, A and B, Mon 12 to Sun 25 Oct 2026, through the real web app (owner and
 helper logged in, every action a form the page showed, with its CSRF token), the real worker and the demo
 clock, each on a freshly seeded database (`evals/workflow.py`, `evals/workflow_runs.py`). Each report is a
 step table: what was done, every check, the expected value, the actual one, PASS or FAIL. The reports also

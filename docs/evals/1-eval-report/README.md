@@ -1,6 +1,6 @@
 # 1. The eval report
 
-Every TDD scenario, run repeatedly and scored at three levels: did it succeed end to end, was the path sound
+Every TDD scenario, run repeatedly and scored at each level: did it succeed end to end, was the path sound
 (the agent's steps, its escalations), and which component broke when it failed (sort, extract, validate,
 reconcile, planner or agent).
 

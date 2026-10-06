@@ -234,19 +234,26 @@ _EVAL_FIGURE = re.compile(
     rf"|\b{_WORD}(?:[\s-]+[\w'’]+){{0,2}}?[\s-]+{_COUNTED}\b"
     rf"|\b{_WORD}\s*(?:/|of|out of)\s*(?:the\s+)?(?:\d|{_WORD})"
     rf"|\({_WORD}\)|\b(?:the last|the first|these|those|all|both)\s+{_WORD}\b"
-    r"|\b(?:once|twice|thrice)\b(?!\s+(?:the|that|a|an|it|its|this|these|those|they|we)\b)", re.I)
+    r"|\b(?:once|twice|thrice)\b(?!\s+(?:the|that|a|an|it|its|this|these|those|they|we)\b)"
+    rf"|\b(?!one\b){_WORD}\b|\bone\s+(?:each|apiece)\b|\ba (?:third|quarter|fifth|tenth)\b",  # "one" names things
+    re.I)
 # What has digits but names something: a scenario, a commit, a date or year, one of the layout's folders, the
 # suite's shape (11x5), an HTTP status the guard records, a numbered heading or list item, an amount of rupees,
 # a decision label; and anything in backticks or a link's target.
+_ID = r"(?:0\d|1[0-4])"  # a scenario's number
+_CODE = r"(?:402|403|429)"  # an HTTP status the budget guard records
+_MONTH = r"(?:Oct|October|Nov|November)"
 _NAMES = re.compile(
     r"`[^`]*`|\]\([^)]*\)"
-    r"|\b(?i:scenarios?)\s+\d\d(?:'s)?(?:\s*(?:,|and|to|or)\s*\d\d)*"
-    r"|(?<![.\d])\b0\d(?:\s*(?:,|and|to|or)\s*\d\d)*\b"
+    rf"|\b(?i:scenarios?)\s+{_ID}(?:'s)?(?:\s*(?:,|and|to|or)\s*{_ID})*\b"
+    rf"|(?<![.\d])\b0\d(?:\s*(?:,|and|to|or)\s*{_ID})*\b"
     r"|\b(?=[0-9a-f]*[a-f])[0-9a-f]{7,40}\b"
-    r"|\b\d{4}-\d\d-\d\d\S*|\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d{1,2}\b|\b\d{1,2} (?:Oct|November)\b|\b20\d\d\b"
-    r"|\b[1-4]-(?:eval-report|harness-ablation|improvement-and-regression|end-to-end-workflows)\b|\b\d+x\d+\b"
-    r"|\((?:402|403|429)\)|(?<=a )(?:402|403|429)\b|(?<='s )(?:402|403|429)\b"
-    r"|^\s*#*\s*\d+\.(?=\s)|₹[\d,]+|\bD\d\d\b", re.M)
+    r"|\b\d{4}-\d\d-\d\d\S*"
+    rf"|\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d{{1,2}}(?: {_MONTH} 20\d\d)?\b|\b\d{{1,2}} {_MONTH}(?: 20\d\d)?\b"
+    r"|\b[1-4]-(?:eval-report|harness-ablation|improvement-and-regression|end-to-end-workflows)\b"
+    r"|\b(?:11x5|14x5)\b"
+    rf"|\({_CODE}\)|(?<=a ){_CODE}\b(?![\s-]+{_COUNTED})|(?<='s ){_CODE}\b(?![\s-]+{_COUNTED})"
+    r"|^\s*#*\s*[1-9]\.(?=\s)|₹[\d,]+|\bD\d\d\b", re.M)
 
 
 def loose_figures(text: str, quotes) -> list[str]:
@@ -414,6 +421,9 @@ def test_the_only_other_readmes_are_notes_kept_with_their_runs():
     "The harness is worth eighty points.", "zero runs errored", "no_drift_rule cost a 9-point drop",
     "the full system's 3-run cells", "a 1-scenario loss", "(416)", "scored 20", "5 trials", "on 16 occasions",
     "an 11 × 5 suite", "passed 55", "cut from 6 to 2", "the due date's 5",
+    "2048 calls", "spent 2050 µUSD", "2026 runs", "a 12x5 suite", "scenarios 05 and 55", "scenario 04 or 55",
+    "a 403 runs", "the cost was\n80. Then", "lost one each", "nine vendors", "Of the eleven, ten",
+    "bare scored twenty.", "a third of the runs",
     "55 of 55 live runs passed", "80 points", "4/5 then", "10 scenarios", "from 16 invocations",
     "scored on 7 of the 11 scenarios", "416 calls", "an 80-point gap", "9 pts", "full 1.00 against bare",
     "all 55 live runs passed", "passed in 10 out of 11", "sixteen invocations", "three runs each", "(eight)",

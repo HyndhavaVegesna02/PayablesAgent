@@ -255,6 +255,14 @@ def _stopped_sentence(sources: list[dict[str, Any]], what: str, rest: str) -> li
             f"again. {rest} The source reports keep each stop's reason as it was recorded.", ""]
 
 
+def _one_mode(parts: list[tuple[str, dict[str, Any]]]) -> None:
+    """One page is one mode: live runs and canned ones measure different things, and a fixture-only row (mechanics
+    or context only) never fills a cell, so a page's sentences would not hold across them."""
+    modes = sorted({str(rep["meta"].get("mode")) for _, rep in parts})
+    if len(modes) > 1:
+        raise ValueError(f"these reports mix modes ({', '.join(modes)}): combine each mode on its own page")
+
+
 def _commits(sources: list[dict[str, Any]]) -> str:
     """'at commits a, b and c', each commit once, in the order the invocations ran."""
     seen = list(dict.fromkeys(str(s["commit"]) for s in sources))
@@ -277,6 +285,7 @@ def combine(parts: list[tuple[str, dict[str, Any]]], label: str, folder: str | N
     by hand."""
     if len(parts) < 2:
         raise ValueError("combine needs two or more reports")
+    _one_mode(parts)
     parts = sorted(parts, key=lambda p: str(p[1]["meta"]["date"]))  # latest by its own date, not argument order
     rows: dict[str, dict[str, Any]] = {}
     runs: dict[str, list[dict[str, Any]]] = {}
@@ -307,7 +316,8 @@ def combine(parts: list[tuple[str, dict[str, Any]]], label: str, folder: str | N
     return {
         "meta": {"kind": "combined", "label": label, "mode": parts[-1][1]["meta"]["mode"],
                  "model": parts[-1][1]["meta"]["model"], "folder": folder, "plan": plan, "sources": sources},
-        "coverage": {"from_plan": plan is not None, "scenarios": len(planned), "planned": sum(planned.values()),
+        "coverage": {"from_plan": plan is not None, "runs_from_sources": bool((plan or {}).get("runs_from_sources")),
+                     "scenarios": len(planned), "planned": sum(planned.values()),
                      "scored": sum(finished.values()), "runs_per_scenario": sorted(set(planned.values())),
                      "missing": {s: planned[s] - finished[s] for s in sorted(planned) if finished[s] < planned[s]},
                      "outside_plan": sorted(s for s in rows if s not in planned),
@@ -346,6 +356,7 @@ def ablation_combine(parts: list[tuple[str, dict[str, Any]]], label: str, folder
     earned the most. Nothing here is typed by hand."""
     if not parts:
         raise ValueError("ablation-combine needs at least one ablation report")
+    _one_mode(parts)
     parts = sorted(parts, key=lambda p: str(p[1]["meta"]["date"]))
     cells: dict[str, dict[str, dict[str, Any]]] = {}
     for source, rep in parts:
@@ -536,7 +547,8 @@ def coverage_line(report: dict[str, Any]) -> str:
     """Runs scored of those planned (and the planned runs not scored), the invocations and their commits, and
     every scenario a later invocation ran again, with what each invocation showed."""
     m, c = report["meta"], report["coverage"]
-    per = (f" ({_plural(c['scenarios'], 'scenario')} × {_plural(c['runs_per_scenario'][0], 'run')})"
+    per = (f" ({_plural(c['scenarios'], 'scenario')} × {_plural(c['runs_per_scenario'][0], 'run')}"
+           + (", the most any invocation set out to run" if c.get("runs_from_sources") else "") + ")"
            if len(c["runs_per_scenario"]) == 1 else "")
     line = (f"**Coverage:** {c['scored']} of {c['planned']} planned runs scored{per}"
             + ("" if c["from_plan"] else ", the plan taken from the scenarios these invocations ran")
@@ -631,7 +643,11 @@ def main(argv: list[str] | None = None) -> int:
                                       args.out)
     else:
         most = max(rep["meta"].get("runs_per_scenario") or 0 for _, rep in parts)
+        if not (args.plan_runs or most):
+            p.error("no report records its runs per scenario: give --plan-runs")
         plan = {"scenarios": scenarios, "runs_per_scenario": args.plan_runs or most}
+        if not args.plan_runs:
+            plan["runs_from_sources"] = True  # the page says the runs per scenario are the most any invocation ran
         out = write_combined(combine(parts, args.label, folder, plan), args.out)
     print(f"combined {len(parts)} reports: {out}")
     return 0

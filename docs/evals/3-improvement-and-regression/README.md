@@ -24,7 +24,7 @@
    source of what the agent found.
 5. **The AFTER passed.** [live-pilot-after/](live-pilot-after/README.md) reran scenarios 04 and 07 live: the
    agent resolved the drift case at medium thinking. Its trace showed one more gap, Gmail's `from:` in the
-   agent's first search, which the folder mail source now understands. The two traces, the failure and the
+   agent's first search, which the folder mail source now understands. The traces, the failure and the
    success, are walked through line by line in [docs/traces/](../../traces/README.md).
 6. **The 11x5.** The full suite began in
    [`2026-10-04-live-baseline`](../raw-runs/2026-10-04-live-baseline/report.md). A run of scenario 04 heard

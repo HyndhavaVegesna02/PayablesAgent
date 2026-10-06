@@ -298,6 +298,8 @@ def test_the_default_plan_takes_the_most_runs_any_invocation_set_out_to_run(tmp_
                  "--plan-scenario", S[0], "--plan-scenario", S[1]])
     page = json.loads((tmp_path / "page" / "report.json").read_text(encoding="utf-8"))
     assert page["meta"]["plan"]["runs_per_scenario"] == 5
+    assert "(2 scenarios × 5 runs, the most any invocation set out to run)" in (
+        tmp_path / "page" / "report.md").read_text(encoding="utf-8")
     assert page["coverage"]["missing"] == {S[0]: 3}  # b finished 2 of 01's 5; a's row of 02 has 5
 
 
@@ -313,3 +315,25 @@ def test_the_status_code_is_the_guards_own_never_one_in_googles_text():
     reason = "spend cap: Google refused the call (429) and waiting can't help: quota (403) for project"
     assert report.plain_status("ABORTED", reason) == "Stopped: Google's project spending cap (429)"
     assert report.plain_status("ABORTED", "spend cap: odd text (403)") == "Stopped: spend cap: odd text (403)"
+
+
+def test_a_page_is_one_mode():
+    live, fixtures = _rows(S[:1], "2026-10-05T09:00:00+05:30"), _rows(S[1:2], "2026-10-05T10:00:00+05:30")
+    fixtures["meta"]["mode"] = "fixtures"
+    with pytest.raises(ValueError, match="mix modes"):
+        report.combine([("a", live), ("b", fixtures)], "x")
+
+
+def test_a_plan_needs_its_runs_per_scenario(tmp_path):
+    a = _rows(S[:1], "2026-10-05T09:00:00+05:30")
+    b = _rows(S[1:2], "2026-10-05T10:00:00+05:30")
+    folders = []
+    for name, rep in (("a", a), ("b", b)):
+        rep["meta"]["runs_per_scenario"] = None
+        (tmp_path / name).mkdir()
+        (tmp_path / name / "report.json").write_text(json.dumps(rep), encoding="utf-8")
+        folders.append(str(tmp_path / name))
+    with pytest.raises(SystemExit):
+        report.main(["combine", *folders, "--label", "x", "--out", str(tmp_path / "page")])
+    assert report.main(["combine", *folders, "--label", "x", "--out", str(tmp_path / "page"), "--plan-runs", "5"]) == 0
+    assert "the most any invocation" not in (tmp_path / "page" / "report.md").read_text(encoding="utf-8")
