@@ -54,3 +54,20 @@ allowance is as wide. Minor: other allowances wider than their names (scenario-I
 numbers); number words caught only before a listed noun; ordinal claims about raw runs not derived; the
 round-2 snapshot README names a page that didn't change; the default plan isn't said on the page, and a
 source with no runs per scenario plans 0; modes can be mixed.
+
+## Fix round 3 (efaeb64, page and snapshot at d01e0a8)
+
+A year passes the figure check only inside a date, the suite's shape only as 11x5/14x5; scenario-ID lists take
+only scenario numbers; number words other than "one" count anywhere; every round-3 probe is a test. The page
+says when planned runs per scenario are the default; a plan with no runs per scenario and mixed modes are
+refused; the round-2 snapshot holds only the pages round 2 changed.
+
+## Round 4 (yt-reviewer, confirmation of fix round 3): APPROVE
+
+Round 3's blocker closed (each new probe fails on the old detector and passes on the new; every digit span the
+allowlist blanks in the six READMEs is a real name). No regression or new false sentence. Minor only, filed as
+CHG-056: a counted-noun guard on the scenario-ID and dated-year allowances; a single-digit list number at the
+start of a wrapped prose line; bare "one" and some fraction words; a message check on the plan-runs error; a
+mixed-mode test for ablation_combine; two long README lines.
+
+Ready for the PO's verdict. Gates of record: make test and make check-evidence green at d01e0a8 (c6b8ac5).

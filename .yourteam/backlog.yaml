@@ -731,3 +731,13 @@ changes:
     expected_paths: ['evals/report.py', 'evals/layout.py', 'evals/runner.py', 'evals/ablation.py', 'evals/workflow.py', 'scripts/check_evidence.py', 'docs/evals/', 'docs/', 'README.md', 'tests/']
     depends_on: null
     batch: 20
+  - id: CHG-056
+    title: The README figure check's last narrow allowances, and two small test gaps (batch 20 review round 4 minors)
+    file: docs/batches/2026-10-06-20/review.md
+    status: draft
+    priority: 56
+    type: chore
+    lane: direct
+    expected_paths: ['tests/test_evidence_docs.py', 'tests/test_combined_report.py', 'tests/test_ablation_combine.py', 'docs/evals/']
+    depends_on: CHG-055
+    batch: null
