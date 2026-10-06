@@ -455,8 +455,10 @@ def ablation_combined_markdown(rep: dict[str, Any]) -> str:
                            f"{len(rep['lost'][h])} scenario{'' if len(rep['lost'][h]) == 1 else 's'} of the "
                            f"{rep['paired_on'][h]} {h} was paired on ({', '.join(rep['lost'][h])})" for h in top)
                        + ".")
-    else:
+    elif rep["drops"]:
         out.append("No knock-out compared here lowered outcome success.")
+    else:
+        out.append("No knock-out was scored on more than half the scenarios, so none is compared here.")
     if [h for h in rep["not_measured"] if h != "bare"]:
         out.append(f"Left out: {', '.join(h for h in sorted(rep['not_measured']) if h != 'bare')}, scored on half "
                    "the scenarios or fewer.")

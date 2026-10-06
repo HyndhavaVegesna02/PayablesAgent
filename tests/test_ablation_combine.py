@@ -49,6 +49,14 @@ def test_a_knock_out_on_half_the_scenarios_or_fewer_is_not_measured_and_cannot_e
     assert "Left out: no_x, scored on half the scenarios or fewer." in md
 
 
+def test_a_table_with_no_knock_out_measured_says_none_is_compared():
+    full = _part("2026-10-05T09:00:00+05:30", {"full": {s: c(1, 1) for s in "abcd"}})
+    ko = _part("2026-10-05T10:00:00+05:30", {"no_x": {"a": c(1, 1)}})
+    md = report.ablation_combined_markdown(report.ablation_combine([("full", full), ("ko", ko)], "t"))
+    assert "No knock-out was scored on more than half the scenarios, so none is compared here." in md
+    assert "lowered outcome success" not in md
+
+
 def test_earned_the_most_says_what_one_run_per_scenario_means():
     full = _part("2026-10-05T09:00:00+05:30", {"full": {s: c(3, 3) for s in "abcd"}})
     ko = _part("2026-10-05T10:00:00+05:30", {"no_x": {"a": c(0, 1), "b": c(1, 1), "c": c(1, 1), "d": c(1, 1)}})
