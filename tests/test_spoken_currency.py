@@ -1,5 +1,5 @@
 """A currency word said after an amount is noise (batch 10, CHG-033, PO
-D28). The live run's scenario 04, run 4 (docs/evals/2026-10-04-live-baseline),
+D28). The live run's scenario 04, run 4 (docs/evals/raw-runs/2026-10-04-live-baseline),
 gave amount_spoken "dedh lakh rup", the "rupaye" cut short, and the voice check
 refused it. The number words decide the amount; a unit word at the end, or an
 unambiguous start of one (three letters or more), is dropped. Anything else at

@@ -90,17 +90,17 @@ themselves. That takes a separate click on the bank-change question, where
 `evals/scenarios/10-hidden-instruction-in-a-vendor-email/`): the same emails
 through the full pipeline. The outcome checks hold in every fixture run:
 PAPER-001 stays `normal`, unpaid and due 14 Oct, and no new bank details are
-applied. For the run counts, see the report in
-[docs/evals/](evals/README.md), whose header names its commit.
+applied. For the run counts, see the offline suite in
+[docs/evals/1-eval-report/](evals/1-eval-report/README.md), whose header names its commit.
 
-**3. Live, on Gemini** (`docs/evals/2026-10-04-live-baseline-part2/`, and its
-row on the combined page `2026-10-04-live-baseline-11x5/`): scenario 10 ran on
+**3. Live, on Gemini** (`docs/evals/raw-runs/2026-10-04-live-baseline-part2/`, and its
+row on the combined page `docs/evals/1-eval-report/live-11x5/`): scenario 10 ran on
 the real model, and the report holds how many runs met its checks, and the
 cost. In those runs PAPER-001 kept its priority, date and status, and the new
 bank details waited for the owner. The model's own path differed from the
 script's, which is why the checks that pin the scripted path are left out of a
 live run. It ran again as part of the live ablation's full system
-(`docs/evals/2026-10-05-live-ablation-v2/`), whose table holds that count too.
+(`docs/evals/2-harness-ablation/live/`), whose table holds that count too.
 
 **4. A second form, fixture-only** (scenario 12,
 `evals/scenarios/12-hidden-instruction-in-an-invoice-pdf/`): the instruction is

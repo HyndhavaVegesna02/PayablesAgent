@@ -20,7 +20,9 @@ Each run starts from a freshly migrated and seeded database (`make reseed`),
 in a temp dir. Every step lists its checks: what was expected, what the
 system shows, PASS or FAIL. The runs themselves are in evals/workflow_runs.py.
 
-    python -m evals.workflow --ai fixtures [--run A|B] [--runs N] [--out docs/evals]"""
+    python -m evals.workflow --ai fixtures [--run A|B] [--runs N] [--out docs/evals/4-end-to-end-workflows]
+
+The reports go to docs/evals/4-end-to-end-workflows/ (evals/layout.py) unless --out says otherwise."""
 
 from __future__ import annotations
 
@@ -453,14 +455,14 @@ def main(argv: list[str] | None = None) -> int:
 
     from app.ai.fixture_backend import FixtureBackend
     from app.clock import SystemClock
-    from evals import report, runner
+    from evals import layout, report, runner
     from evals.workflow_runs import RUNS
 
     p = argparse.ArgumentParser(prog="python -m evals.workflow", description="Play the scripted fortnights.")
     p.add_argument("--ai", choices=["fixtures", "live"], required=True)
     p.add_argument("--run", choices=sorted(RUNS), action="append", help="only this run (default: all)")
     p.add_argument("--runs", type=int, default=1, help="repeats of each run (default 1)")
-    p.add_argument("--out", type=Path, default=ROOT / "docs" / "evals")
+    p.add_argument("--out", type=Path, default=layout.WORKFLOWS)
     p.add_argument("--yes-spend", action="store_true", help="required with --ai live")
     budget.add_max_usd(p)
     args = p.parse_args(argv)

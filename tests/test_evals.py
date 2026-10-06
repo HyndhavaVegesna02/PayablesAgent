@@ -382,7 +382,7 @@ def test_the_ablation_header_says_every_harness_owner_types_the_same_values():
     marks (CHG-034), and the bare harness hears the same values as sentences; the header says so, and the
     committed fixture report carries it."""
     assert "every harness's owner fills it with the same value from the scenario" in ablation.FAIRNESS
-    committed = runner.ROOT / "docs" / "evals" / "2026-10-04-fixtures-ablation" / "report.md"
+    committed = runner.ROOT / "docs" / "evals" / "2-harness-ablation" / "offline" / "report.md"
     assert ablation.FAIRNESS in committed.read_text(encoding="utf-8")
 
 

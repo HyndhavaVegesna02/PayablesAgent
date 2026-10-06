@@ -8,6 +8,8 @@ Nothing in a run is shared with another, so N runs are N independent results.
 
     python -m evals.runner --ai fixtures --runs 1 [--scenario NAME] [--config VARIANT.yaml] [--label X]
 
+The report goes to docs/evals/raw-runs/<date>-<mode>-<label>/ (evals/layout.py) unless --out says otherwise.
+
 The model is the only thing that differs between `--ai fixtures` (canned
 replies, offline, deterministic) and `--ai live` (Gemini, behind the budget
 guard of evals/budget.py)."""
@@ -39,7 +41,7 @@ from app.web import actions, repo
 from app.web.auth import User
 from app.web.routes.attention import flagged_fields, prefill
 from app.worker import default_handlers, process_one
-from evals import budget
+from evals import budget, layout
 from evals.scenario import COMPONENTS, Expectation, Scenario
 from fixtures.seed import seed
 
@@ -523,7 +525,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--scenario", action="append", help="only this scenario (repeatable)")
     p.add_argument("--config", type=Path, help="a variant merged over config.yaml (evals/variants/)")
     p.add_argument("--label", default="baseline")
-    p.add_argument("--out", type=Path, default=ROOT / "docs" / "evals")
+    p.add_argument("--out", type=Path, default=layout.RAW_RUNS)
     p.add_argument("--keep-traces", action="store_true", help="copy each run's traces next to the report")
     p.add_argument("--yes-spend", action="store_true", help="required with --ai live")
     budget.add_max_usd(p)

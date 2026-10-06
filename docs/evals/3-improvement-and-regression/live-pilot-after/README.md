@@ -1,8 +1,8 @@
 # The AFTER: the pilot's two failures, rerun live after batch 8
 
 The PO authorised one live run of scenarios 04 and 07, with traces kept, once batch 8's fixes were in:
-CHG-030 for scenario 04 and CHG-031 for scenario 07. The BEFORE is `../2026-10-04-live-pilot/`, with its
-trace rerun in `../2026-10-04-live-pilot/traces/`. This report's header names its commit, prompt version
+CHG-030 for scenario 04 and CHG-031 for scenario 07. The BEFORE is `../live-pilot-before/`, with its
+trace rerun in `../live-pilot-before/traces/`. This report's header names its commit, prompt version
 and cost.
 
 The traces were checked before commit. None of these appears in them:

@@ -4,6 +4,8 @@ the full system with one control knocked out at a time.
 
     python -m evals.ablation --ai fixtures|live [--runs 1] [--harness NAME] [--scenario NAME] [--label X]
 
+The report goes to docs/evals/raw-runs/<date>-<mode>-<label>/ (evals/layout.py) unless --out says otherwise.
+
 Every harness is scored the same way, on each scenario's `outcome` checks:
 the business result alone (evals/outcomes.py). Which component earned the
 most is the knock-out whose removal costs the most outcome successes.
@@ -29,7 +31,7 @@ from typing import Any
 from app.ai.client import Backend, Contents, RawAIResponse
 from app.config import AppConfig
 from app.trace.tracer import Tracer
-from evals import bare, budget, knockouts, metrics, runner
+from evals import bare, budget, knockouts, layout, metrics, runner
 from evals.runner import RunEnv, RunResult, never
 from evals.scenario import Scenario
 
@@ -224,7 +226,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--harness", action="append", choices=HARNESSES, help="only this harness (repeatable)")
     p.add_argument("--scenario", action="append", help="only this scenario (repeatable)")
     p.add_argument("--label", default="ablation")
-    p.add_argument("--out", type=Path, default=runner.ROOT / "docs" / "evals")
+    p.add_argument("--out", type=Path, default=layout.RAW_RUNS)
     p.add_argument("--yes-spend", action="store_true", help="required with --ai live")
     p.add_argument("--keep-traces", action="store_true",
                    help="copy each run's traces next to the report (always on with --ai live)")

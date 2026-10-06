@@ -19,7 +19,8 @@ MISSED = "11-debit-shree-transport-missed.eml"
 RIGHT = {"account_last4": "4821", "direction": "debit", "amount_text": "Rs.20,000.00", "txn_date": "2026-10-13",
          "counterparty": "SHREE TRANSPORT", "reference": "628716051234", "available_balance_text": "Rs.6,00,000.00",
          "uncertain_fields": []}
-# The live model's own fields (docs/evals/2026-10-04-live-pilot/traces/07-missed-alert-causes-drift-run1, job 11)
+# The live model's own fields (docs/evals/3-improvement-and-regression/live-pilot-before/traces/
+# 07-missed-alert-causes-drift-run1, job 11)
 WRONG = {"account": "4821", "account_mask": "XXXX4821", "amount": "Rs.20,000.00", "counterparty": "SHREE TRANSPORT",
          "party": "SHREE TRANSPORT", "date": "2026-10-13", "txn_date": "2026-10-13", "direction": "debit",
          "reference": "628716051234"}

@@ -1,6 +1,7 @@
 """Checks that every committed fixture-mode report still says what the code
-emits (CHG-032; batch 8 review, round 2). Each report under docs/evals/
-(not superseded/) whose meta says mode "fixtures" is regenerated in a
+emits (CHG-032; batch 8 review, round 2). Each report in docs/evals/'s
+numbered folders and raw-runs/ (evals/layout.py; CHG-055; not superseded/
+or invalid/) whose meta says mode "fixtures" is regenerated in a
 temporary folder with the arguments its meta records, and each of its .md
 and .json files is compared with the committed one. Only the commit and date
 fields may differ. Live reports are not reproducible and are left alone, but
@@ -26,10 +27,22 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 
+def report_files() -> list[Path]:
+    """Every report.json and workflow report in the numbered folders and raw-runs, at any depth, outside the
+    traces a report keeps."""
+    from evals import layout
+
+    found = []
+    for root in layout.report_roots(EVALS):
+        found += sorted(p for pattern in ("report.json", "workflow-*.json") for p in root.rglob(pattern)
+                        if "traces" not in p.relative_to(root).parts)
+    return found
+
+
 def committed() -> list[tuple[str, Path, dict]]:
     """(kind, report.json path, meta) for each fixture-mode report, suite and ablation folders and workflow runs."""
     found = []
-    for path in sorted(EVALS.glob("*/report.json")) + sorted(EVALS.glob("workflow-*.json")):
+    for path in report_files():
         meta = json.loads(path.read_text(encoding="utf-8"))["meta"]
         if meta.get("kind") in ("combined", "ablation-combined"):  # derived from other reports: re-derived offline
             found.append((meta["kind"], path, meta))
@@ -42,17 +55,16 @@ def committed() -> list[tuple[str, Path, dict]]:
     return found
 
 
-def regenerate(kind: str, meta: dict, out: Path) -> Path:
-    """Runs what made the report, into `out`; returns the fresh report.json."""
+def regenerate(kind: str, meta: dict, out: Path, at: str | None = None) -> Path:
+    """Runs what made the report, into `out`; returns the fresh report.json. `at` is a combined page's folder
+    under docs/evals, which its links are relative to."""
     from evals import ablation, report, runner, workflow
 
-    if kind == "combined":
-        parts = report.load_parts([EVALS / s["report"] for s in meta["sources"]])
-        fresh = report.write_combined(report.combine(parts, meta["label"]), out / "combined") / "report.json"
-    elif kind == "ablation-combined":
-        parts = report.load_parts([EVALS / s["report"] for s in meta["sources"]])
-        fresh = report.write_ablation_combined(report.ablation_combine(parts, meta["label"]),
-                                               out / "ablation-combined") / "report.json"
+    if kind in ("combined", "ablation-combined"):  # from its sources where they are now, for the page where it is
+        parts = report.load_parts([EVALS / s["report"] for s in meta["sources"]], EVALS)
+        combine, write = ((report.combine, report.write_combined) if kind == "combined" else
+                          (report.ablation_combine, report.write_ablation_combined))
+        fresh = write(combine(parts, meta["label"], at), out / kind) / "report.json"
     elif kind == "suite":
         args = ["--ai", "fixtures", "--runs", str(meta["runs_per_scenario"]), "--label", meta["label"],
                 "--out", str(out)]
@@ -114,9 +126,10 @@ def _check() -> int:
             gone = [s["report"] for s in meta.get("sources", []) if not (EVALS / s["report"] / "report.json").exists()]
             if gone:
                 problems.append(f"{path.relative_to(ROOT).as_posix()}: its sources {gone} are not under docs/evals/ "
-                                "(moved to superseded/?); combine it again from where they are")
+                                "(moved?); combine it again from where they are")
                 continue
-            problems += differences(path, regenerate(kind, meta, out))
+            at = path.parent.relative_to(EVALS).as_posix()
+            problems += differences(path, regenerate(kind, meta, out, at))
             print(f"checked {path.relative_to(ROOT).as_posix()}", flush=True)
     if problems:
         print("\n".join(["The committed evidence no longer matches what the code emits:", *problems,

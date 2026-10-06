@@ -1,5 +1,5 @@
 """The eval report (batch 7, CHG-010a, S4): `report.md` and `report.json` in
-`docs/evals/<date>-<mode>-<label>/`.
+`docs/evals/raw-runs/<date>-<mode>-<label>/` (evals/layout.py).
 
 Three levels, per the brief: did the scenario succeed (end to end), was the
 path sound (the trajectory metrics of evals/metrics.py), and which component
@@ -14,12 +14,16 @@ came from: model, prompt version, config hash, commit and date."""
 from __future__ import annotations
 
 import json
+import posixpath
+import re
 import statistics
 import subprocess
+from collections.abc import Callable
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
+from evals import layout
 from evals.runner import RunResult
 from evals.scenario import Scenario
 
@@ -119,19 +123,13 @@ def markdown(report: dict[str, Any]) -> str:
     if m["mode"] == "fixtures":
         out += ["Fixture mode: every model reply is canned (fixtures/ai_replies.json), so runs are deterministic "
                 "and the tokens and cost are zero. It shows the harness and the code paths, not the model.", ""]
-    out += [
-        f"**Totals:** {t['passed']} of {t['runs']} runs passed ({_pct(t['success_rate'])} of the runs that "
-        f"finished), {t['errored']} errored; {t['scenarios_all_runs_passed']} of {t['scenarios']} scenarios passed "
-        f"every run; path checks held in {t['path'][0]} of the {t['path'][1]} runs that have them; "
-        f"{t['ai_calls']} model calls; {t['cost_micro_usd']} micro-USD.",
-        "",
-    ]
+    out += [f"**Totals:** {_totals(t)}; {t['ai_calls']} model calls; {t['cost_micro_usd']} micro-USD.", ""]
     return "\n".join(out + _scenario_sections(report["scenarios"]))
 
 
-def _scenario_sections(rows: list[dict[str, Any]], *, source: bool = False) -> list[str]:
+def _scenario_sections(rows: list[dict[str, Any]], *, source: bool = False, folder: str | None = None) -> list[str]:
     """The scenario table, its failures and path failures, and the column notes. `source` adds a From column
-    (a combined report: the report each row came from)."""
+    (a combined report: the report each row came from, linked from the page's `folder`)."""
     out = [
         "## Scenarios",
         "",
@@ -149,7 +147,7 @@ def _scenario_sections(rows: list[dict[str, Any]], *, source: bool = False) -> l
         success = f"{r['passed']}/{r['runs'] - r['errored']} ({_pct(r['success_rate'])}){errored}"
         path = "no path checks" if not r["path"][1] else f"{r['path'][0]}/{r['path'][1]}"
         out.append(
-            f"| {r['title']} | " + (f"`{r['source']}` | " if source else "") +
+            f"| {r['title']} | " + (f"{_link(r['source'], folder)} | " if source else "") +
             f"{success} | {path} | {spread} | {worst} | {r['mean']['ai_calls']} | {r['mean']['tool_calls']} "
             f"| {r['mean']['wasted_calls']} | {r['mean']['retries']} | {', '.join(r['escalations']) or 'none'} "
             f"| {tok['input']:.0f} / {tok['output']:.0f} / {tok['thoughts']:.0f} "
@@ -189,41 +187,101 @@ def _scenario_sections(rows: list[dict[str, Any]], *, source: bool = False) -> l
     return out
 
 
-# --- one report from several invocations (batch 10, CHG-035) -----------------------------------------------------
+# --- one report from several invocations (batch 10, CHG-035; CHG-055) -------------------------------------------
 
 SOURCE_FIELDS = ("mode", "model", "prompt_version", "config_sha256", "variant", "commit", "date", "status",
                  "stopped_because", "runs_per_scenario")
 
 
-def combine(parts: list[tuple[str, dict[str, Any]]], label: str) -> dict[str, Any]:
-    """One report from two or more, each given with the folder it came from.
+def stopped_reason(meta: dict[str, Any]) -> str | None:
+    """Why an invocation stopped, as it recorded it: its own reason, or the budget guard's (the guard can stop
+    the last run of an invocation whose header still says COMPLETE)."""
+    return meta.get("stopped_because") or (meta.get("budget") or {}).get("stopped")
+
+
+def plain_status(status: str | None, stopped: str | None) -> str:
+    """An invocation's status in plain words, true to the reason it recorded."""
+    if not stopped:
+        return "Complete" if status == "COMPLETE" else str(status)
+    if stopped.startswith(("cost cap reached", "call cap reached")):
+        return f"Stopped by our budget guard ({stopped.split(' reached')[0]})"
+    if stopped.startswith("spend cap"):
+        return "Stopped: Google's project spending cap (429)"
+    if stopped.startswith("credits depleted"):
+        return "Stopped: Google's prepaid credits ran out (402)"
+    backoffs = re.search(r"outlasted (\d+) backoffs", stopped)
+    if stopped.startswith("rate limited") and backoffs:
+        return f"Stopped: Google kept refusing (429) after {backoffs.group(1)} backoffs"
+    return f"Stopped: {stopped}"
+
+
+def _link(source: str, folder: str | None) -> str:
+    """A source's name, linked to its report from the page at `folder` (both under docs/evals)."""
+    name = f"`{posixpath.basename(source)}`"
+    return name if folder is None else f"[{name}]({posixpath.relpath(source, folder)}/report.md)"
+
+
+def _sources(parts: list[tuple[str, dict[str, Any]]], used: dict[str, int],
+             **extra: Callable[[dict[str, Any]], Any]) -> list[dict[str, Any]]:
+    """Each invocation's metadata, why it stopped, and how many of its finished runs the page uses."""
+    out = []
+    for source, rep in parts:
+        budget, totals = rep["meta"].get("budget") or {}, rep.get("totals") or {}
+        out.append({"report": source, **{k: rep["meta"].get(k) for k in SOURCE_FIELDS},
+                    **{k: f(rep) for k, f in extra.items()},
+                    "stopped": stopped_reason(rep["meta"]), "runs_used": used.get(source, 0),
+                    "calls": budget.get("calls", totals.get("ai_calls", 0)),
+                    "micro_usd": budget.get("micro_usd", totals.get("cost_micro_usd", 0))})
+    return out
+
+
+def _stopped_sentence(sources: list[dict[str, Any]], rest: str) -> list[str]:
+    if not any(s["stopped"] for s in sources):
+        return []
+    return [f"A stopped invocation's finished runs are valid, and they are counted here; {rest} The source "
+            "reports keep each stop's reason as it was recorded.", ""]
+
+
+def combine(parts: list[tuple[str, dict[str, Any]]], label: str, folder: str | None = None) -> dict[str, Any]:
+    """One report from two or more, each given with its folder (its path under docs/evals).
     For every scenario the latest report (by its own date) that finished a
     run of it wins: its row and its runs are this report's, and the row names
-    its source. Totals are
+    its source. Every report's row of a scenario is kept in `coverage`, so
+    the page can say what a replaced row showed. Totals are
     counted from the winning runs; `spent` adds up every invocation's spend,
-    the runs that lost included. Nothing here is typed by hand."""
+    the runs that lost included. `folder` is the page's own folder under
+    docs/evals, for its links. Nothing here is typed by hand."""
     if len(parts) < 2:
         raise ValueError("combine needs two or more reports")
     parts = sorted(parts, key=lambda p: str(p[1]["meta"]["date"]))  # latest by its own date, not argument order
     rows: dict[str, dict[str, Any]] = {}
     runs: dict[str, list[dict[str, Any]]] = {}
+    history: dict[str, list[dict[str, Any]]] = {}
+    planned: dict[str, int] = {}
     for source, rep in parts:
         for row in rep["scenarios"]:
+            history.setdefault(row["scenario"], []).append(
+                {"source": source, "passed": row["passed"], "finished": row["runs"] - row["errored"],
+                 "errored": row["errored"]})
             if row["runs"] == row["errored"] and row["scenario"] in rows:
                 continue  # every run of it errored here: the earlier finished runs stand
             rows[row["scenario"]] = {**row, "source": source}
             runs[row["scenario"]] = [r for r in rep["runs"] if r["scenario"] == row["scenario"]]
+            planned[row["scenario"]] = rep["meta"].get("runs_per_scenario") or row["runs"]
     chosen = [rows[name] for name in sorted(rows)]
     won = [r for name in sorted(runs) for r in runs[name]]
     scored = sum(r["runs"] - r["errored"] for r in chosen)
     passed = sum(r["passed"] for r in chosen)
-    sources = [{"report": source, **{k: rep["meta"].get(k) for k in SOURCE_FIELDS},
-                "calls": (rep["meta"].get("budget") or {}).get("calls", rep["totals"]["ai_calls"]),
-                "micro_usd": (rep["meta"].get("budget") or {}).get("micro_usd", rep["totals"]["cost_micro_usd"])}
-               for source, rep in parts]
+    used: dict[str, int] = {}
+    for r in chosen:
+        used[r["source"]] = used.get(r["source"], 0) + r["runs"] - r["errored"]
+    sources = _sources(parts, used)
     return {
         "meta": {"kind": "combined", "label": label, "mode": parts[-1][1]["meta"]["mode"],
-                 "model": parts[-1][1]["meta"]["model"], "sources": sources},
+                 "model": parts[-1][1]["meta"]["model"], "folder": folder, "sources": sources},
+        "coverage": {"planned": sum(planned.values()), "scored": scored,
+                     "runs_per_scenario": sorted(set(planned.values())),
+                     "replaced": {name: history[name] for name in sorted(history) if len(history[name]) > 1}},
         "totals": {
             "scenarios": len(chosen), "runs": sum(r["runs"] for r in chosen), "passed": passed,
             "errored": sum(r["errored"] for r in chosen),
@@ -238,20 +296,23 @@ def combine(parts: list[tuple[str, dict[str, Any]]], label: str) -> dict[str, An
     }
 
 
-# --- one ablation table from several invocations (CHG-048) -----------------------------------------
+# --- one ablation table from several invocations (CHG-048; CHG-055) --------------------------------
 
 
 def _rate(met: int, scored: int) -> float | None:
     return round(met / scored, 3) if scored else None
 
 
-def ablation_combine(parts: list[tuple[str, dict[str, Any]]], label: str) -> dict[str, Any]:
+def ablation_combine(parts: list[tuple[str, dict[str, Any]]], label: str,
+                     folder: str | None = None) -> dict[str, Any]:
     """One harness-by-scenario table from ablation report.json files, each
     given with its folder. For each harness and scenario, the latest
     invocation (by its own date) that scored a run of it wins, as in
     `combine`. A knock-out's drop is paired: the full system's success on the
-    scenarios that knock-out was scored on, less the knock-out's. Nothing here
-    is typed by hand."""
+    scenarios that knock-out was scored on, less the knock-out's. A drop is
+    measured only for a harness scored on more than half the scenarios; the
+    others are `not_measured`, and none of them can have earned the most.
+    Nothing here is typed by hand."""
     if not parts:
         raise ValueError("ablation-combine needs at least one ablation report")
     parts = sorted(parts, key=lambda p: str(p[1]["meta"]["date"]))
@@ -276,53 +337,93 @@ def ablation_combine(parts: list[tuple[str, dict[str, Any]]], label: str) -> dic
         rates = [_rate(c["met"], c["scored"]) for c in cells[h].values() if c["scored"]]
         per[h] = {"met": sum(c["met"] for c in cells[h].values()), "scored": sum(c["scored"] for c in cells[h].values()),
                   "success": success(h), "spread": [min(rates), max(rates)] if rates else None,
-                  "scenarios_scored": sorted(s for s, c in cells[h].items() if c["scored"])}
+                  "scenarios_scored": sorted(s for s, c in cells[h].items() if c["scored"]),
+                  "runs_per_cell": {s: c["scored"] for s, c in sorted(cells[h].items()) if c["scored"]}}
     drops: dict[str, float] = {}
+    paired: dict[str, int] = {}
+    lost: dict[str, list[str]] = {}
+    not_measured: dict[str, int] = {}
     if "full" in cells:
         for h in harnesses:
             if h == "full":
                 continue
+            if 2 * len(per[h]["scenarios_scored"]) <= len(scenarios):
+                not_measured[h] = len(per[h]["scenarios_scored"])  # half the scenarios or fewer: no drop shown
+                continue
             both = set(per[h]["scenarios_scored"]) & set(per["full"]["scenarios_scored"])
             full, mine = success("full", both), success(h, both)
             if full is not None and mine is not None:
-                drops[h] = round(full - mine, 3)
+                drops[h], paired[h] = round(full - mine, 3), len(both)
+                lost[h] = sorted(s for s in both if (success(h, {s}) or 0) < (success("full", {s}) or 0))
     knock = {h: d for h, d in drops.items() if h != "bare"}
     top = max(knock.values(), default=None)
-    sources = [{"report": source, **{k: rep["meta"].get(k) for k in SOURCE_FIELDS},
-                "harnesses": sorted(rep["harnesses"]),
-                "calls": (rep["meta"].get("budget") or {}).get("calls", 0),
-                "micro_usd": (rep["meta"].get("budget") or {}).get("micro_usd", 0)} for source, rep in parts]
+    used: dict[str, int] = {}
+    for h in harnesses:
+        for c in cells[h].values():
+            used[c["source"]] = used.get(c["source"], 0) + c["scored"]
+    sources = _sources(parts, used, harnesses=lambda rep: sorted(rep["harnesses"]))
     return {
         "meta": {"kind": "ablation-combined", "label": label, "mode": parts[-1][1]["meta"]["mode"],
-                 "model": parts[-1][1]["meta"]["model"], "sources": sources},
+                 "model": parts[-1][1]["meta"]["model"], "folder": folder, "sources": sources},
         "harnesses": per, "scenarios": scenarios,
         "cells": {h: {s: cells[h].get(s) for s in scenarios} for h in harnesses},
-        "full_vs_bare": drops.get("bare"), "drops": knock,
+        "full_vs_bare": drops.get("bare"), "drops": knock, "paired_on": paired, "lost": lost,
+        "not_measured": not_measured,
         "earned_most": sorted(h for h, d in knock.items() if d == top) if top is not None and top > 0 else [],
         "spent": {"calls": sum(s["calls"] for s in sources), "micro_usd": sum(s["micro_usd"] for s in sources)},
     }
 
 
+def _runs_per_cell(cells: dict[str, int]) -> str:
+    """'3 (2 on 11-shortfall-week)': the usual count of runs in a harness's cells, and the cells that differ."""
+    if not cells:
+        return "n/a"
+    counts = list(cells.values())
+    usual = max(set(counts), key=lambda k: (counts.count(k), k))
+    odd = [f"{k} on {s}" for s, k in cells.items() if k != usual]
+    return str(usual) + (f" ({', '.join(odd)})" if odd else "")
+
+
 def ablation_combined_markdown(rep: dict[str, Any]) -> str:
-    m, hs = rep["meta"], list(rep["harnesses"])
+    m, hs, n = rep["meta"], list(rep["harnesses"]), len(rep["scenarios"])
+    folder, measured = m.get("folder"), "not measured live" if m["mode"] == "live" else "not measured"
 
     def pts(x: float | None) -> str:
         return "n/a" if x is None else f"{x * 100:.0f}"
 
-    out = [f"# Harness ablation: {m['label']} (consolidated)", "",
-           f"One table from {len(m['sources'])} ablation invocations, generated by `python -m evals.report "
-           "ablation-combine` from their report.json files. For each harness and scenario, the latest invocation, "
-           "by date, that scored a run of it fills the cell. A knock-out's drop is paired: the full system's success "
-           "on the scenarios that knock-out was scored on, less the knock-out's own.", "",
-           "| Invocation | Harnesses | Mode | Model | Prompt version | Commit | Date | Status | Runs per scenario "
-           "| Calls | µUSD |", "|---|---|---|---|---|---|---|---|---|---|---|"]
+    def pct(x: float | None) -> str:
+        return "n/a" if x is None else f"{x * 100:.0f}%"
+
+    out = [f"# Harness ablation: {m['label']} (consolidated)", ""]
+    if rep["full_vs_bare"] is not None:
+        out += [f"**Headline:** the harness itself, the full system against the bare harness on the same model, "
+                f"paired on the {rep['paired_on']['bare']} scenarios both scored: {pts(rep['full_vs_bare'])} points "
+                "of outcome success.", ""]
+    out += [f"One table from {len(m['sources'])} ablation invocations, generated by `python -m evals.report "
+            "ablation-combine` from their report.json files. For each harness and scenario, the latest invocation, "
+            "by date, that scored a run of it fills the cell. A knock-out's drop is paired: the full system's success "
+            "on the scenarios that knock-out was scored on, less the knock-out's own. A drop is shown only for a "
+            f"harness scored on more than half the {n} scenarios.", "",
+            "| Invocation | Harnesses | Mode | Model | Prompt version | Commit | Date | Status | Runs per scenario "
+            "| Runs used here | Calls | µUSD |", "|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for s in m["sources"]:
-        status = s.get("status") or "?"
-        if s.get("stopped_because"):
-            status += f" ({s['stopped_because']})"
-        out.append(f"| `{s['report']}` | {', '.join(s['harnesses'])} | {s.get('mode')} | {s.get('model')} | "
-                   f"{s.get('prompt_version')} | {s.get('commit')} | {s.get('date')} | {status} | "
-                   f"{s.get('runs_per_scenario')} | {s['calls']} | {s['micro_usd']} |")
+        out.append(f"| {_link(s['report'], folder)} | {', '.join(s['harnesses'])} | {s.get('mode')} | "
+                   f"{s.get('model')} | {s.get('prompt_version')} | {s.get('commit')} | {s.get('date')} | "
+                   f"{plain_status(s.get('status'), s['stopped'])} | {s.get('runs_per_scenario')} | "
+                   f"{s['runs_used']} | {s['calls']} | {s['micro_usd']} |")
+    out += [""]
+    gaps = [h for h in hs if len(rep["harnesses"][h]["scenarios_scored"]) < n]
+    out += _stopped_sentence(m["sources"], "the runs it didn't reach ran in a later invocation." if not gaps else
+                             "the runs it didn't reach ran in a later invocation where one followed, and a — cell "
+                             f"below is a run no invocation reached ({', '.join(gaps)}).")
+    out += ["## Coverage", "", "| Harness | Scenarios scored | Runs per cell | Success | Paired drop (points) |",
+            "|---|---|---|---|---|"]
+    for h in hs:
+        x = rep["harnesses"][h]
+        drop = ("—" if h == "full" else f"{measured} ({rep['not_measured'][h]}/{n} scenarios)"
+                if h in rep["not_measured"] else pts(rep["full_vs_bare"] if h == "bare" else rep["drops"].get(h)))
+        out.append(f"| {h} | {len(x['scenarios_scored'])}/{n} | {_runs_per_cell(x['runs_per_cell'])} | "
+                   f"{pct(x['success'])} | {drop} |")
     out += ["", "## Outcome checks met, by scenario", "", "| Scenario | " + " | ".join(hs) + " |",
             "|---|" + "---|" * len(hs)]
     for sc in rep["scenarios"]:
@@ -331,23 +432,37 @@ def ablation_combined_markdown(rep: dict[str, Any]) -> str:
             c = rep["cells"][h].get(sc)
             row.append("—" if not c or not c["scored"] else f"{c['met']}/{c['scored']}")
         out.append(f"| {sc} | " + " | ".join(row) + " |")
-    out.append("| **Success** | " + " | ".join(
-        "n/a" if rep["harnesses"][h]["success"] is None else f"{rep['harnesses'][h]['success'] * 100:.0f}%"
-        for h in hs) + " |")
+    out.append("| **Success** | " + " | ".join(pct(rep["harnesses"][h]["success"]) for h in hs) + " |")
     out.append("| Spread across scenarios | " + " | ".join(
         "n/a" if rep["harnesses"][h]["spread"] is None else
         f"{rep['harnesses'][h]['spread'][0] * 100:.0f}% – {rep['harnesses'][h]['spread'][1] * 100:.0f}%"
         for h in hs) + " |")
     out += ["", "## What each component is worth", "",
             f"- **The harness (full against bare), paired on the scenarios both scored:** {pts(rep['full_vs_bare'])} "
-            "points of outcome success.", "", "| Knock-out | Drop in outcome success (points, paired) |", "|---|---|"]
-    out += [f"| {h} | {pts(d)} |" for h, d in sorted(rep["drops"].items(), key=lambda kv: (-kv[1], kv[0]))]
+            "points of outcome success.", "",
+            "| Knock-out | Drop in outcome success (points, paired) | Scenarios it lost |", "|---|---|---|"]
+    out += [f"| {h} | {pts(d)} | {', '.join(rep['lost'][h]) or 'none'} |"
+            for h, d in sorted(rep["drops"].items(), key=lambda kv: (-kv[1], kv[0]))]
+    out += [f"| {h} | {measured} ({k}/{n} scenarios) | n/a |" for h, k in sorted(rep["not_measured"].items())
+            if h != "bare"]
     out += ["", "## Which component earned the most", ""]
-    if rep["earned_most"]:
-        out.append(f"Knocking out **{', '.join(rep['earned_most'])}** cost the most: "
-                   f"{pts(rep['drops'][rep['earned_most'][0]])} points.")
+    top = rep["earned_most"]
+    if top:
+        out.append(f"Knocking out **{', '.join(top)}** cost the most: {pts(rep['drops'][top[0]])} points.")
+        if {k for h in top for k in rep["harnesses"][h]["runs_per_cell"].values()} == {1}:
+            out.append(f"{'It' if len(top) == 1 else 'Each'} ran once per scenario, so {pts(rep['drops'][top[0]])} "
+                       "points is " + "; ".join(
+                           f"{len(rep['lost'][h])} scenario{'' if len(rep['lost'][h]) == 1 else 's'} of the "
+                           f"{rep['paired_on'][h]} {h} was paired on ({', '.join(rep['lost'][h])})" for h in top)
+                       + ".")
     else:
         out.append("No knock-out compared here lowered outcome success.")
+    if [h for h in rep["not_measured"] if h != "bare"]:
+        out.append(f"Left out: {', '.join(h for h in sorted(rep['not_measured']) if h != 'bare')}, scored on half "
+                   "the scenarios or fewer.")
+    if folder is not None and m["mode"] == "live":
+        out.append(f"[The offline ablation]({posixpath.relpath(layout.OFFLINE_ABLATION, folder)}/report.md) runs "
+                   "every harness on every scenario, in fixture mode: it shows the code paths, not the model.")
     out += ["", f"Spent across the invocations: {rep['spent']['calls']} calls, {rep['spent']['micro_usd']} µUSD.", ""]
     return "\n".join(out)
 
@@ -359,25 +474,59 @@ def write_ablation_combined(rep: dict[str, Any], out_dir: Path) -> Path:
     return out_dir
 
 
+def _results(h: dict[str, Any]) -> str:
+    """One invocation's result on a scenario: '4/5', '0/5, 1 errored', or 'no run finished (1 errored)'."""
+    if not h["finished"]:
+        return f"no run finished ({h['errored']} errored)"
+    return f"{h['passed']}/{h['finished']}" + (f", {h['errored']} errored" if h["errored"] else "")
+
+
+def coverage_line(report: dict[str, Any]) -> str:
+    """Runs scored of those planned, the invocations and their commits, and every scenario whose row a later
+    invocation replaced, with what each earlier invocation showed."""
+    m, c = report["meta"], report["coverage"]
+    commits = [s["commit"] for s in m["sources"]]
+    per = (f" ({report['totals']['scenarios']} scenarios × {c['runs_per_scenario'][0]} runs)"
+           if len(c["runs_per_scenario"]) == 1 else "")
+    line = (f"**Coverage:** {c['scored']} of {c['planned']} planned runs scored{per}, from {len(m['sources'])} "
+            f"invocations at commits {', '.join(commits[:-1])} and {commits[-1]}.")
+    if not c["replaced"]:
+        return line + " No scenario's row was replaced by a later invocation."
+    told = []
+    for name, h in c["replaced"].items():
+        steps = [f"{_results(x)} in `{posixpath.basename(x['source'])}`" for x in h]
+        told.append(f"{name}: " + ", ".join(steps[:-1]) + f", then {steps[-1]}")
+    return line + " Scenarios a later invocation ran again, with every result: " + "; ".join(told) + "."
+
+
+def _totals(t: dict[str, Any]) -> str:
+    """The run totals over one denominator: the runs that finished."""
+    return (f"{t['passed']} of {t['runs'] - t['errored']} finished runs passed ({_pct(t['success_rate'])}), "
+            f"{t['errored']} errored; {t['scenarios_all_runs_passed']} of {t['scenarios']} scenarios passed every "
+            f"run; path checks held in {t['path'][0]} of the {t['path'][1]} runs that have them")
+
+
 def combined_markdown(report: dict[str, Any]) -> str:
-    m, t = report["meta"], report["totals"]
-    out = [f"# Eval report: {m['label']} (combined)", "",
+    m, t, c = report["meta"], report["totals"], report["coverage"]
+    folder = m.get("folder")
+    out = [f"# Eval report: {m['label']} (combined)", "", coverage_line(report), "",
+           f"**Totals:** {_totals(t)}; {t['ai_calls']} model calls; {t['cost_micro_usd']} micro-USD in the rows "
+           f"shown, {t['spent']['calls']} calls and {t['spent']['micro_usd']} micro-USD spent across the "
+           "invocations.", "",
            f"One report from {len(m['sources'])} invocations, generated by `python -m evals.report combine` from "
            "their report.json files. Each scenario's row is the latest invocation, by date, that finished a run of "
            "it (the From column). A later invocation whose runs of a scenario all errored leaves the earlier row in "
            "place; an earlier row that was replaced stays in its own report.",
-           "", "| Report | Mode | Model | Prompt version | Commit | Date | Status | Runs per scenario | Model calls | "
-           "Cost µUSD |", "|---|---|---|---|---|---|---|---|---|---|"]
+           "", "| Report | Mode | Model | Prompt version | Commit | Date | Status | Runs per scenario | Runs used here "
+           "| Model calls | Cost µUSD |", "|---|---|---|---|---|---|---|---|---|---|---|"]
     for s in m["sources"]:
-        status = s["status"] + (f" ({s['stopped_because']})" if s.get("stopped_because") else "")
-        out.append(f"| `{s['report']}` | {s['mode']} | {s['model']} | {s['prompt_version']} | {s['commit']} | "
-                   f"{s['date']} | {status} | {s['runs_per_scenario']} | {s['calls']} | {s['micro_usd']} |")
-    out += ["", f"**Totals:** {t['passed']} of {t['runs']} runs passed ({_pct(t['success_rate'])} of the runs that "
-            f"finished), {t['errored']} errored; {t['scenarios_all_runs_passed']} of {t['scenarios']} scenarios passed "
-            f"every run; path checks held in {t['path'][0]} of the {t['path'][1]} runs that have them; "
-            f"{t['ai_calls']} model calls; {t['cost_micro_usd']} micro-USD in the rows shown, "
-            f"{t['spent']['calls']} calls and {t['spent']['micro_usd']} micro-USD spent across the invocations.", ""]
-    return "\n".join(out + _scenario_sections(report["scenarios"], source=True))
+        out.append(f"| {_link(s['report'], folder)} | {s['mode']} | {s['model']} | {s['prompt_version']} | "
+                   f"{s['commit']} | {s['date']} | {plain_status(s['status'], s['stopped'])} | "
+                   f"{s['runs_per_scenario']} | {s['runs_used']} | {s['calls']} | {s['micro_usd']} |")
+    out += [""] + _stopped_sentence(m["sources"], "the runs it didn't reach ran in a later invocation." if
+                                    c["scored"] >= c["planned"] else
+                                    f"{c['planned'] - c['scored']} planned runs no invocation finished.")
+    return "\n".join(out + _scenario_sections(report["scenarios"], source=True, folder=folder))
 
 
 def write_combined(report: dict[str, Any], out_dir: Path) -> Path:
@@ -387,9 +536,9 @@ def write_combined(report: dict[str, Any], out_dir: Path) -> Path:
     return out_dir
 
 
-def load_parts(folders: list[Path]) -> list[tuple[str, dict[str, Any]]]:
-    """(folder name, report) for each report folder, in the order given."""
-    return [(f.name, json.loads((f / "report.json").read_text(encoding="utf-8"))) for f in folders]
+def load_parts(folders: list[Path], evals: Path = layout.EVALS) -> list[tuple[str, dict[str, Any]]]:
+    """(the folder's path under docs/evals, its report) for each report folder, in the order given."""
+    return [(layout.under(f, evals), json.loads((f / "report.json").read_text(encoding="utf-8"))) for f in folders]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -400,20 +549,20 @@ def main(argv: list[str] | None = None) -> int:
                                             "ablation-combine: one harness-by-scenario table from ablation report "
                                             "folders (each ordered by their own dates).")
     sub = p.add_subparsers(dest="command", required=True)
-    for name, helptext in (("combine", "two or more suite report folders under docs/evals"),
-                           ("ablation-combine", "one or more ablation report folders under docs/evals")):
+    for name, helptext in (("combine", "two or more suite report folders, e.g. under docs/evals/raw-runs"),
+                           ("ablation-combine", "one or more ablation report folders, e.g. under docs/evals/raw-runs")):
         c = sub.add_parser(name)
         c.add_argument("folders", type=Path, nargs="+", help=helptext)
         c.add_argument("--label", required=True)
-        c.add_argument("--out", type=Path, default=ROOT / "docs" / "evals")
+        c.add_argument("--out", type=Path, required=True,
+                       help="the page's own folder, e.g. docs/evals/1-eval-report/live-11x5")
     args = p.parse_args(argv)
     parts = load_parts(args.folders)
-    last = max((rep["meta"] for _, rep in parts), key=lambda m: str(m["date"]))
-    folder = args.out / f"{str(last['date'])[:10]}-{last['mode']}-{args.label}"
+    folder = layout.under(args.out)
     if args.command == "ablation-combine":
-        out = write_ablation_combined(ablation_combine(parts, args.label), folder)
+        out = write_ablation_combined(ablation_combine(parts, args.label, folder), args.out)
     else:
-        out = write_combined(combine(parts, args.label), folder)
+        out = write_combined(combine(parts, args.label, folder), args.out)
     print(f"combined {len(parts)} reports: {out}")
     return 0
 

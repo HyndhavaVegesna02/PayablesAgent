@@ -144,7 +144,7 @@ def test_make_workflow_runs_both_or_one_with_repeats():
 
 
 def test_the_committed_workflow_reports_passed_and_say_where_they_came_from():
-    folder = workflow.ROOT / "docs" / "evals"
+    folder = workflow.ROOT / "docs" / "evals" / "4-end-to-end-workflows"
     for name in sorted(RUNS):
         (path,) = [p for p in sorted(folder.glob(f"workflow-{name}-*.json")) if not p.stem.endswith("-live")]
         data = json.loads(path.read_text(encoding="utf-8"))

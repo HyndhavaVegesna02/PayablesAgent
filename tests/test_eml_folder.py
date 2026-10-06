@@ -121,7 +121,7 @@ def test_search_orders_by_time_across_utc_offsets(tmp_path):
 
 def test_search_understands_gmails_from_subject_after_and_before():
     """CHG-031: the live agent searched `from:alerts@hdfcbank.example 4821`, which matched nothing here
-    though Gmail would have matched it (docs/evals/2026-10-04-live-after-batch-8)."""
+    though Gmail would have matched it (docs/evals/3-improvement-and-regression/live-pilot-after)."""
     source = EmlFolderSource(INBOX, at(31))
     names = lambda q: _names(s.ref for s in source.search(q))  # noqa: E731
     assert names(f"from:{BANK} ashirwad paper") == [  # the bank's three, not Ashirwad's own invoices

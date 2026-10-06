@@ -7,8 +7,8 @@ opens a drift case. Can the exception agent find what's missing?
 
 | File | Run | What it shows |
 | --- | --- | --- |
-| [`live-failure.jsonl`](live-failure.jsonl) | **Official failure.** Gemini, the live pilot (`docs/evals/2026-10-04-live-pilot/`), job 11 | The agent finds the missed alert but proposes it with field names of its own; code refuses the candidate, and then accepted a final answer that relied on nothing. The gap stayed open. |
-| [`live-success.jsonl`](live-success.jsonl) | **Official success.** Gemini, the AFTER (`docs/evals/2026-10-04-live-after-batch-8/`), job 11 | Once batch 8 named the fields and refused an empty resolution: two searches, one VALID candidate, and code writes the transaction. |
+| [`live-failure.jsonl`](live-failure.jsonl) | **Official failure.** Gemini, the live pilot (`docs/evals/3-improvement-and-regression/live-pilot-before/`), job 11 | The agent finds the missed alert but proposes it with field names of its own; code refuses the candidate, and then accepted a final answer that relied on nothing. The gap stayed open. |
+| [`live-success.jsonl`](live-success.jsonl) | **Official success.** Gemini, the AFTER (`docs/evals/3-improvement-and-regression/live-pilot-after/`), job 11 | Once batch 8 named the fields and refused an empty resolution: two searches, one VALID candidate, and code writes the transaction. |
 | [`success.jsonl`](success.jsonl) | Fixture AI, `config.yaml` | The scripted run of the whole scenario, every job; deterministic, so a test regenerates it. |
 | [`failure.jsonl`](failure.jsonl) | Fixture AI, `evals/variants/regress-max-steps.yaml` | The same, with the agent's step cap cut to 2: code's escalation takes over. |
 
@@ -162,4 +162,4 @@ to finish work that medium thinking does in one. The eval suite scores the
 path as well as the result: scenario 7's trajectory check
 `drift-resolved-in-its-first-run` fails here, in the report's Path column, while
 the end result still counts as a success. That makes this config the regression the suite catches
-([docs/evals/README.md](../evals/README.md)).
+([docs/evals/3-improvement-and-regression/](../evals/3-improvement-and-regression/README.md#the-regression-told-straight-d23)).

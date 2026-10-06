@@ -134,17 +134,19 @@ the real model. Run it only when someone is paying for it.
 | What | Where |
 | --- | --- |
 | Architecture, with the agent loop, tools, context management and control points labelled | [docs/architecture.md](docs/architecture.md) |
-| Eval report: the 11 TDD scenarios and three harder fixture-only ones, repeated runs, three levels (end to end, path, component) | [docs/evals/](docs/evals/README.md) |
-| Harness ablation: full vs bare, same model, and seven knock-outs, with one consolidated table | [docs/evals/](docs/evals/README.md) |
-| One regression caught | [docs/evals/](docs/evals/README.md#the-regression-told-straight-d23) |
-| Two full-workflow fortnights through the real web app, worker and demo clock, step by step | [docs/evals/](docs/evals/README.md#full-workflow-runs) |
+| Where to start: each eval deliverable, its headline and its folder | [docs/evals/](docs/evals/README.md) |
+| Eval report: the 11 TDD scenarios and three harder fixture-only ones, repeated runs, three levels (end to end, path, component) | [docs/evals/1-eval-report/](docs/evals/1-eval-report/README.md) |
+| Harness ablation: full vs bare, same model, and seven knock-outs, with one consolidated table | [docs/evals/2-harness-ablation/](docs/evals/2-harness-ablation/README.md) |
+| One improvement from evals, and one regression caught | [docs/evals/3-improvement-and-regression/](docs/evals/3-improvement-and-regression/README.md#the-regression-told-straight-d23) |
+| Two full-workflow fortnights through the real web app, worker and demo clock, step by step | [docs/evals/4-end-to-end-workflows/](docs/evals/4-end-to-end-workflows/README.md#full-workflow-runs) |
 | Two live traces, a failure and a success, each with a walkthrough (and a fixture pair) | [docs/traces/](docs/traces/README.md) |
 | Threat model, with the attack we ran and its outcome | [docs/threat-model.md](docs/threat-model.md) |
 | Permission model: what the agent and each role can touch | [docs/permission-model.md](docs/permission-model.md) |
 | Demo script (3 minutes) | [docs/demo-script.md](docs/demo-script.md) |
 
 Every figure in those pages comes from a generated report or file, and names
-the commit and run it came from.
+the commit and run it came from. The headlines the eval READMEs quote are
+checked against their reports' report.json by a test.
 
 ### Running the evals
 
@@ -158,7 +160,8 @@ make workflow                                       # the two scripted fortnight
 Live runs add `--ai live --yes-spend`. A budget guard in code stops every
 invocation at 600 model calls or 5,000,000 micro-USD (US$5), whichever comes
 first. It writes a partial report marked ABORTED, runs one call at a time, and
-backs off on rate limits. Reports go to `docs/evals/<date>-<mode>-<label>/`.
+backs off on rate limits. Reports go to `docs/evals/raw-runs/<date>-<mode>-<label>/`, and workflow
+reports to `docs/evals/4-end-to-end-workflows/`.
 
 ## Reusable components
 

@@ -83,9 +83,9 @@ def test_every_live_budget_holds_the_committed_live_runs_that_passed():
 
     root = Path(runner.ROOT) / "docs" / "evals"
     used: dict[str, int] = {}
-    for f in root.glob("2026-10-04-live-*/report.json"):
+    for f in [*root.glob("raw-runs/*/report.json"), *root.glob("3-improvement-and-regression/*/report.json")]:
         rep = json.loads(f.read_text(encoding="utf-8"))
-        if not isinstance(rep.get("runs"), list):
+        if rep["meta"].get("mode") != "live" or not isinstance(rep.get("runs"), list):
             continue  # an ablation or combined page: no per-run metrics
         for r in rep["runs"]:
             if r["status"] == "PASSED" and r["scenario"] in AGENT_SCENARIOS:

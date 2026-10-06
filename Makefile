@@ -33,10 +33,12 @@ smoke-gemini:
 	uv run python -m app.ai.smoke --yes-call-gemini
 
 # make evals ARGS="--ai fixtures --runs 5"   (live: --ai live --yes-spend; see README)
+# The report goes to docs/evals/raw-runs/<date>-<mode>-<label>/.
 evals:
 	uv run python -m evals.runner $(ARGS)
 
 # make ablation ARGS="--ai fixtures"   (live: --ai live --yes-spend; see README)
+# The report goes to docs/evals/raw-runs/<date>-<mode>-<label>/.
 ablation:
 	uv run python -m evals.ablation $(ARGS)
 
@@ -44,10 +46,12 @@ ablation:
 # make workflow               both runs, offline (fixture AI)
 # make workflow RUN=B N=3     one run, three repeats
 # make workflow AI=live ARGS=--yes-spend   live Gemini, behind the budget guard; only when authorised
+# The reports go to docs/evals/4-end-to-end-workflows/.
 workflow:
 	uv run python -m evals.workflow --ai $(or $(AI),fixtures) $(if $(RUN),--run $(RUN)) $(if $(N),--runs $(N)) $(ARGS)
 
-# Every committed fixture-mode report under docs/evals/ still says what the code emits (CHG-032).
+# Every committed fixture-mode report in docs/evals/ (its numbered folders and raw-runs/) still says what the
+# code emits, and every combined page re-derives from its raw runs (CHG-032, CHG-055).
 # About a minute; not part of make test; required at batch close (.yourteam/definition-of-done.md).
 check-evidence:
 	uv run python scripts/check_evidence.py

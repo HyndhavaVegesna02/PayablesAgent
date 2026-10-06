@@ -118,8 +118,8 @@ must reconnect at least weekly.
 - **SMTP for real owner alerts.** `app/notify/smtp.py` and the `send_alert` job are done and tested; with no
   `SMTP_HOST` the alerts wait unsent. Set `SMTP_HOST`, `SMTP_PORT` (587), `SMTP_USER`, `SMTP_PASSWORD` and
   `ALERT_FROM` for an account separate from the Gmail being read.
-- **Live phase 2 evals, blocked on the Gemini key's daily quota (429).** Done: `docs/evals/2026-10-04-live-pilot/`,
-  `2026-10-04-live-after-batch-8/`, and `2026-10-04-live-baseline/` (scenarios 01-07 x 5, then ABORTED). Left,
+- **Live phase 2 evals, blocked on the Gemini key's daily quota (429).** Done: `docs/evals/3-improvement-and-regression/live-pilot-before/`,
+  `live-pilot-after/`, and `docs/evals/raw-runs/2026-10-04-live-baseline/` (scenarios 01-07 x 5, then ABORTED). Left,
   each only with the PO's authorisation, in this order:
 
   ```sh
@@ -129,7 +129,8 @@ must reconnect at least weekly.
     --scenario 09-vendor-email-changes-bank-details --scenario 10-hidden-instruction-in-a-vendor-email \
     --scenario 11-shortfall-week
   # 2. one generated page for both invocations
-  uv run python -m evals.report combine docs/evals/2026-10-04-live-baseline docs/evals/<date>-live-baseline-part2 --label baseline-11x5
+  uv run python -m evals.report combine docs/evals/raw-runs/2026-10-04-live-baseline \
+    docs/evals/raw-runs/<date>-live-baseline-part2 --label baseline-11x5 --out docs/evals/1-eval-report/live-11x5
   # 3. the two fortnights, once each
   make workflow AI=live RUN=A ARGS=--yes-spend
   make workflow AI=live RUN=B ARGS=--yes-spend
@@ -142,7 +143,8 @@ must reconnect at least weekly.
   ```
 
   Each invocation has a hard budget guard (600 calls, 5,000,000 micro-USD). Afterwards: commit the reports,
-  run `make check-evidence`, and update `docs/evals/README.md`'s "The live runs, in order".
+  run `make check-evidence`, and update `docs/evals/3-improvement-and-regression/README.md`'s "The live
+  runs, in order".
 - **Demo video script:** `docs/demo-script.md`.
 - **Known limits in the backlog:** CHG-025 (batch 5 notes: round-off labelling, statement sender, two
   passwords in one email, IFSC-only bank change, unproven multimodal prompts on real Gemini); CHG-026 (a crash

@@ -36,9 +36,9 @@ no float ever holds an amount.
 - `make test` — runs pytest (incl. Hypothesis properties) and import-linter
 - `make worker` — runs the job worker and the scheduler (`python -m app.worker`); it writes a heartbeat that `/api/health` reports
 - `make smoke-gemini` — live and billed: at most 3 Gemini calls (sort and extract on two test-inbox fixtures) to check the prompts on Gemini itself; never part of `make test`, and run only when the PO authorises it
-- `make evals ARGS="--ai fixtures --runs 5"`, `make ablation ARGS="--ai fixtures"` — the eval suite and the harness ablation; reports go to `docs/evals/`. `--ai live --yes-spend` calls Gemini behind a hard budget guard (600 calls / 5,000,000 micro-USD per invocation) and runs only when the PO authorises it
-- `make check-evidence` — regenerates every committed fixture-mode report under `docs/evals/` and fails if any .md or .json differs beyond its commit and date (about a minute; not part of `make test`; required at batch close)
-- `make workflow` — the two scripted fortnights (run A, the worked example; run B, the bad fortnight) through the real web routes, worker and demo clock; `RUN=A|B`, `N=` repeats; reports `docs/evals/workflow-<run>-<date>.md`. Offline by default; `AI=live ARGS=--yes-spend` only when the PO authorises it
+- `make evals ARGS="--ai fixtures --runs 5"`, `make ablation ARGS="--ai fixtures"` — the eval suite and the harness ablation; reports go to `docs/evals/raw-runs/` (`evals/layout.py`; the numbered folders hold the pages built from them). `--ai live --yes-spend` calls Gemini behind a hard budget guard (600 calls / 5,000,000 micro-USD per invocation) and runs only when the PO authorises it
+- `make check-evidence` — regenerates every committed fixture-mode report in `docs/evals/`'s numbered folders and `raw-runs/`, re-derives every combined page from its raw runs, and fails if any .md or .json differs beyond its commit and date (about a minute; not part of `make test`; required at batch close)
+- `make workflow` — the two scripted fortnights (run A, the worked example; run B, the bad fortnight) through the real web routes, worker and demo clock; `RUN=A|B`, `N=` repeats; reports `docs/evals/4-end-to-end-workflows/workflow-<run>-<date>.md`. Offline by default; `AI=live ARGS=--yes-spend` only when the PO authorises it
 
 ## Invariants that hold across every change
 

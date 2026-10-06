@@ -240,7 +240,7 @@ def test_every_empty_required_field_is_marked_for_the_owner():
 
 
 def test_the_live_runs_unread_amount_is_marked_and_the_scripted_owner_types_what_was_said(monkeypatch):
-    """Scenario 04, run 4 (docs/evals/2026-10-04-live-baseline): the model's amount couldn't be read. The page
+    """Scenario 04, run 4 (docs/evals/raw-runs/2026-10-04-live-baseline): the model's amount couldn't be read. The page
     now marks the amount, and the scripted owner types the amount said in the note, so the run ends on the
     model's own reading (extract), not on a form refusal."""
     import json as _json
@@ -296,7 +296,8 @@ def test_combine_takes_the_latest_by_date_keeps_finished_runs_over_errored_ones_
 
     from evals import report
 
-    first = json.loads((runner.ROOT / "docs" / "evals" / "2026-10-04-live-baseline" / "report.json").read_text(
+    raw = runner.ROOT / "docs" / "evals" / "raw-runs"
+    first = json.loads((raw / "2026-10-04-live-baseline" / "report.json").read_text(
         encoding="utf-8"))
     later = copy.deepcopy(first)
     later["meta"]["date"] = "2026-10-05T09:00:00+05:30"
@@ -314,14 +315,14 @@ def test_combine_takes_the_latest_by_date_keeps_finished_runs_over_errored_ones_
 def test_check_evidence_names_a_combined_reports_missing_source(tmp_path, monkeypatch, capsys):
     from scripts import check_evidence
 
-    evals = tmp_path / "docs" / "evals" / "2026-10-05-live-x"
-    evals.mkdir(parents=True)
-    (evals / "report.json").write_text(json.dumps({"meta": {"kind": "combined", "label": "x", "sources": [
-        {"report": "2026-10-04-gone"}]}}), encoding="utf-8")
+    page = tmp_path / "docs" / "evals" / "1-eval-report" / "live-x"
+    page.mkdir(parents=True)
+    (page / "report.json").write_text(json.dumps({"meta": {"kind": "combined", "label": "x", "sources": [
+        {"report": "raw-runs/2026-10-04-gone"}]}}), encoding="utf-8")
     monkeypatch.setattr(check_evidence, "ROOT", tmp_path)
     monkeypatch.setattr(check_evidence, "EVALS", tmp_path / "docs" / "evals")
     assert check_evidence.main() == 1
-    assert "its sources ['2026-10-04-gone'] are not under docs/evals/" in capsys.readouterr().out
+    assert "its sources ['raw-runs/2026-10-04-gone'] are not under docs/evals/" in capsys.readouterr().out
 
 
 def test_a_missed_handwritten_due_date_is_the_models_failure_even_though_the_owner_types_it():
