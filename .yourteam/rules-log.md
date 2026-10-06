@@ -105,3 +105,12 @@ change, which makes the gate vacuous for it. Batch 1 ran prepatch under
 `uv run` by hand. The fix is in the config the script already reads, so it is a
 config rung, landed between batches 1 and 2 (R002). Approved by PO at batch 1
 verdict.
+
+## R011
+2026-10-06, the user's explicit choice through the PO: docs/demo-script.md was erased from the public repo's
+whole history (its three commits rebuilt without it, the README's two references removed, messages, authors and
+dates kept), and docs/gmail-handover.md, never published, stays out. Dev keeps both files. Batch 19 built the
+public tree by hand from a list (no .yourteam, .claude, docs/batches, docs/changes, docs/notes, docs/evals
+superseded/ and invalid/, CLAUDE.md, the hackathon brief, the Gmail handover), and that list didn't name the
+demo script, so a rebuild from it would have brought the file back. Prose rung: the public tree is assembled
+outside any test this repo runs. Approved by the PO (user's direction).
