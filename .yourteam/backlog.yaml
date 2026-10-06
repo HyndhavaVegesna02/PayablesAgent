@@ -721,3 +721,13 @@ changes:
     expected_paths: ['evals/runner.py', 'evals/bare.py', 'evals/ablation.py', 'tests/']
     depends_on: null
     batch: 18
+  - id: CHG-055
+    title: docs/evals by deliverable, and the stopped invocations told plainly (PO, batch 20)
+    file: docs/changes/CHG-055.md
+    status: ready
+    priority: 55
+    type: chore
+    lane: planned
+    expected_paths: ['evals/report.py', 'evals/layout.py', 'evals/runner.py', 'evals/ablation.py', 'evals/workflow.py', 'scripts/check_evidence.py', 'docs/evals/', 'docs/', 'README.md', 'tests/']
+    depends_on: null
+    batch: 20
