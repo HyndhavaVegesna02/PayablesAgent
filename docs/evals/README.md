@@ -10,8 +10,8 @@ is typed by hand.
 |---|---|---|
 | Eval report | Live on Gemini, 55 of 55 live runs passed (11 scenarios × 5 runs). 10 of 11 scenarios passed 5/5 in the first invocation that finished their runs; scenario 04 failed (4/5, then 0/5), was fixed, and passed 5/5 on rerun. Offline, 70 of 70 offline runs passed (14 scenarios × 5 runs). | [1-eval-report/](1-eval-report/README.md) |
 | Harness ablation | The full system against the bare harness, on the same model: 80 points of outcome success, paired on the 10 scenarios both scored. Of the knock-outs, no_drift_rule and no_rule_checks cost the most: 9 points each, which at one run per scenario is 1 scenario each. | [2-harness-ablation/](2-harness-ablation/README.md) |
-| One improvement from evals | The first live run, the pilot, passed 9 of 11 scenarios. The traces of its two failures put the cause in the harness, not the model; once that was fixed, the rerun's 2 of 2 runs passed. | [3-improvement-and-regression/](3-improvement-and-regression/README.md#the-live-runs-in-order) |
-| One regression caught | Offline, a step-cap variant: its path check failed in 5 of 5 runs of scenario 07, while 70 of 70 finished runs still passed. Live, a stricter reading of a transcript's numbers broke scenario 04 between two invocations; the suite caught it, and it was fixed. | [3-improvement-and-regression/](3-improvement-and-regression/README.md#the-regression-told-straight-d23) |
+| One improvement from evals | The first live run, the pilot, passed 9 of 11 scenarios. Of the scenarios it missed, the traces put the cause in the harness, not the model; once that was fixed, the rerun's 2 of 2 runs passed. | [3-improvement-and-regression/](3-improvement-and-regression/README.md#the-live-runs-in-order) |
+| One regression caught | Offline, a step-cap variant: its path check failed in 5 of 5 runs of scenario 07, while 70 of 70 finished runs still passed. Live, a stricter reading of a transcript's numbers broke scenario 04 between invocations of the live suite; the suite caught it, and it was fixed. | [3-improvement-and-regression/](3-improvement-and-regression/README.md#the-regression-told-straight-d23) |
 | End-to-end runs | Two scripted fortnights through the real web app, worker and demo clock. Offline, every check passes; live, A and B each left 1 failed check (`new-decisions` in A, `rows-in-the-ledger-once` in B). | [4-end-to-end-workflows/](4-end-to-end-workflows/README.md#full-workflow-runs) |
 | Success and failure traces | The live pilot's failed agent job and the same job succeeding after the fix, each walked through line by line, and a fixture pair. | [docs/traces/](../traces/README.md) |
 | Attack attempt | A vendor email that hides an instruction to the agent (scenario 10), offline and live, and what each defence did. | [docs/threat-model.md](../threat-model.md) |
@@ -40,8 +40,11 @@ pages from their raw runs; any difference beyond a commit and a date fails it.
 
 ## In this tree only
 
-- `raw-runs/` also keeps the first live ablation (`2026-10-04-live-ablation-v1/` and its seven parts),
+- `raw-runs/` also keeps the first live ablation (`2026-10-04-live-ablation-v1/` and its parts),
   superseded by the second; `make check-evidence` still re-derives its table.
 - `superseded/` keeps each report as it was before a later change regenerated it, and `invalid/` keeps the
   reports of an attempt that ran on after the account's prepaid credits ran out; neither is a measurement
-  in any table.
+  in any table. Their READMEs name folders as they were when written: since this layout, a raw run is under
+  `raw-runs/` by the same name, the fixture suites and the offline ablation are `1-eval-report/offline-14x5/`,
+  `3-improvement-and-regression/regression-caught/` and `2-harness-ablation/offline/`, and the combined pages are
+  `1-eval-report/live-11x5/` and `2-harness-ablation/live/`.

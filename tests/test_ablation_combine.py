@@ -62,7 +62,8 @@ def test_earned_the_most_says_what_one_run_per_scenario_means():
     ko = _part("2026-10-05T10:00:00+05:30", {"no_x": {"a": c(0, 1), "b": c(1, 1), "c": c(1, 1), "d": c(1, 1)}})
     md = report.ablation_combined_markdown(report.ablation_combine([("full", full), ("ko", ko)], "t", "2-x/live"))
     assert "Knocking out **no_x** cost the most: 25 points." in md
-    assert "It ran once per scenario, so 25 points is 1 scenario of the 4 no_x was paired on (a)." in md
+    assert ("no_x ran once per scenario and the full system met every run of the 4 scenarios no_x was paired on, "
+            "so 25 points is 1 scenario of 4 (a).") in md
     assert "[The offline ablation](../../2-harness-ablation/offline/report.md) runs every harness" in md
     assert "| full | 4/4 | 3 | 100% | — |" in md
 
@@ -84,7 +85,39 @@ def test_the_sources_table_says_each_status_plainly_and_how_many_runs_each_gave(
             "Stopped: Google's project spending cap (429) | 1 | 2 | 10 | 1000 |") in md
     assert "| Stopped by our budget guard (cost cap) | 1 | 2 | 10 | 1000 |" in md
     assert "waiting can't help" not in md
-    assert "A stopped invocation's finished runs are valid, and they are counted here" in md
+    assert ("A stopped invocation's finished runs are valid, and they are counted here; a — cell below is one no "
+            "invocation scored: no run of it was reached, or the run that was reached errored.") in md
+    assert "ran in a later invocation" not in md
+
+
+def test_points_are_called_scenarios_only_where_that_is_arithmetic():
+    """Review round 1: with the full system missing a paired run, or the knock-out winning one the full system
+    lost, "N points is k scenarios" would be false; the page counts worse and better instead."""
+    full = _part("2026-10-05T09:00:00+05:30", {"full": {"a": c(3, 3), "b": c(3, 3), "d": c(0, 3), "e": c(3, 3)}})
+    ko = _part("2026-10-05T10:00:00+05:30", {"no_x": {"a": c(0, 1), "b": c(0, 1), "d": c(1, 1), "e": c(1, 1)}})
+    md = report.ablation_combined_markdown(report.ablation_combine([("full", full), ("ko", ko)], "t"))
+    assert "Knocking out **no_x** cost the most: 25 points." in md
+    assert ("On the 4 scenarios no_x was paired on (runs per cell: 1), it did worse than the full system on 2 (a, b) "
+            "and better on 1 (d).") in md
+    assert "points is" not in md
+    full = _part("2026-10-05T09:00:00+05:30", {"full": {"a": c(2, 3), "b": c(3, 3), "d": c(3, 3), "e": c(3, 3)}})
+    ko = _part("2026-10-05T10:00:00+05:30", {"no_x": {"a": c(0, 1), "b": c(1, 1), "d": c(1, 1), "e": c(1, 1)}})
+    md = report.ablation_combined_markdown(report.ablation_combine([("full", full), ("ko", ko)], "t"))
+    assert "points is" not in md and "it did worse than the full system on 1 (a) and better on 0 (none)" in md
+
+
+def test_without_a_full_system_row_nothing_is_compared():
+    ko = _part("2026-10-05T10:00:00+05:30", {"no_x": {s: c(1, 1) for s in "abcd"}})
+    md = report.ablation_combined_markdown(report.ablation_combine([("ko", ko)], "t"))
+    assert "There is no full-system row here, so no knock-out is compared." in md
+    assert "more than half" not in md.split("## Which component earned the most")[1]
+
+
+def test_a_planned_scenario_no_harness_ran_counts_against_coverage():
+    full = _part("2026-10-05T09:00:00+05:30", {"full": {"a": c(1, 1), "b": c(1, 1)}})
+    rep = report.ablation_combine([("full", full)], "t", plan={"scenarios": ["a", "b", "c", "d"]})
+    assert rep["scenarios"] == ["a", "b", "c", "d"]
+    assert "| full | 2/4 | 1 | 100% | — |" in report.ablation_combined_markdown(rep)
 
 
 def test_a_later_scored_invocation_replaces_an_earlier_errored_cell():

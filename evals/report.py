@@ -199,19 +199,25 @@ def stopped_reason(meta: dict[str, Any]) -> str | None:
     return meta.get("stopped_because") or (meta.get("budget") or {}).get("stopped")
 
 
+_CODE = re.compile(r"\((\d{3})\)")
+
+
 def plain_status(status: str | None, stopped: str | None) -> str:
-    """An invocation's status in plain words, true to the reason it recorded."""
+    """An invocation's status in plain words, true to the reason it recorded: each of the budget guard's stops
+    (evals/budget.py) in words, with the HTTP code the stop recorded. A reason it doesn't know is shown as
+    recorded, never guessed at."""
     if not stopped:
         return "Complete" if status == "COMPLETE" else str(status)
+    code = _CODE.search(stopped)
     if stopped.startswith(("cost cap reached", "call cap reached")):
         return f"Stopped by our budget guard ({stopped.split(' reached')[0]})"
-    if stopped.startswith("spend cap"):
-        return "Stopped: Google's project spending cap (429)"
-    if stopped.startswith("credits depleted"):
-        return "Stopped: Google's prepaid credits ran out (402)"
-    backoffs = re.search(r"outlasted (\d+) backoffs", stopped)
-    if stopped.startswith("rate limited") and backoffs:
-        return f"Stopped: Google kept refusing (429) after {backoffs.group(1)} backoffs"
+    if stopped.startswith("spend cap") and code:
+        return f"Stopped: Google's project spending cap ({code.group(1)})"
+    if stopped.startswith("credits depleted") and code:
+        return f"Stopped: Google's prepaid credits ran out ({code.group(1)})"
+    limited = re.match(r"rate limited: a (\d{3}) outlasted (\d+) backoffs", stopped)
+    if limited:
+        return f"Stopped: Google kept refusing ({limited.group(1)}) after {limited.group(2)} backoffs"
     return f"Stopped: {stopped}"
 
 
@@ -242,22 +248,32 @@ def _stopped_sentence(sources: list[dict[str, Any]], rest: str) -> list[str]:
             "reports keep each stop's reason as it was recorded.", ""]
 
 
-def combine(parts: list[tuple[str, dict[str, Any]]], label: str, folder: str | None = None) -> dict[str, Any]:
+def _commits(sources: list[dict[str, Any]]) -> str:
+    """'at commits a, b and c', each commit once, in the order the invocations ran."""
+    seen = list(dict.fromkeys(str(s["commit"]) for s in sources))
+    return f"at commit {seen[0]}" if len(seen) == 1 else f"at commits {', '.join(seen[:-1])} and {seen[-1]}"
+
+
+def combine(parts: list[tuple[str, dict[str, Any]]], label: str, folder: str | None = None,
+            plan: dict[str, Any] | None = None) -> dict[str, Any]:
     """One report from two or more, each given with its folder (its path under docs/evals).
     For every scenario the latest report (by its own date) that finished a
     run of it wins: its row and its runs are this report's, and the row names
     its source. Every report's row of a scenario is kept in `coverage`, so
-    the page can say what a replaced row showed. Totals are
-    counted from the winning runs; `spent` adds up every invocation's spend,
-    the runs that lost included. `folder` is the page's own folder under
-    docs/evals, for its links. Nothing here is typed by hand."""
+    the page can say what a replaced row showed. `plan` is what the
+    invocations set out to run ({"scenarios": [...], "runs_per_scenario": n});
+    coverage counts the planned runs this page scores, and names those it
+    doesn't. Without a plan, it is taken from the scenarios that ran, and the
+    page says so. Totals are counted from the winning runs; `spent` adds up
+    every invocation's spend, the runs that lost included. `folder` is the
+    page's own folder under docs/evals, for its links. Nothing here is typed
+    by hand."""
     if len(parts) < 2:
         raise ValueError("combine needs two or more reports")
     parts = sorted(parts, key=lambda p: str(p[1]["meta"]["date"]))  # latest by its own date, not argument order
     rows: dict[str, dict[str, Any]] = {}
     runs: dict[str, list[dict[str, Any]]] = {}
     history: dict[str, list[dict[str, Any]]] = {}
-    planned: dict[str, int] = {}
     for source, rep in parts:
         for row in rep["scenarios"]:
             history.setdefault(row["scenario"], []).append(
@@ -267,7 +283,6 @@ def combine(parts: list[tuple[str, dict[str, Any]]], label: str, folder: str | N
                 continue  # every run of it errored here: the earlier finished runs stand
             rows[row["scenario"]] = {**row, "source": source}
             runs[row["scenario"]] = [r for r in rep["runs"] if r["scenario"] == row["scenario"]]
-            planned[row["scenario"]] = rep["meta"].get("runs_per_scenario") or row["runs"]
     chosen = [rows[name] for name in sorted(rows)]
     won = [r for name in sorted(runs) for r in runs[name]]
     scored = sum(r["runs"] - r["errored"] for r in chosen)
@@ -276,11 +291,18 @@ def combine(parts: list[tuple[str, dict[str, Any]]], label: str, folder: str | N
     for r in chosen:
         used[r["source"]] = used.get(r["source"], 0) + r["runs"] - r["errored"]
     sources = _sources(parts, used)
+    by_source = {source: rep["meta"].get("runs_per_scenario") for source, rep in parts}
+    if plan is not None:
+        planned = {s: plan["runs_per_scenario"] for s in plan["scenarios"]}
+    else:  # the scenarios that ran, each at its winning invocation's runs per scenario
+        planned = {s: by_source[rows[s]["source"]] or rows[s]["runs"] for s in rows}
+    finished = {s: min(rows[s]["runs"] - rows[s]["errored"], n) if s in rows else 0 for s, n in planned.items()}
     return {
         "meta": {"kind": "combined", "label": label, "mode": parts[-1][1]["meta"]["mode"],
-                 "model": parts[-1][1]["meta"]["model"], "folder": folder, "sources": sources},
-        "coverage": {"planned": sum(planned.values()), "scored": scored,
-                     "runs_per_scenario": sorted(set(planned.values())),
+                 "model": parts[-1][1]["meta"]["model"], "folder": folder, "plan": plan, "sources": sources},
+        "coverage": {"from_plan": plan is not None, "scenarios": len(planned), "planned": sum(planned.values()),
+                     "scored": sum(finished.values()), "runs_per_scenario": sorted(set(planned.values())),
+                     "missing": {s: planned[s] - finished[s] for s in sorted(planned) if finished[s] < planned[s]},
                      "replaced": {name: history[name] for name in sorted(history) if len(history[name]) > 1}},
         "totals": {
             "scenarios": len(chosen), "runs": sum(r["runs"] for r in chosen), "passed": passed,
@@ -303,16 +325,17 @@ def _rate(met: int, scored: int) -> float | None:
     return round(met / scored, 3) if scored else None
 
 
-def ablation_combine(parts: list[tuple[str, dict[str, Any]]], label: str,
-                     folder: str | None = None) -> dict[str, Any]:
+def ablation_combine(parts: list[tuple[str, dict[str, Any]]], label: str, folder: str | None = None,
+                     plan: dict[str, Any] | None = None) -> dict[str, Any]:
     """One harness-by-scenario table from ablation report.json files, each
     given with its folder. For each harness and scenario, the latest
     invocation (by its own date) that scored a run of it wins, as in
-    `combine`. A knock-out's drop is paired: the full system's success on the
-    scenarios that knock-out was scored on, less the knock-out's. A drop is
-    measured only for a harness scored on more than half the scenarios; the
-    others are `not_measured`, and none of them can have earned the most.
-    Nothing here is typed by hand."""
+    `combine`. The scenarios are the plan's ({"scenarios": [...]}) and any
+    other that ran. A knock-out's drop is paired: the full system's success
+    on the scenarios that knock-out was scored on, less the knock-out's. A
+    drop is measured only for a harness scored on more than half the
+    scenarios; the others are `not_measured`, and none of them can have
+    earned the most. Nothing here is typed by hand."""
     if not parts:
         raise ValueError("ablation-combine needs at least one ablation report")
     parts = sorted(parts, key=lambda p: str(p[1]["meta"]["date"]))
@@ -326,7 +349,7 @@ def ablation_combine(parts: list[tuple[str, dict[str, Any]]], label: str,
                     cells.setdefault(h, {})[s] = {**c, "source": source}
     order = ["full", "bare", *sorted(h for h in cells if h not in ("full", "bare"))]
     harnesses = [h for h in order if h in cells]
-    scenarios = sorted({s for h in cells for s in cells[h]})
+    scenarios = sorted({s for h in cells for s in cells[h]} | set((plan or {}).get("scenarios", [])))
 
     def success(h: str, only: set[str] | None = None) -> float | None:
         picked = [c for s, c in cells[h].items() if only is None or s in only]
@@ -340,8 +363,9 @@ def ablation_combine(parts: list[tuple[str, dict[str, Any]]], label: str,
                   "scenarios_scored": sorted(s for s, c in cells[h].items() if c["scored"]),
                   "runs_per_cell": {s: c["scored"] for s, c in sorted(cells[h].items()) if c["scored"]}}
     drops: dict[str, float] = {}
-    paired: dict[str, int] = {}
+    paired: dict[str, list[str]] = {}
     lost: dict[str, list[str]] = {}
+    gained: dict[str, list[str]] = {}
     not_measured: dict[str, int] = {}
     if "full" in cells:
         for h in harnesses:
@@ -353,8 +377,9 @@ def ablation_combine(parts: list[tuple[str, dict[str, Any]]], label: str,
             both = set(per[h]["scenarios_scored"]) & set(per["full"]["scenarios_scored"])
             full, mine = success("full", both), success(h, both)
             if full is not None and mine is not None:
-                drops[h], paired[h] = round(full - mine, 3), len(both)
+                drops[h], paired[h] = round(full - mine, 3), sorted(both)
                 lost[h] = sorted(s for s in both if (success(h, {s}) or 0) < (success("full", {s}) or 0))
+                gained[h] = sorted(s for s in both if (success(h, {s}) or 0) > (success("full", {s}) or 0))
     knock = {h: d for h, d in drops.items() if h != "bare"}
     top = max(knock.values(), default=None)
     used: dict[str, int] = {}
@@ -364,11 +389,11 @@ def ablation_combine(parts: list[tuple[str, dict[str, Any]]], label: str,
     sources = _sources(parts, used, harnesses=lambda rep: sorted(rep["harnesses"]))
     return {
         "meta": {"kind": "ablation-combined", "label": label, "mode": parts[-1][1]["meta"]["mode"],
-                 "model": parts[-1][1]["meta"]["model"], "folder": folder, "sources": sources},
+                 "model": parts[-1][1]["meta"]["model"], "folder": folder, "plan": plan, "sources": sources},
         "harnesses": per, "scenarios": scenarios,
         "cells": {h: {s: cells[h].get(s) for s in scenarios} for h in harnesses},
-        "full_vs_bare": drops.get("bare"), "drops": knock, "paired_on": paired, "lost": lost,
-        "not_measured": not_measured,
+        "full_vs_bare": drops.get("bare"), "drops": knock, "paired_on": {h: len(s) for h, s in paired.items()},
+        "lost": lost, "gained": gained, "not_measured": not_measured,
         "earned_most": sorted(h for h, d in knock.items() if d == top) if top is not None and top > 0 else [],
         "spent": {"calls": sum(s["calls"] for s in sources), "micro_usd": sum(s["micro_usd"] for s in sources)},
     }
@@ -384,15 +409,46 @@ def _runs_per_cell(cells: dict[str, int]) -> str:
     return str(usual) + (f" ({', '.join(odd)})" if odd else "")
 
 
+def _earned_most(rep: dict[str, Any]) -> list[str]:
+    """Which knock-out cost the most, and what its points are in scenarios. "N points is k scenarios" is said
+    only where it is arithmetic: the knock-out ran once per scenario and the full system met every run of the
+    scenarios it was paired on. Otherwise the page counts where it did worse and where better."""
+    top = rep["earned_most"]
+    if "full" not in rep["harnesses"]:
+        return ["There is no full-system row here, so no knock-out is compared."]
+    if not top:
+        return ["No knock-out compared here lowered outcome success." if rep["drops"] else
+                "No knock-out was scored on more than half the scenarios, so none is compared here."]
+    points = f"{rep['drops'][top[0]] * 100:.0f}"
+    out = [f"Knocking out **{', '.join(top)}** cost the most: {points} points."]
+    full = rep["cells"]["full"]
+
+    def names(xs: list[str]) -> str:
+        return ", ".join(xs) or "none"
+
+    for h in top:
+        both = [s for s, c in rep["cells"][h].items() if c and c["scored"] and full.get(s) and full[s]["scored"]]
+        once = all(rep["cells"][h][s]["scored"] == 1 for s in both)
+        perfect = all(full[s]["met"] == full[s]["scored"] for s in both)
+        k = len(rep["lost"][h])
+        if once and perfect:
+            out.append(f"{h} ran once per scenario and the full system met every run of the {len(both)} scenarios "
+                       f"{h} was paired on, so {points} points is {k} scenario{'' if k == 1 else 's'} of "
+                       f"{len(both)} ({names(rep['lost'][h])}).")
+        else:
+            cells = _runs_per_cell(rep["harnesses"][h]["runs_per_cell"])
+            out.append(f"On the {len(both)} scenarios {h} was paired on (runs per cell: {cells}), it did worse than "
+                       f"the full system on {k} ({names(rep['lost'][h])}) and better on {len(rep['gained'][h])} "
+                       f"({names(rep['gained'][h])}).")
+    return out
+
+
 def ablation_combined_markdown(rep: dict[str, Any]) -> str:
     m, hs, n = rep["meta"], list(rep["harnesses"]), len(rep["scenarios"])
     folder, measured = m.get("folder"), "not measured live" if m["mode"] == "live" else "not measured"
 
     def pts(x: float | None) -> str:
         return "n/a" if x is None else f"{x * 100:.0f}"
-
-    def pct(x: float | None) -> str:
-        return "n/a" if x is None else f"{x * 100:.0f}%"
 
     out = [f"# Harness ablation: {m['label']} (consolidated)", ""]
     if rep["full_vs_bare"] is not None:
@@ -412,10 +468,8 @@ def ablation_combined_markdown(rep: dict[str, Any]) -> str:
                    f"{plain_status(s.get('status'), s['stopped'])} | {s.get('runs_per_scenario')} | "
                    f"{s['runs_used']} | {s['calls']} | {s['micro_usd']} |")
     out += [""]
-    gaps = [h for h in hs if len(rep["harnesses"][h]["scenarios_scored"]) < n]
-    out += _stopped_sentence(m["sources"], "the runs it didn't reach ran in a later invocation." if not gaps else
-                             "the runs it didn't reach ran in a later invocation where one followed, and a — cell "
-                             f"below is a run no invocation reached ({', '.join(gaps)}).")
+    out += _stopped_sentence(m["sources"], "a — cell below is one no invocation scored: no run of it was "
+                                           "reached, or the run that was reached errored.")
     out += ["## Coverage", "", "| Harness | Scenarios scored | Runs per cell | Success | Paired drop (points) |",
             "|---|---|---|---|---|"]
     for h in hs:
@@ -423,7 +477,7 @@ def ablation_combined_markdown(rep: dict[str, Any]) -> str:
         drop = ("—" if h == "full" else f"{measured} ({rep['not_measured'][h]}/{n} scenarios)"
                 if h in rep["not_measured"] else pts(rep["full_vs_bare"] if h == "bare" else rep["drops"].get(h)))
         out.append(f"| {h} | {len(x['scenarios_scored'])}/{n} | {_runs_per_cell(x['runs_per_cell'])} | "
-                   f"{pct(x['success'])} | {drop} |")
+                   f"{_pct(x['success'])} | {drop} |")
     out += ["", "## Outcome checks met, by scenario", "", "| Scenario | " + " | ".join(hs) + " |",
             "|---|" + "---|" * len(hs)]
     for sc in rep["scenarios"]:
@@ -432,7 +486,7 @@ def ablation_combined_markdown(rep: dict[str, Any]) -> str:
             c = rep["cells"][h].get(sc)
             row.append("—" if not c or not c["scored"] else f"{c['met']}/{c['scored']}")
         out.append(f"| {sc} | " + " | ".join(row) + " |")
-    out.append("| **Success** | " + " | ".join(pct(rep["harnesses"][h]["success"]) for h in hs) + " |")
+    out.append("| **Success** | " + " | ".join(_pct(rep["harnesses"][h]["success"]) for h in hs) + " |")
     out.append("| Spread across scenarios | " + " | ".join(
         "n/a" if rep["harnesses"][h]["spread"] is None else
         f"{rep['harnesses'][h]['spread'][0] * 100:.0f}% – {rep['harnesses'][h]['spread'][1] * 100:.0f}%"
@@ -445,20 +499,7 @@ def ablation_combined_markdown(rep: dict[str, Any]) -> str:
             for h, d in sorted(rep["drops"].items(), key=lambda kv: (-kv[1], kv[0]))]
     out += [f"| {h} | {measured} ({k}/{n} scenarios) | n/a |" for h, k in sorted(rep["not_measured"].items())
             if h != "bare"]
-    out += ["", "## Which component earned the most", ""]
-    top = rep["earned_most"]
-    if top:
-        out.append(f"Knocking out **{', '.join(top)}** cost the most: {pts(rep['drops'][top[0]])} points.")
-        if {k for h in top for k in rep["harnesses"][h]["runs_per_cell"].values()} == {1}:
-            out.append(f"{'It' if len(top) == 1 else 'Each'} ran once per scenario, so {pts(rep['drops'][top[0]])} "
-                       "points is " + "; ".join(
-                           f"{len(rep['lost'][h])} scenario{'' if len(rep['lost'][h]) == 1 else 's'} of the "
-                           f"{rep['paired_on'][h]} {h} was paired on ({', '.join(rep['lost'][h])})" for h in top)
-                       + ".")
-    elif rep["drops"]:
-        out.append("No knock-out compared here lowered outcome success.")
-    else:
-        out.append("No knock-out was scored on more than half the scenarios, so none is compared here.")
+    out += ["", "## Which component earned the most", ""] + _earned_most(rep)
     if [h for h in rep["not_measured"] if h != "bare"]:
         out.append(f"Left out: {', '.join(h for h in sorted(rep['not_measured']) if h != 'bare')}, scored on half "
                    "the scenarios or fewer.")
@@ -484,16 +525,18 @@ def _results(h: dict[str, Any]) -> str:
 
 
 def coverage_line(report: dict[str, Any]) -> str:
-    """Runs scored of those planned, the invocations and their commits, and every scenario whose row a later
-    invocation replaced, with what each earlier invocation showed."""
+    """Runs scored of those planned (and the planned runs not scored), the invocations and their commits, and
+    every scenario a later invocation ran again, with what each invocation showed."""
     m, c = report["meta"], report["coverage"]
-    commits = [s["commit"] for s in m["sources"]]
-    per = (f" ({report['totals']['scenarios']} scenarios × {c['runs_per_scenario'][0]} runs)"
+    per = (f" ({c['scenarios']} scenarios × {c['runs_per_scenario'][0]} runs)"
            if len(c["runs_per_scenario"]) == 1 else "")
-    line = (f"**Coverage:** {c['scored']} of {c['planned']} planned runs scored{per}, from {len(m['sources'])} "
-            f"invocations at commits {', '.join(commits[:-1])} and {commits[-1]}.")
+    line = (f"**Coverage:** {c['scored']} of {c['planned']} planned runs scored{per}"
+            + ("" if c["from_plan"] else ", the plan taken from the scenarios these invocations ran")
+            + f", from {len(m['sources'])} invocations {_commits(m['sources'])}.")
+    if c["missing"]:
+        line += " Planned runs not scored here: " + ", ".join(f"{s} ({k})" for s, k in c["missing"].items()) + "."
     if not c["replaced"]:
-        return line + " No scenario's row was replaced by a later invocation."
+        return line + " No scenario ran in more than one invocation."
     told = []
     for name, h in c["replaced"].items():
         steps = [f"{_results(x)} in `{posixpath.basename(x['source'])}`" for x in h]
@@ -525,9 +568,11 @@ def combined_markdown(report: dict[str, Any]) -> str:
         out.append(f"| {_link(s['report'], folder)} | {s['mode']} | {s['model']} | {s['prompt_version']} | "
                    f"{s['commit']} | {s['date']} | {plain_status(s['status'], s['stopped'])} | "
                    f"{s['runs_per_scenario']} | {s['runs_used']} | {s['calls']} | {s['micro_usd']} |")
-    out += [""] + _stopped_sentence(m["sources"], "the runs it didn't reach ran in a later invocation." if
-                                    c["scored"] >= c["planned"] else
-                                    f"{c['planned'] - c['scored']} planned runs no invocation finished.")
+    missing = sum(c["missing"].values())
+    out += [""] + _stopped_sentence(m["sources"], "what it didn't reach ran in another invocation, so every planned "
+                                                  "run is scored." if not missing else
+                                    f"{missing} planned runs are not scored on this page (the Coverage line names "
+                                    "them).")
     return "\n".join(out + _scenario_sections(report["scenarios"], source=True, folder=folder))
 
 
@@ -546,6 +591,8 @@ def load_parts(folders: list[Path], evals: Path = layout.EVALS) -> list[tuple[st
 def main(argv: list[str] | None = None) -> int:
     import argparse
 
+    from evals import scenario
+
     p = argparse.ArgumentParser(prog="python -m evals.report",
                                 description="combine: one report from two or more suite report folders; "
                                             "ablation-combine: one harness-by-scenario table from ablation report "
@@ -558,13 +605,23 @@ def main(argv: list[str] | None = None) -> int:
         c.add_argument("--label", required=True)
         c.add_argument("--out", type=Path, required=True,
                        help="the page's own folder, e.g. docs/evals/1-eval-report/live-11x5")
+        c.add_argument("--plan-scenario", action="append",
+                       help="a scenario the invocations set out to run (repeatable; default: every scenario a run "
+                            "of the sources' mode takes, evals/scenario.py)")
+        if name == "combine":
+            c.add_argument("--plan-runs", type=int,
+                           help="runs planned per scenario (default: the earliest invocation's)")
     args = p.parse_args(argv)
     parts = load_parts(args.folders)
-    folder = layout.under(args.out)
+    first = min((rep["meta"] for _, rep in parts), key=lambda m: str(m["date"]))
+    scenarios = args.plan_scenario or (scenario.live_names() if first["mode"] == "live" else scenario.names())
+    folder = layout.under(args.out) if layout.inside(args.out) else None  # outside docs/evals: no links
     if args.command == "ablation-combine":
-        out = write_ablation_combined(ablation_combine(parts, args.label, folder), args.out)
+        out = write_ablation_combined(ablation_combine(parts, args.label, folder, {"scenarios": scenarios}),
+                                      args.out)
     else:
-        out = write_combined(combine(parts, args.label, folder), args.out)
+        plan = {"scenarios": scenarios, "runs_per_scenario": args.plan_runs or first["runs_per_scenario"]}
+        out = write_combined(combine(parts, args.label, folder, plan), args.out)
     print(f"combined {len(parts)} reports: {out}")
     return 0
 

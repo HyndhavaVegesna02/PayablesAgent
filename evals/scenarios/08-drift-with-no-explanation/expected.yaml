@@ -28,7 +28,7 @@ expect:
     component: planner
     sql: SELECT opening_cash_paise FROM plan_run WHERE is_current = 1
     equals: 56500000
-  - id: path-budget-steps   # path budget (CHG-050): all cases within 14 agent steps; the committed live runs used at most 11 (live-baseline, live-after-batch-8); applies live too
+  - id: path-budget-steps   # path budget (CHG-050): all cases within 14 agent steps; the committed live runs used at most 11 (live-baseline, live-pilot-after); applies live too
     component: agent
     level: trajectory
     sql: SELECT COALESCE(SUM(json_extract(state_json, '$.steps_total')), 0) <= 14 FROM agent_case

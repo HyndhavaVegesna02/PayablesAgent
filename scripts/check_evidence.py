@@ -64,7 +64,7 @@ def regenerate(kind: str, meta: dict, out: Path, at: str | None = None) -> Path:
         parts = report.load_parts([EVALS / s["report"] for s in meta["sources"]], EVALS)
         combine, write = ((report.combine, report.write_combined) if kind == "combined" else
                           (report.ablation_combine, report.write_ablation_combined))
-        fresh = write(combine(parts, meta["label"], at), out / kind) / "report.json"
+        fresh = write(combine(parts, meta["label"], at, meta.get("plan")), out / kind) / "report.json"
     elif kind == "suite":
         args = ["--ai", "fixtures", "--runs", str(meta["runs_per_scenario"]), "--label", meta["label"],
                 "--out", str(out)]

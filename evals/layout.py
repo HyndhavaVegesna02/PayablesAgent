@@ -23,6 +23,11 @@ def report_roots(evals: Path = EVALS) -> list[Path]:
         p for p in [evals / RAW_RUNS.name] if p.is_dir()]
 
 
+def inside(path: Path, evals: Path = EVALS) -> bool:
+    """Whether a folder lies under docs/evals, where a page's links can be relative to it."""
+    return path.resolve().is_relative_to(evals.resolve())
+
+
 def under(path: Path, evals: Path = EVALS) -> str:
     """A report folder's name as a combined report records it: its path under docs/evals, or its own name
     when it lies elsewhere."""
