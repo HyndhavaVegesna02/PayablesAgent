@@ -85,8 +85,11 @@ def test_the_sources_table_says_each_status_plainly_and_how_many_runs_each_gave(
             "Stopped: Google's project spending cap (429) | 1 | 2 | 10 | 1000 |") in md
     assert "| Stopped by our budget guard (cost cap) | 1 | 2 | 10 | 1000 |" in md
     assert "waiting can't help" not in md
-    assert ("A stopped invocation's finished runs are valid, and they are counted here; a — cell below is one no "
-            "invocation scored: no run of it was reached, or the run that was reached errored.") in md
+    assert ("A stopped invocation's finished runs are valid. The Runs used here column gives how many of each "
+            "invocation's runs this page uses: fewer than it finished where a later invocation finished a cell "
+            "again. A — cell below is one no invocation scored: no run of it was reached, or the run that was "
+            "reached errored.") in md
+    assert "counted here" not in md
     assert "ran in a later invocation" not in md
 
 

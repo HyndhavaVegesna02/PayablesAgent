@@ -52,7 +52,10 @@ def test_the_page_names_every_source_its_plain_status_and_the_runs_it_gave():
     assert "| Stopped: Google kept refusing (429) after 5 backoffs | 5 | 30 | 254 | 805565 |" in md
     assert "| Complete | 5 | 5 | 120 | 400000 |" in md
     assert "rate limited: a 429" not in md  # the raw reason stays in the source report
-    assert "A stopped invocation's finished runs are valid, and they are counted here" in md
+    assert ("A stopped invocation's finished runs are valid. The Runs used here column gives how many of each "
+            "invocation's runs this page uses: fewer than it finished where a later invocation finished a scenario "
+            "again.") in md
+    assert "counted here" not in md  # the first invocation finished 35 runs; the page uses 30 of them
     assert "| Scenario | From | Success |" in md
     assert "| [`2026-10-05-live-baseline-part2`](../../raw-runs/2026-10-05-live-baseline-part2/report.md) |" in md
 
@@ -69,7 +72,7 @@ def test_the_coverage_line_comes_first_and_names_every_scenario_run_again_with_e
     assert ("08-drift-with-no-explanation: no run finished (1 errored) in `2026-10-04-live-baseline`, then no run "
             "finished (1 errored) in `2026-10-05-live-baseline-part2`") in lines[2]
     assert combined["coverage"]["planned"] == 40 and combined["coverage"]["scored"] == 35
-    assert "5 planned runs are not scored on this page (the Coverage line names them)." in "\n".join(lines)
+    assert "5 planned runs are not scored here (the Coverage line names them)." in "\n".join(lines)
 
 
 def test_the_totals_count_passes_over_the_runs_that_finished():
@@ -168,7 +171,8 @@ def _rows(keep, date, *, stopped=None, finished=None):
         if finished and r["scenario"] in finished:
             r.update(errored=r["runs"] - finished[r["scenario"]], passed=finished[r["scenario"]], failed=0)
     rep["runs"] = [r for r in rep["runs"] if r["scenario"] in keep]
-    rep["meta"].update(date=date, status="ABORTED" if stopped else "COMPLETE", stopped_because=stopped)
+    rep["meta"].update(date=date, status="ABORTED" if stopped else "COMPLETE", stopped_because=stopped,
+                       budget={**rep["meta"]["budget"], "stopped": stopped})
     return rep
 
 
@@ -183,16 +187,16 @@ def test_a_planned_scenario_no_invocation_ran_is_named_and_not_called_covered():
     assert md.splitlines()[2].startswith("**Coverage:** 35 of 40 planned runs scored (8 scenarios × 5 runs), from 2 "
                                          "invocations at commit aba59bd. Planned runs not scored here: "
                                          "08-drift-with-no-explanation (5).")
-    assert "5 planned runs are not scored on this page" in md and "ran in another invocation" not in md
+    assert "5 planned runs are not scored here" in md and "Every planned run is scored here." not in md
 
 
-def test_a_stopped_rerun_of_finished_work_is_told_as_covered_by_another_invocation():
+def test_a_stopped_rerun_of_finished_work_claims_no_more_than_the_page_shows():
     a = _rows(S[:2], "2026-10-05T09:00:00+05:30")
     b = _rows(S[:1], "2026-10-05T10:00:00+05:30", stopped="cost cap reached: 9 micro-USD spent")
     md = report.combined_markdown(report.combine([("a", a), ("b", b)], "x",
                                                  plan={"scenarios": S[:2], "runs_per_scenario": 5}))
-    assert "what it didn't reach ran in another invocation, so every planned run is scored." in md
-    assert "ran in a later invocation" not in md  # it ran in an earlier one
+    assert "Every planned run is scored here." in md
+    assert "ran in another invocation" not in md and "ran in a later invocation" not in md
 
 
 def test_a_later_partial_row_replaces_a_full_one_and_the_page_counts_what_it_shows():
@@ -202,7 +206,7 @@ def test_a_later_partial_row_replaces_a_full_one_and_the_page_counts_what_it_sho
                                                  plan={"scenarios": S[:1], "runs_per_scenario": 5}))
     assert f"Planned runs not scored here: {S[0]} (2)." in md
     assert f"{S[0]}: 5/5 in `a`, then 3/3, 2 errored in `b`" in md
-    assert "2 planned runs are not scored on this page" in md
+    assert "2 planned runs are not scored here" in md and "(1 scenario × 5 runs)" in md
 
 
 def test_each_commit_is_named_once():
@@ -266,3 +270,46 @@ def test_a_page_written_outside_docs_evals_links_nothing(tmp_path):
     assert "](" not in md and "| `2026-10-04-live-baseline` |" in md
     plan = json.loads((tmp_path / "page" / "report.json").read_text(encoding="utf-8"))["meta"]["plan"]
     assert plan["runs_per_scenario"] == 5 and len(plan["scenarios"]) > len(S)  # every live scenario, by default
+
+
+def test_the_runs_used_column_gives_what_a_stopped_invocation_contributes():
+    combined = report.combine(_parts(), "x")
+    (first,) = [s for s in combined["meta"]["sources"] if s["report"] == PART1]
+    finished = sum(r["runs"] - r["errored"] for r in _first()["scenarios"])
+    assert (first["runs_used"], finished) == (30, 35)  # its five runs of 04 were finished again later
+
+
+def test_a_complete_fixture_reads_as_complete():
+    md = report.combined_markdown(report.combine([("a", _rows(S[:1], "2026-10-05T09:00:00+05:30")),
+                                                  ("b", _rows(S[1:2], "2026-10-05T10:00:00+05:30"))], "x"))
+    assert "| Complete |" in md and "Stopped" not in md and "A stopped invocation" not in md
+
+
+def test_the_default_plan_takes_the_most_runs_any_invocation_set_out_to_run(tmp_path):
+    a = _rows(S[:2], "2026-10-05T09:00:00+05:30")
+    a["meta"]["runs_per_scenario"] = 1
+    b = _rows(S[:1], "2026-10-05T10:00:00+05:30", stopped="cost cap reached: 9 micro-USD spent", finished={S[0]: 2})
+    folders = []
+    for name, rep in (("a", a), ("b", b)):
+        (tmp_path / name).mkdir()
+        (tmp_path / name / "report.json").write_text(json.dumps(rep), encoding="utf-8")
+        folders.append(str(tmp_path / name))
+    report.main(["combine", *folders, "--label", "x", "--out", str(tmp_path / "page"),
+                 "--plan-scenario", S[0], "--plan-scenario", S[1]])
+    page = json.loads((tmp_path / "page" / "report.json").read_text(encoding="utf-8"))
+    assert page["meta"]["plan"]["runs_per_scenario"] == 5
+    assert page["coverage"]["missing"] == {S[0]: 3}  # b finished 2 of 01's 5; a's row of 02 has 5
+
+
+def test_scenarios_outside_the_plan_are_named_apart_from_the_count():
+    a = _rows(S[:4], "2026-10-05T09:00:00+05:30")
+    b = _rows(S[:1], "2026-10-05T10:00:00+05:30")
+    line = report.coverage_line(report.combine([("a", a), ("b", b)], "x",
+                                               plan={"scenarios": S[:3], "runs_per_scenario": 5}))
+    assert f"Scenarios outside the plan, in the totals but not in this count: {S[3]}." in line
+
+
+def test_the_status_code_is_the_guards_own_never_one_in_googles_text():
+    reason = "spend cap: Google refused the call (429) and waiting can't help: quota (403) for project"
+    assert report.plain_status("ABORTED", reason) == "Stopped: Google's project spending cap (429)"
+    assert report.plain_status("ABORTED", "spend cap: odd text (403)") == "Stopped: spend cap: odd text (403)"

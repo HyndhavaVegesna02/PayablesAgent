@@ -12,7 +12,7 @@ is typed by hand.
 | Harness ablation | The full system against the bare harness, on the same model: 80 points of outcome success, paired on the 10 scenarios both scored. Of the knock-outs, no_drift_rule and no_rule_checks cost the most: 9 points each, which at one run per scenario is 1 scenario each. | [2-harness-ablation/](2-harness-ablation/README.md) |
 | One improvement from evals | The first live run, the pilot, passed 9 of 11 scenarios. Of the scenarios it missed, the traces put the cause in the harness, not the model; once that was fixed, the rerun's 2 of 2 runs passed. | [3-improvement-and-regression/](3-improvement-and-regression/README.md#the-live-runs-in-order) |
 | One regression caught | Offline, a step-cap variant: its path check failed in 5 of 5 runs of scenario 07, while 70 of 70 finished runs still passed. Live, a stricter reading of a transcript's numbers broke scenario 04 between invocations of the live suite; the suite caught it, and it was fixed. | [3-improvement-and-regression/](3-improvement-and-regression/README.md#the-regression-told-straight-d23) |
-| End-to-end runs | Two scripted fortnights through the real web app, worker and demo clock. Offline, every check passes; live, A and B each left 1 failed check (`new-decisions` in A, `rows-in-the-ledger-once` in B). | [4-end-to-end-workflows/](4-end-to-end-workflows/README.md#full-workflow-runs) |
+| End-to-end runs | Two scripted fortnights through the real web app, worker and demo clock: offline, every check passes; live, A and B each left 1 failed check (`new-decisions` in A, `rows-in-the-ledger-once` in B). | [4-end-to-end-workflows/](4-end-to-end-workflows/README.md#full-workflow-runs) |
 | Success and failure traces | The live pilot's failed agent job and the same job succeeding after the fix, each walked through line by line, and a fixture pair. | [docs/traces/](../traces/README.md) |
 | Attack attempt | A vendor email that hides an instruction to the agent (scenario 10), offline and live, and what each defence did. | [docs/threat-model.md](../threat-model.md) |
 
@@ -27,8 +27,8 @@ is typed by hand.
 | [raw-runs/](raw-runs/README.md) | Every live invocation the pages above were built from, under its original dated name. You only need these to verify a number. |
 
 A live invocation can stop early: on our own budget guard's cost cap, or when Google refuses calls. Its
-finished runs are valid and are counted, and a combined page says which invocation each row came from, why
-each one stopped, and how many of its runs the page uses. The raw reason stays in the raw run's own report.
+finished runs are valid, and a combined page says which invocation each row came from, why each one
+stopped, and how many of its runs the page uses. The raw reason stays in the raw run's own report.
 
 ## Making new reports
 

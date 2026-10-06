@@ -50,7 +50,7 @@ we introduced, and the live suite is what caught it.
   app couldn't read in full.
 - **Why.** Gemini writes the note as "dedh lakh rupaye 5 November tak dena hai", with no comma after the unit.
   Between the first and second invocations, a stricter reading of the transcript's numbers (commit 728046a: each cluster
-  of number words is read whole, or not at all) took the due date's 5 as more of the amount.
+  of number words is read whole, or not at all) took the due date's day as more of the amount.
 - **Checked offline, commit by commit.** That live transcript, replayed through the amount check of every
   commit from aba59bd to 3ad8e01 that changed it, passes at each one before 728046a and fails at 728046a and
   every one after it, through 3ad8e01. No model call is involved.
@@ -66,7 +66,7 @@ comma after the unit, so the offline suite passed throughout. The live transcrip
 
 ## The regression, told straight (D23)
 
-The regression the suite is built to catch offline is a step cap cut from 6 to 2 (`regression-caught/`).
+The regression the suite is built to catch offline is the agent's step cap cut from 6 to 2 (`regression-caught/`).
 At first it passed every end-to-end check: with the cut cap the drift case still resolves, because the run at
 medium runs out and the rerun at high thinking finishes the job. The end result was right and the path was
 worse, at a higher thinking level than the work needs. So scenario 07 also checks its path: the drift case

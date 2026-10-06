@@ -12,9 +12,9 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 EVALS = ROOT / "docs" / "evals"
 # The eval READMEs quote headline figures, each one read from its report.json by `quoted()` below (CHG-055).
-# The pages of the layout: "Start here", each numbered folder's README and raw-runs/'. A note kept inside a run's
+# The pages of the layout: "Start here", each numbered folder's README and raw-runs/'s. A note kept inside a run's
 # own folder (beside its report.json, or in its traces/) is part of that run's record, written with it and moved
-# unchanged; test_the_only_other_readmes_are_notes_kept_with_their_runs keeps that list honest.
+# with it (live-pilot-after's note only had its sibling paths updated); test_the_only_other_readmes_are_notes_kept_with_their_runs keeps that list honest.
 EVAL_READMES = [EVALS / "README.md", *sorted(EVALS.glob("[0-9]-*/README.md")), EVALS / "raw-runs" / "README.md"]
 PAGES = [ROOT / "README.md", *sorted((ROOT / "docs").glob("*.md")), ROOT / "docs" / "traces" / "README.md"]
 
@@ -220,28 +220,31 @@ def test_the_link_check_sees_a_dead_file_and_a_dead_anchor(tmp_path):
 
 # --- the figures the eval READMEs quote are their reports' own (CHG-055; D25) -------------------------------
 
-_WORD = (r"(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen"
-         r"|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|hundred)")
-_NUM = rf"(?:\d[\d,]*(?:\.\d+)?|{_WORD})"
+_WORD = (r"(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen"
+         r"|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred"
+         r"|dozen|thousand)")
 _COUNTED = (r"(?:runs?|scenarios?|invocations?|calls?|checks?|failures?|knock-?outs?|harness(?:es)?|points?|pts"
-            r"|times|steps?|parts?|cells?|repeats?|errored|passed|failed|µUSD|micro-USD|percent)")
-# A figure in digits or words: a count of something, a share, a decimal, a once or twice, a bare count in brackets.
+            r"|times|steps?|parts?|cells?|repeats?|trials?|occasions?|errored|passed|failed|µUSD|micro-USD|percent)")
+# A figure: any run of digits; or a number word counting something, in brackets, or after "the last" and the
+# like; or once or twice as a count (not "once the fixes were in").
 _EVAL_FIGURE = re.compile(
-    rf"\b{_NUM}(?:[\s-]+[\w'’]+){{0,2}}?[\s-]+{_COUNTED}\b"
-    rf"|\b{_NUM}\s*(?:/|of|out of)\s*(?:the\s+)?{_NUM}\b"
-    r"|\b\d+\.\d+\b|\b(?:once|twice|thrice)\b(?!\s+(?:the|that|a|an|it|its|this|these|those|they|we)\b)"
-    rf"|\({_WORD}\)|\b(?:the last|the first|these|those|all|both)\s+{_NUM}\b"
-    r"|\b\d+(?:\.\d+)?\s?%", re.I)
-# What looks like a number but names something: a scenario, a commit, a date, a folder, an HTTP status, a
-# numbered heading or list item, an amount of rupees; and anything in backticks or a link's target.
+    r"\d+(?:[.,]\d+)*"
+    rf"|\b{_WORD}(?:[\s-]+[\w'’]+){{0,2}}?[\s-]+{_COUNTED}\b"
+    rf"|\b{_WORD}\s*(?:/|of|out of)\s*(?:the\s+)?(?:\d|{_WORD})"
+    rf"|\({_WORD}\)|\b(?:the last|the first|these|those|all|both)\s+{_WORD}\b"
+    r"|\b(?:once|twice|thrice)\b(?!\s+(?:the|that|a|an|it|its|this|these|those|they|we)\b)", re.I)
+# What has digits but names something: a scenario, a commit, a date or year, one of the layout's folders, the
+# suite's shape (11x5), an HTTP status the guard records, a numbered heading or list item, an amount of rupees,
+# a decision label; and anything in backticks or a link's target.
 _NAMES = re.compile(
     r"`[^`]*`|\]\([^)]*\)"
     r"|\b(?i:scenarios?)\s+\d\d(?:'s)?(?:\s*(?:,|and|to|or)\s*\d\d)*"
     r"|(?<![.\d])\b0\d(?:\s*(?:,|and|to|or)\s*\d\d)*\b"
     r"|\b(?=[0-9a-f]*[a-f])[0-9a-f]{7,40}\b"
-    r"|\b\d{4}-\d\d-\d\d\S*|\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d{1,2}\b|\b\d{1,2} (?:Oct|November)\b(?: \d{4})?"
-    r"|\b\d-[a-z][a-z-]*|\(4\d\d\)|(?<=a )4\d\d\b|(?<='s )4\d\d\b"
-    r"|^\s*#*\s*\d+\.(?=\s)|₹[\d,]+", re.M)
+    r"|\b\d{4}-\d\d-\d\d\S*|\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d{1,2}\b|\b\d{1,2} (?:Oct|November)\b|\b20\d\d\b"
+    r"|\b[1-4]-(?:eval-report|harness-ablation|improvement-and-regression|end-to-end-workflows)\b|\b\d+x\d+\b"
+    r"|\((?:402|403|429)\)|(?<=a )(?:402|403|429)\b|(?<='s )(?:402|403|429)\b"
+    r"|^\s*#*\s*\d+\.(?=\s)|₹[\d,]+|\bD\d\d\b", re.M)
 
 
 def loose_figures(text: str, quotes) -> list[str]:
@@ -339,6 +342,22 @@ def quoted() -> dict[str, str]:
                      f"{degraded['meta']['runs_per_scenario']} run each")
     missed = [r["scenario"][:2] for r in pilot["scenarios"] if r["passed"] < finished(r)]
     q["pilot-missed"] = f"it missed {' and '.join(missed)}"
+    for h, lost in abl["lost"].items():
+        if lost and h != "bare":  # the knock-outs; bare's loss is the headline
+            q[f"lost-{h}"] = f"{h} lost scenario {' and '.join(s[:2] for s in lost)}"
+    clean = sorted(h for h, d in abl["drops"].items() if d == 0 and not abl["lost"][h]
+                   and len(abl["harnesses"][h]["scenarios_scored"]) == len(abl["scenarios"]))
+    q["lost-nothing"] = f"{' and '.join(clean)}, scored on every scenario, lost nothing"
+    import yaml
+
+    steps = [yaml.safe_load((ROOT / f).read_text(encoding="utf-8"))["escalation"]["max_steps"]
+             for f in ("config.yaml", "evals/variants/regress-max-steps.yaml")]
+    q["step-cap"] = f"the agent's step cap cut from {steps[0]} to {steps[1]}"
+    offline_runs = [json.loads(f.read_text(encoding="utf-8")) for f in (EVALS / "4-end-to-end-workflows").glob(
+        "workflow-*.json") if not f.stem.endswith("-live")]
+    assert len(offline_runs) == 2 and all(c["ok"] for w in offline_runs for r in w["repeats"] for s in r["steps"]
+                                          for c in s["checks"])
+    q["offline-workflows"] = "offline, every check passes"
 
     failed = []
     for run in ("A", "B"):
@@ -390,6 +409,9 @@ def test_the_only_other_readmes_are_notes_kept_with_their_runs():
 
 
 @pytest.mark.parametrize("typed", [
+    "The harness is worth eighty points.", "zero runs errored", "no_drift_rule cost a 9-point drop",
+    "the full system's 3-run cells", "a 1-scenario loss", "(416)", "scored 20", "5 trials", "on 16 occasions",
+    "an 11 × 5 suite", "passed 55", "cut from 6 to 2", "the due date's 5",
     "55 of 55 live runs passed", "80 points", "4/5 then", "10 scenarios", "from 16 invocations",
     "scored on 7 of the 11 scenarios", "416 calls", "an 80-point gap", "9 pts", "full 1.00 against bare",
     "all 55 live runs passed", "passed in 10 out of 11", "sixteen invocations", "three runs each", "(eight)",
@@ -404,7 +426,8 @@ def test_the_eval_figure_check_sees_a_typed_figure(typed):
     "scenario 11's second run", "scenarios 01, 07 and 08", "Scenarios 08 to 11, and 04 again", "On 07 the agent",
     "commit 728046a and 3ad8e01", "Mon 12 to Sun 25 Oct 2026", "a 429 that", "Google's 429 was", "(402)",
     "`2026-10-04-live-baseline`", "[1-eval-report/](1-eval-report/README.md)", "1. **The pilot",
-    "## 2. The harness", "reads ₹1,50,000.", "dedh lakh rupaye 5 November tak", "cut from 6 to 2", "D23", "once that was fixed", "once the fixes were in",
+    "## 2. The harness", "reads ₹1,50,000.", "dedh lakh rupaye 5 November tak", "Sun 25 Oct 2026", "D23",
+    "[live-11x5/](live-11x5/report.md)", "the 11x5's invocations", "(a 429)", "4-end-to-end-workflows", "once that was fixed", "once the fixes were in",
     "the 11x5", "one growing chat history", "half the scenarios"])
 def test_the_eval_figure_check_lets_names_through(named):
     assert loose_figures(named, []) == []

@@ -24,8 +24,8 @@ harness differs. Every harness is scored on the same `outcome` checks: the busin
   offline ablation runs every scenario, but on canned replies, so it shows that a control is wired in, not
   what the model does without it.
 - **Stopped invocations.** Some invocations stopped on their own cost cap, and some on Google's monthly
-  project spending cap. Their finished runs are valid and counted; the source table says which stopped and
-  why, and how many of each one's runs the table uses.
+  project spending cap. Their finished runs are valid; the source table says which stopped and why, and how
+  many of each one's runs the table uses.
 
 ## What the live table shows
 
@@ -34,7 +34,8 @@ harness differs. Every harness is scored on the same `outcome` checks: the busin
     copies waited for the owner, and the bill never became the one payable the outcome asks for;
   - no_drift_rule lost scenario 08, the drift nothing explains: planning from the calculated balance rather
     than the lower one, the plan counted money that wasn't there.
-- no_escalation and no_case_file, scored on every scenario, lost nothing, at the runs per scenario the Coverage table gives.
+- no_case_file and no_escalation, scored on every scenario, lost nothing, at the runs per scenario the
+  Coverage table gives.
 - no_evidence_gate stopped on its cost cap partway; its drop covers the scenarios it scored, which the
   Coverage table names.
 - all_tools and no_planner were each stopped by their cost cap before they scored a second scenario, so the
