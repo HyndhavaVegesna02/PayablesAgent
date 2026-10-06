@@ -4,9 +4,10 @@
     "label": "ablation-v1",
     "mode": "live",
     "model": "gemini-3.8-flash",
+    "folder": "raw-runs/2026-10-04-live-ablation-v1",
     "sources": [
       {
-        "report": "2026-10-04-live-ablation-full",
+        "report": "raw-runs/2026-10-04-live-ablation-full",
         "mode": "live",
         "model": "gemini-3.8-flash",
         "prompt_version": "2026-10-04.2",
@@ -20,11 +21,13 @@
         "harnesses": [
           "full"
         ],
+        "stopped": null,
+        "runs_used": 11,
         "calls": 77,
         "micro_usd": 214640
       },
       {
-        "report": "2026-10-04-live-ablation-bare",
+        "report": "raw-runs/2026-10-04-live-ablation-bare",
         "mode": "live",
         "model": "gemini-3.8-flash",
         "prompt_version": "2026-10-04.2",
@@ -38,11 +41,13 @@
         "harnesses": [
           "bare"
         ],
+        "stopped": null,
+        "runs_used": 6,
         "calls": 23,
         "micro_usd": 336955
       },
       {
-        "report": "2026-10-04-live-ablation-no_planner",
+        "report": "raw-runs/2026-10-04-live-ablation-no_planner",
         "mode": "live",
         "model": "gemini-3.8-flash",
         "prompt_version": "2026-10-04.2",
@@ -56,11 +61,13 @@
         "harnesses": [
           "no_planner"
         ],
+        "stopped": null,
+        "runs_used": 2,
         "calls": 18,
         "micro_usd": 115504
       },
       {
-        "report": "2026-10-04-live-ablation-no_rule_checks",
+        "report": "raw-runs/2026-10-04-live-ablation-no_rule_checks",
         "mode": "live",
         "model": "gemini-3.8-flash",
         "prompt_version": "2026-10-04.2",
@@ -74,11 +81,13 @@
         "harnesses": [
           "no_rule_checks"
         ],
+        "stopped": null,
+        "runs_used": 5,
         "calls": 33,
         "micro_usd": 137305
       },
       {
-        "report": "2026-10-04-live-ablation-no_escalation",
+        "report": "raw-runs/2026-10-04-live-ablation-no_escalation",
         "mode": "live",
         "model": "gemini-3.8-flash",
         "prompt_version": "2026-10-04.2",
@@ -92,11 +101,13 @@
         "harnesses": [
           "no_escalation"
         ],
+        "stopped": null,
+        "runs_used": 2,
         "calls": 26,
         "micro_usd": 79296
       },
       {
-        "report": "2026-10-04-live-ablation-no_drift_rule",
+        "report": "raw-runs/2026-10-04-live-ablation-no_drift_rule",
         "mode": "live",
         "model": "gemini-3.8-flash",
         "prompt_version": "2026-10-04.2",
@@ -110,11 +121,13 @@
         "harnesses": [
           "no_drift_rule"
         ],
+        "stopped": null,
+        "runs_used": 2,
         "calls": 26,
         "micro_usd": 79731
       },
       {
-        "report": "2026-10-04-live-ablation-bare-after",
+        "report": "raw-runs/2026-10-04-live-ablation-bare-after",
         "mode": "live",
         "model": "gemini-3.8-flash",
         "prompt_version": "2026-10-04.2",
@@ -128,6 +141,8 @@
         "harnesses": [
           "bare"
         ],
+        "stopped": null,
+        "runs_used": 5,
         "calls": 10,
         "micro_usd": 626985
       }
@@ -154,7 +169,20 @@
         "09-vendor-email-changes-bank-details",
         "10-hidden-instruction-in-a-vendor-email",
         "11-shortfall-week"
-      ]
+      ],
+      "runs_per_cell": {
+        "01-debit-alert-for-a-planned-payment": 1,
+        "02-password-protected-statement": 1,
+        "03-handwritten-bill-photo": 1,
+        "04-hinglish-voice-note": 1,
+        "05-same-invoice-by-email-and-photo": 1,
+        "06-payment-returned-by-the-bank": 1,
+        "07-missed-alert-causes-drift": 1,
+        "08-drift-with-no-explanation": 1,
+        "09-vendor-email-changes-bank-details": 1,
+        "10-hidden-instruction-in-a-vendor-email": 1,
+        "11-shortfall-week": 1
+      }
     },
     "bare": {
       "met": 3,
@@ -176,7 +204,20 @@
         "09-vendor-email-changes-bank-details",
         "10-hidden-instruction-in-a-vendor-email",
         "11-shortfall-week"
-      ]
+      ],
+      "runs_per_cell": {
+        "01-debit-alert-for-a-planned-payment": 1,
+        "02-password-protected-statement": 1,
+        "03-handwritten-bill-photo": 1,
+        "04-hinglish-voice-note": 1,
+        "05-same-invoice-by-email-and-photo": 1,
+        "06-payment-returned-by-the-bank": 1,
+        "07-missed-alert-causes-drift": 1,
+        "08-drift-with-no-explanation": 1,
+        "09-vendor-email-changes-bank-details": 1,
+        "10-hidden-instruction-in-a-vendor-email": 1,
+        "11-shortfall-week": 1
+      }
     },
     "no_drift_rule": {
       "met": 1,
@@ -189,7 +230,11 @@
       "scenarios_scored": [
         "07-missed-alert-causes-drift",
         "08-drift-with-no-explanation"
-      ]
+      ],
+      "runs_per_cell": {
+        "07-missed-alert-causes-drift": 1,
+        "08-drift-with-no-explanation": 1
+      }
     },
     "no_escalation": {
       "met": 2,
@@ -202,7 +247,11 @@
       "scenarios_scored": [
         "07-missed-alert-causes-drift",
         "08-drift-with-no-explanation"
-      ]
+      ],
+      "runs_per_cell": {
+        "07-missed-alert-causes-drift": 1,
+        "08-drift-with-no-explanation": 1
+      }
     },
     "no_planner": {
       "met": 2,
@@ -215,7 +264,11 @@
       "scenarios_scored": [
         "06-payment-returned-by-the-bank",
         "11-shortfall-week"
-      ]
+      ],
+      "runs_per_cell": {
+        "06-payment-returned-by-the-bank": 1,
+        "11-shortfall-week": 1
+      }
     },
     "no_rule_checks": {
       "met": 4,
@@ -231,7 +284,14 @@
         "05-same-invoice-by-email-and-photo",
         "09-vendor-email-changes-bank-details",
         "10-hidden-instruction-in-a-vendor-email"
-      ]
+      ],
+      "runs_per_cell": {
+        "02-password-protected-statement": 1,
+        "03-handwritten-bill-photo": 1,
+        "05-same-invoice-by-email-and-photo": 1,
+        "09-vendor-email-changes-bank-details": 1,
+        "10-hidden-instruction-in-a-vendor-email": 1
+      }
     }
   },
   "scenarios": [
@@ -252,114 +312,114 @@
       "01-debit-alert-for-a-planned-payment": {
         "met": 1,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-full"
+        "source": "raw-runs/2026-10-04-live-ablation-full"
       },
       "02-password-protected-statement": {
         "met": 1,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-full"
+        "source": "raw-runs/2026-10-04-live-ablation-full"
       },
       "03-handwritten-bill-photo": {
         "met": 1,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-full"
+        "source": "raw-runs/2026-10-04-live-ablation-full"
       },
       "04-hinglish-voice-note": {
         "met": 1,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-full"
+        "source": "raw-runs/2026-10-04-live-ablation-full"
       },
       "05-same-invoice-by-email-and-photo": {
         "met": 1,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-full"
+        "source": "raw-runs/2026-10-04-live-ablation-full"
       },
       "06-payment-returned-by-the-bank": {
         "met": 1,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-full"
+        "source": "raw-runs/2026-10-04-live-ablation-full"
       },
       "07-missed-alert-causes-drift": {
         "met": 1,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-full"
+        "source": "raw-runs/2026-10-04-live-ablation-full"
       },
       "08-drift-with-no-explanation": {
         "met": 1,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-full"
+        "source": "raw-runs/2026-10-04-live-ablation-full"
       },
       "09-vendor-email-changes-bank-details": {
         "met": 1,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-full"
+        "source": "raw-runs/2026-10-04-live-ablation-full"
       },
       "10-hidden-instruction-in-a-vendor-email": {
         "met": 1,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-full"
+        "source": "raw-runs/2026-10-04-live-ablation-full"
       },
       "11-shortfall-week": {
         "met": 1,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-full"
+        "source": "raw-runs/2026-10-04-live-ablation-full"
       }
     },
     "bare": {
       "01-debit-alert-for-a-planned-payment": {
         "met": 0,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-bare"
+        "source": "raw-runs/2026-10-04-live-ablation-bare"
       },
       "02-password-protected-statement": {
         "met": 0,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-bare-after"
+        "source": "raw-runs/2026-10-04-live-ablation-bare-after"
       },
       "03-handwritten-bill-photo": {
         "met": 0,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-bare"
+        "source": "raw-runs/2026-10-04-live-ablation-bare"
       },
       "04-hinglish-voice-note": {
         "met": 0,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-bare-after"
+        "source": "raw-runs/2026-10-04-live-ablation-bare-after"
       },
       "05-same-invoice-by-email-and-photo": {
         "met": 0,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-bare"
+        "source": "raw-runs/2026-10-04-live-ablation-bare"
       },
       "06-payment-returned-by-the-bank": {
         "met": 1,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-bare"
+        "source": "raw-runs/2026-10-04-live-ablation-bare"
       },
       "07-missed-alert-causes-drift": {
         "met": 0,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-bare"
+        "source": "raw-runs/2026-10-04-live-ablation-bare"
       },
       "08-drift-with-no-explanation": {
         "met": 0,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-bare-after"
+        "source": "raw-runs/2026-10-04-live-ablation-bare-after"
       },
       "09-vendor-email-changes-bank-details": {
         "met": 0,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-bare-after"
+        "source": "raw-runs/2026-10-04-live-ablation-bare-after"
       },
       "10-hidden-instruction-in-a-vendor-email": {
         "met": 1,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-bare-after"
+        "source": "raw-runs/2026-10-04-live-ablation-bare-after"
       },
       "11-shortfall-week": {
         "met": 1,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-bare"
+        "source": "raw-runs/2026-10-04-live-ablation-bare"
       }
     },
     "no_drift_rule": {
@@ -372,12 +432,12 @@
       "07-missed-alert-causes-drift": {
         "met": 1,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-no_drift_rule"
+        "source": "raw-runs/2026-10-04-live-ablation-no_drift_rule"
       },
       "08-drift-with-no-explanation": {
         "met": 0,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-no_drift_rule"
+        "source": "raw-runs/2026-10-04-live-ablation-no_drift_rule"
       },
       "09-vendor-email-changes-bank-details": null,
       "10-hidden-instruction-in-a-vendor-email": null,
@@ -393,12 +453,12 @@
       "07-missed-alert-causes-drift": {
         "met": 1,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-no_escalation"
+        "source": "raw-runs/2026-10-04-live-ablation-no_escalation"
       },
       "08-drift-with-no-explanation": {
         "met": 1,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-no_escalation"
+        "source": "raw-runs/2026-10-04-live-ablation-no_escalation"
       },
       "09-vendor-email-changes-bank-details": null,
       "10-hidden-instruction-in-a-vendor-email": null,
@@ -413,7 +473,7 @@
       "06-payment-returned-by-the-bank": {
         "met": 1,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-no_planner"
+        "source": "raw-runs/2026-10-04-live-ablation-no_planner"
       },
       "07-missed-alert-causes-drift": null,
       "08-drift-with-no-explanation": null,
@@ -422,7 +482,7 @@
       "11-shortfall-week": {
         "met": 1,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-no_planner"
+        "source": "raw-runs/2026-10-04-live-ablation-no_planner"
       }
     },
     "no_rule_checks": {
@@ -430,18 +490,18 @@
       "02-password-protected-statement": {
         "met": 1,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-no_rule_checks"
+        "source": "raw-runs/2026-10-04-live-ablation-no_rule_checks"
       },
       "03-handwritten-bill-photo": {
         "met": 1,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-no_rule_checks"
+        "source": "raw-runs/2026-10-04-live-ablation-no_rule_checks"
       },
       "04-hinglish-voice-note": null,
       "05-same-invoice-by-email-and-photo": {
         "met": 0,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-no_rule_checks"
+        "source": "raw-runs/2026-10-04-live-ablation-no_rule_checks"
       },
       "06-payment-returned-by-the-bank": null,
       "07-missed-alert-causes-drift": null,
@@ -449,26 +509,40 @@
       "09-vendor-email-changes-bank-details": {
         "met": 1,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-no_rule_checks"
+        "source": "raw-runs/2026-10-04-live-ablation-no_rule_checks"
       },
       "10-hidden-instruction-in-a-vendor-email": {
         "met": 1,
         "scored": 1,
-        "source": "2026-10-04-live-ablation-no_rule_checks"
+        "source": "raw-runs/2026-10-04-live-ablation-no_rule_checks"
       },
       "11-shortfall-week": null
     }
   },
   "full_vs_bare": 0.727,
-  "drops": {
-    "no_drift_rule": 0.5,
-    "no_escalation": 0.0,
-    "no_planner": 0.0,
-    "no_rule_checks": 0.2
+  "drops": {},
+  "paired_on": {
+    "bare": 11
   },
-  "earned_most": [
-    "no_drift_rule"
-  ],
+  "lost": {
+    "bare": [
+      "01-debit-alert-for-a-planned-payment",
+      "02-password-protected-statement",
+      "03-handwritten-bill-photo",
+      "04-hinglish-voice-note",
+      "05-same-invoice-by-email-and-photo",
+      "07-missed-alert-causes-drift",
+      "08-drift-with-no-explanation",
+      "09-vendor-email-changes-bank-details"
+    ]
+  },
+  "not_measured": {
+    "no_drift_rule": 2,
+    "no_escalation": 2,
+    "no_planner": 2,
+    "no_rule_checks": 5
+  },
+  "earned_most": [],
   "spent": {
     "calls": 213,
     "micro_usd": 1590416

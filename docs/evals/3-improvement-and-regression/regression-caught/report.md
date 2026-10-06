@@ -2,11 +2,11 @@
 
 | Mode | Model | Prompt version | Config | Commit | Date | Runs per scenario | Variant |
 |---|---|---|---|---|---|---|---|
-| fixtures | gemini-3.8-flash | 2026-10-04.2 | c64090a2e122 | ea91d7a | 2026-10-04T19:39:43+05:30 | 5 | evals/variants/regress-max-steps.yaml |
+| fixtures | gemini-3.8-flash | 2026-10-04.2 | c64090a2e122 | b165726 | 2026-10-06T14:41:11+05:30 | 5 | evals/variants/regress-max-steps.yaml |
 
 Fixture mode: every model reply is canned (fixtures/ai_replies.json), so runs are deterministic and the tokens and cost are zero. It shows the harness and the code paths, not the model.
 
-**Totals:** 70 of 70 runs passed (100% of the runs that finished), 0 errored; 14 of 14 scenarios passed every run; path checks held in 25 of the 30 runs that have them; 375 model calls; 0 micro-USD.
+**Totals:** 70 of 70 finished runs passed (100%), 0 errored; 14 of 14 scenarios passed every run; path checks held in 25 of the 30 runs that have them; 375 model calls; 0 micro-USD.
 
 ## Scenarios
 

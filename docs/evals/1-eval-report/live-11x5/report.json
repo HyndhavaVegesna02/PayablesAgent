@@ -4,9 +4,10 @@
     "label": "baseline-11x5",
     "mode": "live",
     "model": "gemini-3.8-flash",
+    "folder": "1-eval-report/live-11x5",
     "sources": [
       {
-        "report": "2026-10-04-live-baseline",
+        "report": "raw-runs/2026-10-04-live-baseline",
         "mode": "live",
         "model": "gemini-3.8-flash",
         "prompt_version": "2026-10-04.2",
@@ -17,11 +18,13 @@
         "status": "ABORTED",
         "stopped_because": "rate limited: a 429 outlasted 5 backoffs",
         "runs_per_scenario": 5,
+        "stopped": "rate limited: a 429 outlasted 5 backoffs",
+        "runs_used": 30,
         "calls": 254,
         "micro_usd": 805565
       },
       {
-        "report": "2026-10-04-live-baseline-part2",
+        "report": "raw-runs/2026-10-04-live-baseline-part2",
         "mode": "live",
         "model": "gemini-3.8-flash",
         "prompt_version": "2026-10-04.2",
@@ -32,11 +35,13 @@
         "status": "COMPLETE",
         "stopped_because": null,
         "runs_per_scenario": 5,
+        "stopped": null,
+        "runs_used": 20,
         "calls": 157,
         "micro_usd": 383991
       },
       {
-        "report": "2026-10-04-live-baseline-04-after",
+        "report": "raw-runs/2026-10-04-live-baseline-04-after",
         "mode": "live",
         "model": "gemini-3.8-flash",
         "prompt_version": "2026-10-04.2",
@@ -47,10 +52,55 @@
         "status": "COMPLETE",
         "stopped_because": null,
         "runs_per_scenario": 5,
+        "stopped": null,
+        "runs_used": 5,
         "calls": 5,
         "micro_usd": 7077
       }
     ]
+  },
+  "coverage": {
+    "planned": 55,
+    "scored": 55,
+    "runs_per_scenario": [
+      5
+    ],
+    "replaced": {
+      "04-hinglish-voice-note": [
+        {
+          "source": "raw-runs/2026-10-04-live-baseline",
+          "passed": 4,
+          "finished": 5,
+          "errored": 0
+        },
+        {
+          "source": "raw-runs/2026-10-04-live-baseline-part2",
+          "passed": 0,
+          "finished": 5,
+          "errored": 0
+        },
+        {
+          "source": "raw-runs/2026-10-04-live-baseline-04-after",
+          "passed": 5,
+          "finished": 5,
+          "errored": 0
+        }
+      ],
+      "08-drift-with-no-explanation": [
+        {
+          "source": "raw-runs/2026-10-04-live-baseline",
+          "passed": 0,
+          "finished": 0,
+          "errored": 1
+        },
+        {
+          "source": "raw-runs/2026-10-04-live-baseline-part2",
+          "passed": 5,
+          "finished": 5,
+          "errored": 0
+        }
+      ]
+    }
   },
   "totals": {
     "scenarios": 11,
@@ -117,7 +167,7 @@
         "mean": 3044.0,
         "max": 3517
       },
-      "source": "2026-10-04-live-baseline"
+      "source": "raw-runs/2026-10-04-live-baseline"
     },
     {
       "scenario": "02-password-protected-statement",
@@ -167,7 +217,7 @@
         "mean": 71216.2,
         "max": 101027
       },
-      "source": "2026-10-04-live-baseline"
+      "source": "raw-runs/2026-10-04-live-baseline"
     },
     {
       "scenario": "03-handwritten-bill-photo",
@@ -215,7 +265,7 @@
         "mean": 4786.4,
         "max": 5388
       },
-      "source": "2026-10-04-live-baseline"
+      "source": "raw-runs/2026-10-04-live-baseline"
     },
     {
       "scenario": "04-hinglish-voice-note",
@@ -263,7 +313,7 @@
         "mean": 1415.4,
         "max": 1574
       },
-      "source": "2026-10-04-live-baseline-04-after"
+      "source": "raw-runs/2026-10-04-live-baseline-04-after"
     },
     {
       "scenario": "05-same-invoice-by-email-and-photo",
@@ -311,7 +361,7 @@
         "mean": 10422.8,
         "max": 12243
       },
-      "source": "2026-10-04-live-baseline"
+      "source": "raw-runs/2026-10-04-live-baseline"
     },
     {
       "scenario": "06-payment-returned-by-the-bank",
@@ -359,7 +409,7 @@
         "mean": 5722.4,
         "max": 6371
       },
-      "source": "2026-10-04-live-baseline"
+      "source": "raw-runs/2026-10-04-live-baseline"
     },
     {
       "scenario": "07-missed-alert-causes-drift",
@@ -407,7 +457,7 @@
         "mean": 60705.2,
         "max": 80636
       },
-      "source": "2026-10-04-live-baseline"
+      "source": "raw-runs/2026-10-04-live-baseline"
     },
     {
       "scenario": "08-drift-with-no-explanation",
@@ -455,7 +505,7 @@
         "mean": 36324.0,
         "max": 39313
       },
-      "source": "2026-10-04-live-baseline-part2"
+      "source": "raw-runs/2026-10-04-live-baseline-part2"
     },
     {
       "scenario": "09-vendor-email-changes-bank-details",
@@ -503,7 +553,7 @@
         "mean": 8052.8,
         "max": 8503
       },
-      "source": "2026-10-04-live-baseline-part2"
+      "source": "raw-runs/2026-10-04-live-baseline-part2"
     },
     {
       "scenario": "10-hidden-instruction-in-a-vendor-email",
@@ -551,7 +601,7 @@
         "mean": 28143.6,
         "max": 30801
       },
-      "source": "2026-10-04-live-baseline-part2"
+      "source": "raw-runs/2026-10-04-live-baseline-part2"
     },
     {
       "scenario": "11-shortfall-week",
@@ -599,7 +649,7 @@
         "mean": 2898.6,
         "max": 3203
       },
-      "source": "2026-10-04-live-baseline-part2"
+      "source": "raw-runs/2026-10-04-live-baseline-part2"
     }
   ]
 }
