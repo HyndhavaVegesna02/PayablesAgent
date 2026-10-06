@@ -39,3 +39,18 @@ B2, B3, B4, B6 closed; the B5 scope decision accepted. Blocking:
 
 Minor: _rows fixtures keep budget.stopped; scenarios outside the plan; "1 runs" / "1 ablation invocations";
 _CODE unanchored; long README lines; "moved unchanged" for a note whose paths were updated.
+
+## Fix round 2 (16eefcd, pages and snapshots at 0f34c5a)
+
+Stopped sentence says only what the page shows; any digit outside a quote or a name is a typed figure, and
+word claims are derived; superseded snapshots kept (R007).
+
+## Round 3 (yt-reviewer, d2c1849..7c6420d): FIX_REQUIRED
+
+Round 2's 1 and 3 closed (Runs used checked by an independent script against all 26 sources; the 22 snapshot
+files byte-identical to their commits). Blocking: the fix's year allowance (`\b20\d\d\b`) lets any number
+from 2000 to 2099 through ("2048 calls", "spent 2050 µUSD"), a regression from 16eefcd; the NxM shape
+allowance is as wide. Minor: other allowances wider than their names (scenario-ID lists, "a 4xx", list
+numbers); number words caught only before a listed noun; ordinal claims about raw runs not derived; the
+round-2 snapshot README names a page that didn't change; the default plan isn't said on the page, and a
+source with no runs per scenario plans 0; modes can be mixed.
