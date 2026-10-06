@@ -5,6 +5,21 @@
     "mode": "live",
     "model": "gemini-3.8-flash",
     "folder": "raw-runs/2026-10-04-live-ablation-v1",
+    "plan": {
+      "scenarios": [
+        "01-debit-alert-for-a-planned-payment",
+        "02-password-protected-statement",
+        "03-handwritten-bill-photo",
+        "04-hinglish-voice-note",
+        "05-same-invoice-by-email-and-photo",
+        "06-payment-returned-by-the-bank",
+        "07-missed-alert-causes-drift",
+        "08-drift-with-no-explanation",
+        "09-vendor-email-changes-bank-details",
+        "10-hidden-instruction-in-a-vendor-email",
+        "11-shortfall-week"
+      ]
+    },
     "sources": [
       {
         "report": "raw-runs/2026-10-04-live-ablation-full",
@@ -535,6 +550,9 @@
       "08-drift-with-no-explanation",
       "09-vendor-email-changes-bank-details"
     ]
+  },
+  "gained": {
+    "bare": []
   },
   "not_measured": {
     "no_drift_rule": 2,
