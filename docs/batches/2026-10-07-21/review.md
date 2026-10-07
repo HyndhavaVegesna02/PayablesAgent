@@ -45,3 +45,16 @@ The test now aims only at tmp (the reviewer simulated a broken guard: only tmp w
 ./data/shrimp.db kept its modified time); the folder loop always ends with a folder. Every acceptance criterion
 of CHG-057 and CHG-058 stays met; no open critical or major finding. The deferred minors and the .env process
 note go to the PO with the report.
+
+## Verdict
+
+PO (payablesagent-ac), 2026-10-07: CHG-057 and CHG-058 ACCEPTED. At batch close Windows Application Control
+blocked `make` (exit 4551, then "make: Permission denied"), so the close gate at 3396c8e recorded make test and
+make check-evidence as POLICY BLOCK; those red entries stay. The PO verified both changes on its own direct-command
+evidence at 16a5467, in C:\Hyn\PayablesAgent-uicheck, with no Gemini: pytest 1962 passed; lint-imports 9 contracts
+kept; check_evidence 8 of 8 reproduce; the offline driver passed all 7 moves (agent-finding-shown on moves 2 and 5;
+the advance MATCHED and CONFIRMED; HARVEST-BAL CONFIRMED with "short by ₹95,000"; the floor held, lowest ₹4,35,200);
+protected paths a zero diff against 5f79c32. It also read migration 0006, .env.shrimp and the explain_credit
+template. Pushes authorised: dev to origin main (fast-forward); public untouched. No live rehearsal until the
+user's billing headroom and the real voice note and photo are in. CHG-059 also takes the driver's `shortfall` check,
+which reads backwards in the report.

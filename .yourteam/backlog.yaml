@@ -744,7 +744,7 @@ changes:
   - id: CHG-057
     title: The owner links a credit to an invoice (explain_credit), mirroring the debit side (PO, batch 21)
     file: docs/changes/CHG-057.md
-    status: ready
+    status: done
     priority: 57
     type: feature
     lane: planned
@@ -755,7 +755,7 @@ changes:
   - id: CHG-058
     title: The shrimp-farm live demo profile, its offline fallback and a rehearsal driver (PO, batch 21)
     file: docs/changes/CHG-058.md
-    status: ready
+    status: done
     priority: 58
     type: feature
     lane: planned
@@ -763,7 +763,7 @@ changes:
     depends_on: CHG-057
     batch: 21
   - id: CHG-059
-    title: The shrimp profile's deferred review minors (case_finding's line parsing and 20-line cut, a RESOLVED summary shown twice on Needs attention, ShrimpRun copying Run.__init__) (batch 21 review; PO)
+    title: The shrimp profile's deferred review minors (case_finding's line parsing and 20-line cut, a RESOLVED summary shown twice on Needs attention, ShrimpRun copying Run.__init__) and the driver's `shortfall` check, which expects plan valid == False and reads backwards in the report (rename it plan-valid, or expect shortfall True) (batch 21 review and verdict; PO)
     file: docs/batches/2026-10-07-21/review.md
     status: draft
     priority: 59
