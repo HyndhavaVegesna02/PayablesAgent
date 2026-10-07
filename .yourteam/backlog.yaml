@@ -762,3 +762,13 @@ changes:
     expected_paths: ['app/config.py', 'app/ai/fixture_backend.py', 'app/worker.py', 'app/main.py', 'app/demo.py', 'fixtures/shrimp_*', 'config.shrimp.yaml', '.env.shrimp', 'Makefile', 'scripts/', 'docs/demo-shrimp.md', 'tests/']
     depends_on: CHG-057
     batch: 21
+  - id: CHG-059
+    title: The shrimp profile's deferred review minors (case_finding's line parsing and 20-line cut, a RESOLVED summary shown twice on Needs attention, ShrimpRun copying Run.__init__) (batch 21 review; PO)
+    file: docs/batches/2026-10-07-21/review.md
+    status: draft
+    priority: 59
+    type: chore
+    lane: direct
+    expected_paths: ['app/web/repo.py', 'app/web/templates/attention.html', 'scripts/rehearse_shrimp.py', 'evals/workflow.py']
+    depends_on: CHG-058
+    batch: null

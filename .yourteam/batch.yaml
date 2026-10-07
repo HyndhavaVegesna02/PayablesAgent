@@ -1,6 +1,6 @@
 # Active batch. status: none means no batch is running.
 batch: 21
-status: active      # none | active | review | closed | aborted
+status: review      # none | active | review | closed | aborted
 goal: "The shrimp-farm live demo profile on dev only, for Demo Day Fri 9 Oct (PO, user-approved handoff with amendments): explain_credit (CHG-057), the profile, its offline fallback and the rehearsal driver (CHG-058). No Gemini until the PO authorises one live rehearsal."
 branch: batch-21
 start_tag: null
