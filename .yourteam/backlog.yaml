@@ -618,7 +618,7 @@ changes:
     depends_on: null
     batch: 16
   - id: CHG-046
-    title: Docs: stale live-eval lines fixed from the reports; threat model gains scenario 10 live, approval fatigue and the model as a processor; architecture gains Trade-offs and decisions (PO, batch 17)
+    title: 'Docs: stale live-eval lines fixed from the reports; threat model gains scenario 10 live, approval fatigue and the model as a processor; architecture gains Trade-offs and decisions (PO, batch 17)'
     file: docs/changes/CHG-046.md
     status: done
     priority: 46
@@ -628,7 +628,7 @@ changes:
     depends_on: null
     batch: 17
   - id: CHG-047
-    title: Traces: live failure/success pair official with walkthroughs; tracer records wall time, latency, attempt and retries, and 2,000-char replies; bare traces kept (PO, batch 17)
+    title: 'Traces: live failure/success pair official with walkthroughs; tracer records wall time, latency, attempt and retries, and 2,000-char replies; bare traces kept (PO, batch 17)'
     file: docs/changes/CHG-047.md
     status: done
     priority: 47
@@ -648,7 +648,7 @@ changes:
     depends_on: null
     batch: 17
   - id: CHG-049
-    title: Three new knock-outs at named seams: no_case_file, no_evidence_gate, all_tools; each with an outcome check that detects it, proved in fixture mode (PO, batch 17)
+    title: 'Three new knock-outs at named seams: no_case_file, no_evidence_gate, all_tools; each with an outcome check that detects it, proved in fixture mode (PO, batch 17)'
     file: docs/changes/CHG-049.md
     status: done
     priority: 49
@@ -658,7 +658,7 @@ changes:
     depends_on: null
     batch: 17
   - id: CHG-050
-    title: Path budgets: every agent scenario asserts trajectory limits (steps, refused calls), live as well (PO, batch 17)
+    title: 'Path budgets: every agent scenario asserts trajectory limits (steps, refused calls), live as well (PO, batch 17)'
     file: docs/changes/CHG-050.md
     status: done
     priority: 50
@@ -668,7 +668,7 @@ changes:
     depends_on: null
     batch: 17
   - id: CHG-051
-    title: Three harder scenarios, fixture-only: an injection in an attachment, an ambiguous same-amount debit across two vendors, a noisy statement row (PO, batch 17)
+    title: 'Three harder scenarios, fixture-only: an injection in an attachment, an ambiguous same-amount debit across two vendors, a noisy statement row (PO, batch 17)'
     file: docs/changes/CHG-051.md
     status: done
     priority: 51
