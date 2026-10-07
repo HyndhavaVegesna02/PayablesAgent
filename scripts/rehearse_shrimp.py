@@ -85,7 +85,6 @@ INVOICE_0931 = {"party": "Sri Lakshmi Aqua Feeds", "invoice_number": "SLAF/INV/0
                 "due_date": "2026-10-26"}
 INVOICE_1042 = {"party": "Sri Lakshmi Aqua Feeds", "invoice_number": "SLAF/INV/1042", "amount": "6,46,800",
                 "due_date": "2026-10-26"}
-BUYER = "Ravi Traders"
 BUYER_RECORDS = {"02": "<shrimp-02@ravitraders.example>", "06": "<shrimp-06@ravitraders.example>"}
 
 
@@ -228,30 +227,35 @@ def reject_the_buyers_record_if_read_as_a_bill(run: ShrimpRun, ref: str) -> None
     farm. Live, the model can read one as a bill; the owner rejects it through the real form, which writes nothing.
     Which path happened goes in the report (PO, CHG-061)."""
     doc_type = run.one("SELECT doc_type FROM source_document WHERE external_ref = ?", (BUYER_RECORDS[ref],))
+    sorted_as = f"sorted as {doc_type}" if doc_type else "not sorted (doc_type empty)"
     waiting = run.rows("SELECT c.id, c.record_type, json_extract(c.payload_json, '$.record.party'), "
                        "json_extract(c.payload_json, '$.record.amount_paise') FROM candidate c JOIN source_document d "
                        "ON d.id = c.source_document_id WHERE d.external_ref = ? AND c.status IN ('VALID', "
                        "'AWAITING_OWNER')", (BUYER_RECORDS[ref],))
-    before = plan(run)
+    before = plan(run)  # a waiting entry is never in the plan: rejecting it must leave the plan as it was
     for cid, record_type, party, paise in waiting:
         run.owner.submit("/attention", f"/candidates/{cid}/reject")
         run.drain()
-        run.note(f"{ref} sorted as {doc_type}: the owner rejected the {format_inr(paise)} "
+        run.note(f"{ref} {sorted_as}: the owner rejected the {format_inr(paise)} "
                  f"{'bill' if record_type == 'payable' else 'entry'} from {party}")
     if not waiting:
-        run.note(f"{ref} sorted as {doc_type}: no bill to reject")
+        run.note(f"{ref} {sorted_as}: no bill to reject")
     after = plan(run)
-    buyer_bills = run.one("SELECT COUNT(*) FROM payable p JOIN party pt ON pt.id = p.party_id WHERE pt.name = ?",
-                          (BUYER,))
-    run.expect("no-bill-from-the-buyer", (buyer_bills, (after["lowest"], after["valid"]) == (before["lowest"],
-                                                                                            before["valid"])),
-               (0, True), f"email {ref} is the buyer's record: Ravi Traders pays the farm, so nothing is payable to "
-                          "it; a misread entry is rejected and writes nothing, so the plan is unchanged")
+    # Keyed by the email the payable would come from, never by a party name a model read (batch 23 review).
+    from_it = run.one("SELECT COUNT(*) FROM payable p JOIN source_document d ON d.id = p.source_document_id "
+                      "WHERE d.external_ref = ?", (BUYER_RECORDS[ref],))
+    still_waiting = run.one("SELECT COUNT(*) FROM candidate c JOIN source_document d ON d.id = c.source_document_id "
+                            "WHERE d.external_ref = ? AND c.status IN ('VALID', 'AWAITING_OWNER')",
+                            (BUYER_RECORDS[ref],))
+    run.expect("no-bill-from-the-buyer",
+               (from_it, still_waiting, (after["lowest"], after["valid"]) == (before["lowest"], before["valid"])),
+               (0, 0, True), f"email {ref} is the buyer's record: Ravi Traders pays the farm, so nothing from it is "
+                             "payable; a misread entry is rejected, writes nothing, and the plan stays as it was")
 
 
 def planned_bill(run: ShrimpRun, said: dict[str, str]) -> tuple:
-    """The one bill of the amount and due date `said` gives, with the current plan's line for it: (vendor and
-    invoice number as the app compares them, decision and day, the planner's reason). Found by amount and date,
+    """The one bill of the amount and due date `said` gives, with the current plan's line for it: (the vendor as
+    read, the invoice number as the app compares numbers, decision and day, the planner's reason). Found by amount and date,
     never by the name a model read (as evals/workflow_runs.py finds the voice bill, CHG-045): live, the slip says
     "VENKAT MOTORS" and the transcript "Raju petrol bunk"."""
     rows = run.rows(
@@ -300,7 +304,7 @@ def fortnight(run: ShrimpRun) -> None:
     with run.step("vendor + owner", "Move 1, Mon 19 Oct 12:00: the last feed delivery's invoice; the owner confirms "
                                     "₹25,000"):
         run.move_to("2026-10-19T12:00")
-        confirm(run, waiting_bill(run, INVOICE_0931))
+        confirm(run, waiting_bill(run, INVOICE_0931), INVOICE_0931)
         run.expect("bill-in-the-ledger", run.one("SELECT amount_paise FROM payable WHERE party_id = 1"),
                    parse_inr("25,000"), "fixture 01: 10 bags x Rs.2,500.00 = Rs.25,000.00, to the dealer")
         run.expect("details-match-the-record", run.one("SELECT bank_status FROM party WHERE id = 1"), "verified",
@@ -329,10 +333,10 @@ def fortnight(run: ShrimpRun) -> None:
     with run.step("vendor + owner", "Move 3, Wed 21 Oct 12:00: the ₹6,46,800 settlement with new bank details; the "
                                     "owner confirms the bill, rejects the details, and asks Ravi Traders to pay early"):
         run.move_to("2026-10-21T12:00")
-        cand = waiting_bill(run, INVOICE_1042)
+        cand = waiting_bill(run, INVOICE_1042)  # confirmed below with what the invoice says, if a field is marked
         run.expect("details-held", run.one("SELECT bank_status FROM party WHERE id = 1"), "change_pending",
                    "fixture 04's account 8876 differs from 2201 on record: code holds the old details and asks")
-        confirm(run, cand)
+        confirm(run, cand, INVOICE_1042)
         p = plan(run)
         run.expect("bill-in-the-ledger", run.one("SELECT amount_paise FROM payable WHERE invoice_number = "
                                                  "'SLAF/INV/1042'"), parse_inr("6,46,800"),

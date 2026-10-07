@@ -4,7 +4,7 @@ status: active      # none | active | review | closed | aborted
 goal: "The shrimp rehearsal holds under live variance (live rehearsal 1's findings; PO): bills and questions found by content, a misread buyer's slip rejected through the real form, emails 02 and 06 worded plainly as the buyer's records, vendor names compared as the app compares them, canned replies for the user's real files. Offline only; dev only; no Gemini."
 branch: batch-23
 start_tag: null
-started: "2026-10-08T00:30:00+05:30"
+started: "2026-10-08T00:11:04+05:30"
 interrupts:
   - "make blocked by Application Control (exit 4551): recorded red; the same commands run directly at 4bd36e7, output in docs/batches/2026-10-08-23/direct-gates.txt (all green); evals --ai fixtures --runs 1: 14/14, its raw-runs folder deleted; offline driver 7/7 (on this machine it replays the real files' canned replies)"
 changes:

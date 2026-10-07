@@ -9,7 +9,9 @@ harvest and the settlement. Four counterparties matter: the feed dealer (Sri Lak
 commission agent who sells the harvest (Ravi Traders), the landowner (K. Subba Rao) and the
 electricity board (APSPDCL). The caretaker, Lakshman, is paid wages.
 
-The quotes below are what the pages render in the offline rehearsal (`make rehearse-shrimp`).
+The quotes below are what the pages render in the offline rehearsal (`make rehearse-shrimp`) on the
+placeholder uploads. With the user's real voice note and photo in place (this machine), offline, the
+rehearsal and `FALLBACK=1` alike, replays what live rehearsal 1 read from them instead: move 4 quotes both.
 Live, Gemini's own words differ: the assistant's findings, the sort of each email, and the voice
 note's transcript. The figures, the plan and every state change are code's: the same whenever the
 documents are read right, and marked for the farmer when they aren't.
@@ -143,13 +145,18 @@ duplicate. As the owner, Needs attention shows both:
   and "Please check this bill from an uploaded voice note: Raju Petrol Bunk, ₹3,000." The Telugu note
   says the amount and the date in English ("three thousand rupees, twenty-fourth October 2026"),
   because code reads the amount from the words said, never the model's figure, and it reads no Telugu
-  number words yet. Offline, the placeholder's canned transcript is "Raju petrol bunk diesel bill,
+  number words yet. On the placeholder, the canned transcript is "Raju petrol bunk diesel bill,
   generator kosam, three thousand rupees, twenty-fourth October 2026 lopala kattali.";
 - the photo: "Please check this bill from an uploaded photo: Venkat Motors, ₹18,000." That is slip
-  VM/412, ₹14,000 rewinding plus ₹4,000 bearings and gearbox oil, pay by 25 Oct. Live, Gemini read
-  the vendor as the whole header line, "VENKAT MOTORS/Aerator & Pump Repairs, Bhimavaram". The owner
-  may tidy it to "Venkat Motors" on the form before confirming: then a later bank alert naming VENKAT
-  MOTORS matches the bill by itself, where under the whole header line the owner would link it by hand.
+  VM/412, ₹14,000 rewinding plus ₹4,000 bearings and gearbox oil, pay by 25 Oct.
+
+With the real files (live, and offline on this machine), live rehearsal 1 read them as: "Please check
+this bill from an uploaded voice note: Raju petrol bunk, ₹3,000.", with the transcript "Raju petrol
+bunk diesel bill generator kosam 3000 rupees 24th October 2026 lopala kattali" (Latin script, digits);
+and "Please check this bill from an uploaded photo: VENKAT MOTORS/Aerator & Pump Repairs, Bhimavaram,
+₹18,000.", the vendor read as the whole header line. The owner may tidy it to "Venkat Motors" on the
+form before confirming: then a later bank alert naming VENKAT MOTORS matches the bill by itself, where
+under the whole header line the owner would link it by hand.
 
 Confirm both. Every check passed, so nothing is marked and nothing needs typing. The planner pays both
 today, Thu 22 Oct, the last payment day before they fall due (Sat 24 and Sun 25): "You're approving
@@ -198,9 +205,9 @@ payments wait for their bank alerts.
   model reads, the farmer confirms."
 - Ravi Traders' purchase record and weighment slip (move 2), or his payment advice (move 5), may
   appear on Needs attention as a bill: live rehearsal 1 read the slip as a ₹12,15,000 "bill from Ravi
-  Traders". **Reject** it: "the buyer's weighment slip, not a bill to pay; the model reads, the farmer
+  Traders". **Reject** it: "the buyer's record, not a bill to pay; the model reads, the farmer
   decides." Rejecting writes nothing to the books, and the plan doesn't change. Both emails now say so
-  in their first lines, which makes this less likely.
+  in their first lines, meant to make this less likely; live rehearsal 2 will show whether it does.
 - An agent that takes another path is fine if the ending is right: narrate the trace it took. If it
   ends NEEDS_OWNER, its question appears too, and linking the credit answers both.
 - If the move-5 payer is read as something other than "RAVI TRADERS", the case is unknown_txn instead
@@ -212,8 +219,10 @@ payments wait for their bank alerts.
 
 ## Files to supply
 
-Drop them in `fixtures/shrimp_uploads/`; the rehearsal driver picks them up by name. Until a canned
-reply is added for each, the offline fallback keeps using the placeholders (D7).
+Drop them in `fixtures/shrimp_uploads/`; the rehearsal driver picks them up by name. They are personal
+data: never committed (git-excluded on this machine), backed up in `C:\Hyn\shrimp-uploads-backup\`. Their
+canned replies are live rehearsal 1's readings, so offline uses them wherever the files are present, and
+the placeholders anywhere else (D7). Both have been supplied: the voice note as `voice-diesel-raju.mp3`.
 
 | File | What | Formats the app takes | Limit |
 | --- | --- | --- | --- |

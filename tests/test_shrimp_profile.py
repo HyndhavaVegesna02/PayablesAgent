@@ -21,6 +21,7 @@ from app.config import Settings, load_app_config
 from app.db.connection import write_connection
 from app.db.migrate import apply_migrations
 from app.jobs.replan import replan
+from app.domain.money import format_inr
 from app.main import create_app
 from app.validate.invoice import check_invoice
 from app.validate.voice import check_voice
@@ -47,8 +48,9 @@ def play(tmp_path, backend=None):
         return run, {"rejected": [tuple(r) for r in run.conn.execute(
             "SELECT d.external_ref, c.status FROM candidate c JOIN source_document d ON d.id = c.source_document_id "
             "WHERE c.status = 'REJECTED' ORDER BY c.id")],
-            "buyer_bills": run.one("SELECT COUNT(*) FROM payable p JOIN party pt ON pt.id = p.party_id "
-                                   "WHERE pt.name = 'Ravi Traders'")}
+            "buyer_bills": run.one("SELECT COUNT(*) FROM payable p JOIN source_document d "
+                                   "ON d.id = p.source_document_id WHERE d.external_ref IN (?, ?)",
+                                   tuple(rehearse_shrimp.BUYER_RECORDS.values()))}
     finally:
         run.close()
 
@@ -378,14 +380,17 @@ def test_move_4_finds_the_two_bills_however_the_model_spells_their_vendors(tmp_p
 
 LIVE_SLIP_VENDOR = "VENKAT MOTORS/Aerator & Pump Repairs, Bhimavaram"
 REAL_FILES = ["voice-diesel-raju.mp3", "repair-slip-venkat.jpg"]
-# What live rehearsal 1 read in the buyer's weighment slip: a ₹12,15,000 "bill from Ravi Traders", no due date.
-MISREAD_02 = {"SortResult": {"doc_type": "invoice", "reason": "A weighment slip with a gross value."},
-              "InvoiceExtract": {"seller_name": "Ravi Traders", "seller_gstin": None, "buyer_name": "Godavari Aqua Farm",
-                                 "buyer_gstin": None, "invoice_number": None, "invoice_date": "2026-10-20",
-                                 "due_date": None, "lines": [{"description": "Vannamei, 4,500 kg at Rs.270/kg",
-                                                              "amount_text": "Rs.12,15,000.00"}],
-                                 "gst_texts": [], "round_off_text": None, "total_text": "Rs.12,15,000.00",
-                                 "payee_account_number": None, "payee_ifsc": None, "uncertain_fields": []}}
+# What live rehearsal 1 read in the buyer's weighment slip, verbatim from its trace and database: a ₹12,15,000
+# "bill from Ravi Traders", no due date.
+MISREAD_02 = {"SortResult": {"doc_type": "invoice", "reason": "It is a weighment slip and purchase bill from a trader "
+                             "detailing quantities, rates, total value, and advance payment."},
+              "InvoiceExtract": {"buyer_gstin": None, "buyer_name": "Godavari Aqua Farm", "due_date": None,
+                                 "gst_texts": [], "invoice_date": "2026-10-20", "invoice_number": None,
+                                 "lines": [{"amount_text": "Rs.12,15,000.00", "description": "pond 2, harvest "
+                                            "20-10-2026, Net weight: 4,500 kg, Count: 55, Rate: Rs.270 per kg"}],
+                                 "payee_account_number": None, "payee_ifsc": None, "round_off_text": None,
+                                 "seller_gstin": None, "seller_name": "Ravi Traders", "total_text": "Rs.12,15,000.00",
+                                 "uncertain_fields": []}}
 
 
 def test_a_waiting_bill_is_found_by_its_amount_and_number_never_by_its_place_in_the_queue(tmp_path):
@@ -397,6 +402,7 @@ def test_a_waiting_bill_is_found_by_its_amount_and_number_never_by_its_place_in_
     try:
         seed(conn, FakeClock(datetime.fromisoformat(rehearse_shrimp.START)))
         for n, (party, number, paise) in enumerate((("Ravi Traders", None, 121_500_000),  # first in the queue
+                                                    ("Sri Lakshmi Aqua Feeds", "SLAF/INV/1041", 64_680_000),
                                                     ("Sri Lakshmi Aqua Feeds", "SLAF/INV/1042", 64_680_000)), 1):
             conn.execute("INSERT INTO source_document (id, business_id, kind, external_ref, content_sha256, received_at, "
                          "status) VALUES (?, 1, 'email', ?, ?, '2026-10-21T11:00:00+05:30', 'PROCESSED')",
@@ -407,11 +413,13 @@ def test_a_waiting_bill_is_found_by_its_amount_and_number_never_by_its_place_in_
         conn.commit()
         run = rehearse_shrimp.ShrimpRun.__new__(rehearse_shrimp.ShrimpRun)
         run.conn = conn
-        second = conn.execute("SELECT id FROM candidate WHERE source_document_id = 2").fetchone()[0]
-        assert rehearse_shrimp.waiting_bill(run, {"amount": "6,46,800", "invoice_number": "SLAF/INV/1042"}) == second
-        assert rehearse_shrimp.waiting_bill(run, {"amount": "6,46,800", "invoice_number": "slaf inv 1042"}) == second
+        third = conn.execute("SELECT id FROM candidate WHERE source_document_id = 3").fetchone()[0]
+        assert rehearse_shrimp.waiting_bill(run, {"amount": "6,46,800", "invoice_number": "SLAF/INV/1042"}) == third
+        assert rehearse_shrimp.waiting_bill(run, {"amount": "6,46,800", "invoice_number": "slaf inv 1042"}) == third
         with pytest.raises(rehearse_shrimp.StepFailed, match="no waiting bill"):
             rehearse_shrimp.waiting_bill(run, {"amount": "6,46,800", "invoice_number": "SLAF/INV/9999"})
+        with pytest.raises(rehearse_shrimp.StepFailed, match="2 waiting bill"):  # the amount alone is not enough
+            rehearse_shrimp.waiting_bill(run, {"amount": "6,46,800"})
     finally:
         conn.close()
 
@@ -446,12 +454,8 @@ def test_the_buyers_records_say_so_in_their_first_lines():
         assert "Ravi Traders pays Godavari Aqua Farm" in text and "Nothing is payable by the farm" in text
     assert "Advance Rs.2,00,000 paid today by UPI from ravi.k@okaxis." in slip  # the agent's snippet cut at "Adva"
     assert "Net paid: Rs.9,20,000.00 by NEFT today." in advice
-    backend = FixtureBackend(rehearse_shrimp.REPLIES)  # the canned replies still answer the reworded mail
-    for name, sorted_as in (("02-weighment-slip-ravi-traders.eml", "payment_confirmation"),
-                            ("06-payment-advice-ravi-traders.eml", "payment_confirmation")):
-        reply = backend.generate(model="fixture-ai", system="s", contents=f"From: x\n\n{backend.texts[name]}",
-                                 thinking="low", json_schema={"title": "SortResult"})
-        assert json.loads(reply.text)["doc_type"] == sorted_as
+    # That the canned replies still answer the reworded mail is shown by the offline run's notes ("02 sorted as
+    # payment_confirmation"), in test_the_rehearsal_passes_every_move_offline.
 
 
 def test_the_real_files_replies_replay_what_live_rehearsal_1_read():
@@ -466,6 +470,22 @@ def test_the_real_files_replies_replay_what_live_rehearsal_1_read():
                                             "Godavari Aqua Farm", lambda key: None)
     assert record is not None and (reading["party"], reading["invoice_number"], reading["amount_paise"],
                                    reading["due_date"]) == (LIVE_SLIP_VENDOR, "VM/412", 1_800_000, "2026-10-25")
+
+
+def test_the_demo_script_quotes_what_the_real_files_render_offline():
+    # With the user's real files in place, offline (the rehearsal, FALLBACK=1) replays live rehearsal 1's readings;
+    # the questions are built from the canned extraction (app/ingest/pipeline.py), so no file is needed here.
+    replies = load_replies("shrimp_uploads", ROOT / "fixtures" / "shrimp_ai_replies.json")
+    voice = replies["voice-diesel-raju.mp3"]["VoiceBillExtract"]
+    _, _, heard = check_voice(VoiceBillExtract.model_validate(voice), None, lambda key: None)
+    _, _, read = check_invoice(InvoiceExtract.model_validate(replies["repair-slip-venkat.jpg"]["InvoiceExtract"]),
+                               None, "Godavari Aqua Farm", lambda key: None)
+    script = " ".join((ROOT / "docs" / "demo-shrimp.md").read_text(encoding="utf-8").split())
+    for quote in (f"Please check this bill from an uploaded voice note: {heard['party']}, "
+                  f"{format_inr(heard['amount_paise'])}.",
+                  f"Please check this bill from an uploaded photo: {read['party']}, {format_inr(read['amount_paise'])}.",
+                  voice["transcript"]):
+        assert quote in script, quote
 
 
 def test_a_live_rehearsal_will_not_start_without_yes_spend(tmp_path):
