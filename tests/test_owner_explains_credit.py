@@ -301,6 +301,9 @@ def test_needs_attention_shows_the_credit_the_invoices_and_none_preselected(web)
     assert f'name="receivable_id" value="{KAVERI}"' in form and "checked" not in form
     assert 'value="not_an_invoice"' in form
     assert "The assistant found" not in form  # no finding yet
+    text = " ".join(form.split())
+    assert "(counted in the plan, expected on Tue 13 Oct; over by ₹1,17,000)" in text  # Kaveri: 1,50,000 - 33,000
+    assert "(not counted yet, expected on Wed 28 Oct; short by ₹50,000)" in text  # Nandi: 2,00,000 - 1,50,000
 
 
 def test_needs_attention_shows_the_agents_finding_as_its_own_words(web):
