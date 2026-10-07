@@ -114,3 +114,7 @@ public tree by hand from a list (no .yourteam, .claude, docs/batches, docs/chang
 superseded/ and invalid/, CLAUDE.md, the hackathon brief, the Gmail handover), and that list didn't name the
 demo script, so a rebuild from it would have brought the file back. Prose rung: the public tree is assembled
 outside any test this repo runs. Approved by the PO (user's direction).
+
+2026-10-07, extended by the PO with batch 21's direction (user-approved): nothing from the shrimp demo profile
+(CHG-058) goes to the public tree without the PO's explicit go. The demo script lives on dev only, as
+docs/demo-shrimp.md. CLAUDE.md, which names the *-shrimp targets, is already on batch 19's list.

@@ -23,7 +23,7 @@ an audit can see the whole surface in one place.
 - R008 [test] Only app/ledger/writer.py writes ledger tables or changes bank_account. Lives in tests/test_ledger_write_guard.py. — falsifier: that test fails
 - R009 [test] All time reads go through app/clock.py. Lives in tests/test_no_direct_clock_calls.py. — falsifier: that test fails
 - R010 [config] The prepatch gate runs in the project venv: .yourteam/config.yaml test_command is `uv run python -m pytest {files} -q`. — falsifier: a prepatch run whose start-commit failures are ModuleNotFoundError for a dev dependency
-- R011 [prose] The public tree (the `public` remote) never contains docs/demo-script.md or docs/gmail-handover.md, in any commit, and nothing in it names them; a public rebuild drops both with the rest of the process material (batch 19's list). — falsifier: `git log public/main --oneline -- docs/demo-script.md docs/gmail-handover.md` prints a commit, or `git grep -nE 'demo-script|gmail-handover' public/main` finds a line
+- R011 [prose] The public tree (the `public` remote) never contains docs/demo-script.md or docs/gmail-handover.md, in any commit, and nothing in it names them; a public rebuild drops both with the rest of the process material (batch 19's list). Nor, without the PO's explicit go, anything of the shrimp demo profile (batch 21): docs/demo-shrimp.md, .env.shrimp*, config.shrimp.yaml, fixtures/shrimp_*, scripts/rehearse_shrimp.py, scripts/with_env.py, tests/test_shrimp_profile.py, or the Makefile's *-shrimp targets. — falsifier: `git log public/main --oneline -- docs/demo-script.md docs/gmail-handover.md` prints a commit, or `git grep -nE 'demo-script|gmail-handover' public/main` finds a line, or (before the PO's go) `git grep -ni shrimp public/main` does
 
 ## Retired
 
