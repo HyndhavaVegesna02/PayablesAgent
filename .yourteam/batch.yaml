@@ -5,13 +5,16 @@ goal: "The shrimp rehearsal holds under live variance (live rehearsal 1's findin
 branch: batch-23
 start_tag: null
 started: "2026-10-08T00:30:00+05:30"
-interrupts: []
+interrupts:
+  - "make blocked by Application Control (exit 4551): recorded red; the same commands run directly at 4bd36e7, output in docs/batches/2026-10-08-23/direct-gates.txt (all green); evals --ai fixtures --runs 1: 14/14, its raw-runs folder deleted; offline driver 7/7 (on this machine it replays the real files' canned replies)"
 changes:
   - id: CHG-061
     lane: planned
-    board: in_progress
+    board: review
     start_commit: 9feec65
     blocked_question: null
-    gate_evidence: []
-    prepatch: null
+    gate_evidence:
+      - {command: "make test", exit_code: 4551, output_tail: "'C:\\ProgramData\\chocolatey\\bin\\make.exe' was blocked by your organization's Device Guard policy. | Contact your support person for more info.", commit: 4bd36e7, at: 2026-10-07T18:45:37+00:00}
+      - {command: "make check-evidence", exit_code: 4551, output_tail: "'C:\\ProgramData\\chocolatey\\bin\\make.exe' was blocked by your organization's Device Guard policy. | Contact your support person for more info.", commit: 4bd36e7, at: 2026-10-07T18:45:37+00:00}
+    prepatch: "PASS at 4bd36e7: the 8 new or changed tests in tests/test_shrimp_profile.py fail on 9feec65"
     notes_resolved: false
