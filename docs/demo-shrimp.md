@@ -87,9 +87,9 @@ say Ravi Traders. Watch the agent."
 Under it, **The assistant found** (offline wording): "The ₹2,00,000 UPI credit from RAVI K
 (ravi.k@okaxis) on Tue 20 Oct is Ravi Traders' harvest advance: their weighment slip, emailed at
 09:00 that day, says 'Advance Rs.2,00,000 paid today by UPI from ravi.k@okaxis'. It looks like
-HARVEST-ADV; please link it." It cites the message it found: "ravi@ravitraders.example: Weighment
-slip, harvest 20 Oct - Godavari Aqua Farm". Then: "The assistant's words. They change nothing: only
-the invoice you choose does."
+HARVEST-ADV; please link it." It cites the message it found: "ravi@ravitraders.example: Purchase
+record and weighment slip: your harvest of 20 Oct, advance paid". Then: "The assistant's words. They
+change nothing: only the invoice you choose does."
 
 Nothing is pre-selected. The farmer picks **Ravi Traders HARVEST-ADV ₹2,00,000 (counted in the plan,
 expected on Tue 20 Oct)**, ticks "Also treat "RAVI K (ravi.k@okaxis)" as this customer's name in
@@ -146,7 +146,10 @@ duplicate. As the owner, Needs attention shows both:
   number words yet. Offline, the placeholder's canned transcript is "Raju petrol bunk diesel bill,
   generator kosam, three thousand rupees, twenty-fourth October 2026 lopala kattali.";
 - the photo: "Please check this bill from an uploaded photo: Venkat Motors, ₹18,000." That is slip
-  VM/412, ₹14,000 rewinding plus ₹4,000 bearings and gearbox oil, pay by 25 Oct.
+  VM/412, ₹14,000 rewinding plus ₹4,000 bearings and gearbox oil, pay by 25 Oct. Live, Gemini read
+  the vendor as the whole header line, "VENKAT MOTORS/Aerator & Pump Repairs, Bhimavaram". The owner
+  may tidy it to "Venkat Motors" on the form before confirming: then a later bank alert naming VENKAT
+  MOTORS matches the bill by itself, where under the whole header line the owner would link it by hand.
 
 Confirm both. Every check passed, so nothing is marked and nothing needs typing. The planner pays both
 today, Thu 22 Oct, the last payment day before they fall due (Sat 24 and Sun 25): "You're approving
@@ -193,6 +196,11 @@ payments wait for their bank alerts.
 
 - A wrong extraction goes to Needs attention with the field marked: correct it by hand and say "the
   model reads, the farmer confirms."
+- Ravi Traders' purchase record and weighment slip (move 2), or his payment advice (move 5), may
+  appear on Needs attention as a bill: live rehearsal 1 read the slip as a ₹12,15,000 "bill from Ravi
+  Traders". **Reject** it: "the buyer's weighment slip, not a bill to pay; the model reads, the farmer
+  decides." Rejecting writes nothing to the books, and the plan doesn't change. Both emails now say so
+  in their first lines, which makes this less likely.
 - An agent that takes another path is fine if the ending is right: narrate the trace it took. If it
   ends NEEDS_OWNER, its question appears too, and linking the credit answers both.
 - If the move-5 payer is read as something other than "RAVI TRADERS", the case is unknown_txn instead

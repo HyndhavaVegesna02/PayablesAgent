@@ -1,6 +1,6 @@
 X-Fixture-Note: fictional data; the shrimp profile (CHG-058), move 5: the
- commission agent's payment advice, the evidence the agent finds for the
- short balance
+ commission agent's payment advice, the evidence the agent finds for the short
+ balance. Worded as the buyer's record in its first lines (CHG-061)
 From: Ravi Traders <ravi@ravitraders.example>
 To: owner@example.test
 Subject: Payment advice - harvest balance, Godavari Aqua Farm
@@ -9,9 +9,13 @@ Message-ID: <shrimp-06@ravitraders.example>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 
+Payment advice: Ravi Traders pays Godavari Aqua Farm the harvest balance.
+Nothing is payable by the farm; this is not a bill.
+Net paid: Rs.9,20,000.00 by NEFT today.
+
 Namaskaram,
 
-The processor has settled. Payment advice for the harvest of 20-10-2026:
+The processor has settled. How the net is reached, for the harvest of 20-10-2026:
 
 Balance due (Rs.12,15,000.00 less advance Rs.2,00,000.00): Rs.10,15,000.00
 Less re-grading, count 55 to 60: Rs.22,500.00
@@ -21,5 +25,5 @@ Less commission: Rs.28,200.00
 Net paid: Rs.9,20,000.00 by NEFT today.
 
 Ravi
-Ravi Traders, commission agent
+Ravi Traders, commission agent (buyer)
 (This is a fictional fixture. No real business, account or person is described.)

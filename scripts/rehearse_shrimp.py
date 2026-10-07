@@ -46,7 +46,7 @@ from app.config import AppConfig, Settings, load_app_config  # noqa: E402
 from app.db.connection import write_connection  # noqa: E402
 from app.db.migrate import apply_migrations  # noqa: E402
 from app.domain.money import format_inr, parse_inr  # noqa: E402
-from app.domain.names import normalise_name  # noqa: E402
+from app.domain.names import name_matches  # noqa: E402
 from app.jobs import alerts  # noqa: E402
 from app.jobs.replan import replan  # noqa: E402
 from app.main import create_app  # noqa: E402
@@ -79,6 +79,14 @@ MIME = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".wav"
 DIESEL = {"party": "Raju Petrol Bunk", "amount": "3,000", "due_date": "2026-10-24"}
 REPAIR = {"party": "Venkat Motors", "invoice_number": "VM/412", "amount": "18,000", "due_date": "2026-10-25"}
 PAID_BY_THE_DUE_DATE = "latest payment day on or before the due date"  # the planner's reason (app/planner)
+# The dealer's two invoices, found by what they say (CHG-061: live, the buyer's weighment slip came first in the
+# queue as a "bill"); and the buyer, whose records are never a bill to pay.
+INVOICE_0931 = {"party": "Sri Lakshmi Aqua Feeds", "invoice_number": "SLAF/INV/0931", "amount": "25,000",
+                "due_date": "2026-10-26"}
+INVOICE_1042 = {"party": "Sri Lakshmi Aqua Feeds", "invoice_number": "SLAF/INV/1042", "amount": "6,46,800",
+                "due_date": "2026-10-26"}
+BUYER = "Ravi Traders"
+BUYER_RECORDS = {"02": "<shrimp-02@ravitraders.example>", "06": "<shrimp-06@ravitraders.example>"}
 
 
 @dataclass
@@ -200,6 +208,47 @@ def link_credit(run: ShrimpRun, qid: int, invoice: str, *, alias: bool) -> None:
     run.drain()
 
 
+def waiting_bill(run: ShrimpRun, said: dict[str, str]) -> int:
+    """The one entry waiting for the owner that is the bill `said` describes: its amount, and its invoice number as
+    the app compares numbers. Never "the first waiting entry" (CHG-061)."""
+    want = normalise_invoice_number(said.get("invoice_number"))
+    found = [cid for cid, number in run.rows(
+        "SELECT c.id, json_extract(c.payload_json, '$.record.invoice_number') FROM candidate c "
+        "WHERE c.status IN ('VALID', 'AWAITING_OWNER') AND c.record_type = 'payable' "
+        "AND json_extract(c.payload_json, '$.record.amount_paise') = ?", (parse_inr(said["amount"]),))
+        if want is None or normalise_invoice_number(number) == want]
+    if len(found) != 1:
+        raise StepFailed(f"{'no' if not found else len(found)} waiting bill of ₹{said['amount']} "
+                         f"{said.get('invoice_number') or ''}".strip() + " on Needs attention")
+    return found[0]
+
+
+def reject_the_buyers_record_if_read_as_a_bill(run: ShrimpRun, ref: str) -> None:
+    """Email `ref` is the buyer's own record (02, the weighment slip; 06, the payment advice): Ravi Traders pays the
+    farm. Live, the model can read one as a bill; the owner rejects it through the real form, which writes nothing.
+    Which path happened goes in the report (PO, CHG-061)."""
+    doc_type = run.one("SELECT doc_type FROM source_document WHERE external_ref = ?", (BUYER_RECORDS[ref],))
+    waiting = run.rows("SELECT c.id, c.record_type, json_extract(c.payload_json, '$.record.party'), "
+                       "json_extract(c.payload_json, '$.record.amount_paise') FROM candidate c JOIN source_document d "
+                       "ON d.id = c.source_document_id WHERE d.external_ref = ? AND c.status IN ('VALID', "
+                       "'AWAITING_OWNER')", (BUYER_RECORDS[ref],))
+    before = plan(run)
+    for cid, record_type, party, paise in waiting:
+        run.owner.submit("/attention", f"/candidates/{cid}/reject")
+        run.drain()
+        run.note(f"{ref} sorted as {doc_type}: the owner rejected the {format_inr(paise)} "
+                 f"{'bill' if record_type == 'payable' else 'entry'} from {party}")
+    if not waiting:
+        run.note(f"{ref} sorted as {doc_type}: no bill to reject")
+    after = plan(run)
+    buyer_bills = run.one("SELECT COUNT(*) FROM payable p JOIN party pt ON pt.id = p.party_id WHERE pt.name = ?",
+                          (BUYER,))
+    run.expect("no-bill-from-the-buyer", (buyer_bills, (after["lowest"], after["valid"]) == (before["lowest"],
+                                                                                            before["valid"])),
+               (0, True), f"email {ref} is the buyer's record: Ravi Traders pays the farm, so nothing is payable to "
+                          "it; a misread entry is rejected and writes nothing, so the plan is unchanged")
+
+
 def planned_bill(run: ShrimpRun, said: dict[str, str]) -> tuple:
     """The one bill of the amount and due date `said` gives, with the current plan's line for it: (vendor and
     invoice number as the app compares them, decision and day, the planner's reason). Found by amount and date,
@@ -213,7 +262,7 @@ def planned_bill(run: ShrimpRun, said: dict[str, str]) -> tuple:
     if len(rows) != 1:
         raise StepFailed(f"expected one planned bill of ₹{said['amount']} due {said['due_date']}, found {len(rows)}")
     name, number, decision, pay_on, reason = rows[0]
-    return (normalise_name(name), normalise_invoice_number(number), f"{decision} {pay_on}" if pay_on else decision,
+    return (name, normalise_invoice_number(number), f"{decision} {pay_on}" if pay_on else decision,
             PAID_BY_THE_DUE_DATE in reason)
 
 
@@ -251,7 +300,7 @@ def fortnight(run: ShrimpRun) -> None:
     with run.step("vendor + owner", "Move 1, Mon 19 Oct 12:00: the last feed delivery's invoice; the owner confirms "
                                     "₹25,000"):
         run.move_to("2026-10-19T12:00")
-        confirm(run, candidate_from(run, "d.kind = 'email' AND c.record_type = 'payable'"))
+        confirm(run, waiting_bill(run, INVOICE_0931))
         run.expect("bill-in-the-ledger", run.one("SELECT amount_paise FROM payable WHERE party_id = 1"),
                    parse_inr("25,000"), "fixture 01: 10 bags x Rs.2,500.00 = Rs.25,000.00, to the dealer")
         run.expect("details-match-the-record", run.one("SELECT bank_status FROM party WHERE id = 1"), "verified",
@@ -266,6 +315,7 @@ def fortnight(run: ShrimpRun) -> None:
         qid = credit_question(run, txn)
         finding_checks(run, qid, case_id)
         link_credit(run, qid, "HARVEST-ADV", alias=True)
+        reject_the_buyers_record_if_read_as_a_bill(run, "02")
         rid = run.one("SELECT id FROM receivable WHERE invoice_number = 'HARVEST-ADV'")
         run.expect("checklist-5-advance-matched", run.one("SELECT status, party_id FROM bank_txn WHERE id = ?", (txn,)),
                    ("MATCHED", shrimp_seed.AGENT), "handoff checklist 5: the ₹2,00,000 credit is MATCHED to Ravi Traders")
@@ -279,7 +329,7 @@ def fortnight(run: ShrimpRun) -> None:
     with run.step("vendor + owner", "Move 3, Wed 21 Oct 12:00: the ₹6,46,800 settlement with new bank details; the "
                                     "owner confirms the bill, rejects the details, and asks Ravi Traders to pay early"):
         run.move_to("2026-10-21T12:00")
-        cand = candidate_from(run, "d.kind = 'email' AND c.record_type = 'payable'")
+        cand = waiting_bill(run, INVOICE_1042)
         run.expect("details-held", run.one("SELECT bank_status FROM party WHERE id = 1"), "change_pending",
                    "fixture 04's account 8876 differs from 2201 on record: code holds the old details and asks")
         confirm(run, cand)
@@ -334,11 +384,14 @@ def fortnight(run: ShrimpRun) -> None:
         confirm(run, voice, DIESEL)
         confirm(run, photo, REPAIR)
         diesel, repair = planned_bill(run, DIESEL), planned_bill(run, REPAIR)
-        run.expect("voice-bill", diesel[:2], (normalise_name(DIESEL["party"]), None),
+        run.note(f"vendors as read: {diesel[0]!r}; {repair[0]!r}")
+        run.expect("voice-bill", (name_matches(diesel[0], [DIESEL["party"]]), diesel[1]), (True, None),
                    "the delta: 'Raju petrol bunk diesel bill ... three thousand rupees, twenty-fourth October 2026'; "
                    "found by its ₹3,000 and 24 Oct, the vendor compared as the app compares names")
-        run.expect("slip-bill", repair[:2], (normalise_name(REPAIR["party"]), normalise_invoice_number("VM/412")),
-                   "the delta's slip: VM/412, Rs. 14,000 + Rs. 4,000 = Rs. 18,000, pay by 25/10/2026")
+        run.expect("slip-bill", (name_matches(repair[0], [REPAIR["party"]]), repair[1]),
+                   (True, normalise_invoice_number(REPAIR["invoice_number"])),
+                   "the delta's slip: VM/412, Rs. 14,000 + Rs. 4,000 = Rs. 18,000, pay by 25/10/2026; the vendor as "
+                   "the app matches names (it contains 'Venkat Motors': live read the whole header line)")
         run.expect("new-bills-in-the-plan", (diesel[2:], repair[2:]),
                    (("PAY 2026-10-22", True), ("PAY 2026-10-22", True)),
                    "the planner's own decision and reason (PO): both fall due before the next payment day, Mon 26, so "
@@ -362,6 +415,7 @@ def fortnight(run: ShrimpRun) -> None:
         qid = credit_question(run, txn)
         finding_checks(run, qid, case_id)
         link_credit(run, qid, "HARVEST-BAL", alias=False)
+        reject_the_buyers_record_if_read_as_a_bill(run, "06")
         run.expect("checklist-5-balance-confirmed", (receivable(run, "HARVEST-BAL"), run.one(
             "SELECT matched_txn_id FROM receivable WHERE invoice_number = 'HARVEST-BAL'")), ("CONFIRMED", txn),
                    "handoff checklist 5: HARVEST-BAL is CONFIRMED with the ₹9,20,000 credit")

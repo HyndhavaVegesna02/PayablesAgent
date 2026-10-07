@@ -5,6 +5,7 @@ are its own files beside the worked example's; its seed only ever writes
 ./data/shrimp.db; and the rehearsal driver plays moves 1 to 6 through the real
 routes, worker and demo clock, offline for free."""
 
+import hashlib
 import html
 import json
 import sys
@@ -26,6 +27,31 @@ from app.validate.voice import check_voice
 from evals.workflow import ROOT, _text
 from fixtures import shrimp_seed
 from scripts import rehearse_shrimp, with_env
+
+# The tests play the PLACEHOLDER uploads: the user's real files are untracked and on one machine only (PO), so no
+# test depends on them being there.
+PLACEHOLDERS = {which: rehearse_shrimp.UPLOADS / name for which, name in rehearse_shrimp.PLACEHOLDER.items()}
+
+
+@pytest.fixture
+def placeholders_only(monkeypatch):
+    monkeypatch.setattr(rehearse_shrimp, "REAL", {"voice": "no-such-voice-file", "photo": "no-such-photo-file"})
+
+
+def play(tmp_path, backend=None):
+    """The offline fortnight on the placeholders, with `backend` (the canned replies by default)."""
+    run = rehearse_shrimp.ShrimpRun(tmp_path, backend or FixtureBackend(rehearse_shrimp.REPLIES),
+                                    load_app_config(rehearse_shrimp.CONFIG), fixtures_mode=True, uploads=PLACEHOLDERS)
+    try:
+        rehearse_shrimp.fortnight(run)
+        return run, {"rejected": [tuple(r) for r in run.conn.execute(
+            "SELECT d.external_ref, c.status FROM candidate c JOIN source_document d ON d.id = c.source_document_id "
+            "WHERE c.status = 'REJECTED' ORDER BY c.id")],
+            "buyer_bills": run.one("SELECT COUNT(*) FROM payable p JOIN party pt ON pt.id = p.party_id "
+                                   "WHERE pt.name = 'Ravi Traders'")}
+    finally:
+        run.close()
+
 
 SHRIMP_SENDERS = ["accounts@srilakshmiaquafeeds.example", "ravi@ravitraders.example", "subbarao@example.test"]
 
@@ -96,8 +122,10 @@ def test_every_shrimp_email_and_upload_has_a_canned_reply_and_the_worked_example
     emails = sorted(p.name for p in (ROOT / "fixtures" / "shrimp_inbox").glob("*.eml"))
     assert len(emails) == 8 and sorted(backend.texts) == emails
     assert all("SortResult" in backend.email_replies[name] for name in emails)
-    assert sorted(load_replies("shrimp_uploads", store)) == sorted(rehearse_shrimp.PLACEHOLDER.values())
-    assert len(backend.file_replies) == 2
+    assert sorted(load_replies("shrimp_uploads", store)) == sorted(
+        [*rehearse_shrimp.PLACEHOLDER.values(), *REAL_FILES])  # the real ones answer where the files are (CHG-061)
+    placeholder_hashes = {hashlib.sha256(path.read_bytes()).hexdigest() for path in PLACEHOLDERS.values()}
+    assert placeholder_hashes <= set(backend.file_replies)
     assert not set(FixtureBackend().texts) & set(emails)
 
 
@@ -233,7 +261,7 @@ def test_the_shrimp_seed_refuses_another_data_dir_so_no_other_demo_clock_is_rese
 # --- AC4: the rehearsal driver ---------------------------------------------------------------------------
 
 
-def test_the_rehearsal_passes_every_move_offline(tmp_path):
+def test_the_rehearsal_passes_every_move_offline(tmp_path, placeholders_only):
     assert rehearse_shrimp.main(["--ai", "fixtures", "--out", str(tmp_path)]) == 0
     (folder,) = tmp_path.iterdir()
     data = json.loads((folder / "report.json").read_text(encoding="utf-8"))
@@ -250,6 +278,9 @@ def test_the_rehearsal_passes_every_move_offline(tmp_path):
     assert {"voice-bill", "slip-bill", "two-bills-not-one", "transcript-beside-it", "lease-not-paid-early",
             "new-bills-in-the-plan", "thursday-approved"} <= move4  # paid on time (PO)
     assert "one-repair-bill" not in move4  # the owner rejects nothing (CHG-060)
+    for n, ref in ((2, "02"), (5, "06")):  # which path each buyer's record took is in the report (CHG-061)
+        assert "no-bill-from-the-buyer" in {c["id"] for c in data["moves"][n]["checks"]}
+        assert f"{ref} sorted as payment_confirmation: no bill to reject" in data["moves"][n]["notes"]
 
 
 # What docs/demo-shrimp.md quotes, each as the owner's pages render it in the offline fortnight (AC5).
@@ -258,7 +289,7 @@ QUOTED = [
     "Bank details on this bill: account ending 2201, IFSC SBIN0004321",
     "A ₹2,00,000 credit on Tue 20 Oct from RAVI K (ravi.k@okaxis) (reference 629312345678) was not matched to an "
     "invoice. Which invoice did it pay, if any?",
-    "ravi@ravitraders.example: Weighment slip, harvest 20 Oct - Godavari Aqua Farm",
+    "ravi@ravitraders.example: Purchase record and weighment slip: your harvest of 20 Oct, advance paid",
     "The assistant's words. They change nothing: only the invoice you choose does.",
     "Ravi Traders HARVEST-ADV ₹2,00,000 (counted in the plan, expected on Tue 20 Oct)",
     "A bill from Sri Lakshmi Aqua Feeds gives different bank details: account ending 8876, IFSC ICIC0007788 (on "
@@ -294,7 +325,7 @@ def test_what_the_demo_script_quotes_is_what_the_pages_render(tmp_path):
             pages.extend(html.unescape(_text(self.owner.get(p))) for p in ("/", "/attention"))
 
     run = Watching(tmp_path, FixtureBackend(rehearse_shrimp.REPLIES), load_app_config(rehearse_shrimp.CONFIG),
-                   fixtures_mode=True, uploads=rehearse_shrimp.uploads_for(False)[0])
+                   fixtures_mode=True, uploads=PLACEHOLDERS)
     try:
         rehearse_shrimp.fortnight(run)
         events = [r[0] for r in run.conn.execute("SELECT reason FROM event WHERE event_type = 'RECEIVABLE_CONFIRMED'")]
@@ -334,18 +365,107 @@ def test_move_4_finds_the_two_bills_however_the_model_spells_their_vendors(tmp_p
     backend.file_replies = copy.deepcopy(backend.file_replies)
     for replies in backend.file_replies.values():
         if "InvoiceExtract" in replies:
-            replies["InvoiceExtract"]["seller_name"] = "VENKAT MOTORS"
+            replies["InvoiceExtract"]["seller_name"] = LIVE_SLIP_VENDOR  # live rehearsal 1 read the whole header
         if "VoiceBillExtract" in replies:
             replies["VoiceBillExtract"]["vendor_name"] = "raju petrol bunk"
-    run = rehearse_shrimp.ShrimpRun(tmp_path, backend, load_app_config(rehearse_shrimp.CONFIG), fixtures_mode=True,
-                                    uploads=rehearse_shrimp.uploads_for(False)[0])
-    try:
-        rehearse_shrimp.fortnight(run)
-    finally:
-        run.close()
+    run, _ = play(tmp_path, backend)
     move4 = run.steps[4]
     assert move4.ok, (move4.error, [(c.id, c.expected, c.actual) for c in move4.checks if not c.ok])
     assert all(s.ok for s in run.steps)
+
+
+# --- live rehearsal 1's findings (batch 23, CHG-061) --------------------------------------------------------
+
+LIVE_SLIP_VENDOR = "VENKAT MOTORS/Aerator & Pump Repairs, Bhimavaram"
+REAL_FILES = ["voice-diesel-raju.mp3", "repair-slip-venkat.jpg"]
+# What live rehearsal 1 read in the buyer's weighment slip: a ₹12,15,000 "bill from Ravi Traders", no due date.
+MISREAD_02 = {"SortResult": {"doc_type": "invoice", "reason": "A weighment slip with a gross value."},
+              "InvoiceExtract": {"seller_name": "Ravi Traders", "seller_gstin": None, "buyer_name": "Godavari Aqua Farm",
+                                 "buyer_gstin": None, "invoice_number": None, "invoice_date": "2026-10-20",
+                                 "due_date": None, "lines": [{"description": "Vannamei, 4,500 kg at Rs.270/kg",
+                                                              "amount_text": "Rs.12,15,000.00"}],
+                                 "gst_texts": [], "round_off_text": None, "total_text": "Rs.12,15,000.00",
+                                 "payee_account_number": None, "payee_ifsc": None, "uncertain_fields": []}}
+
+
+def test_a_waiting_bill_is_found_by_its_amount_and_number_never_by_its_place_in_the_queue(tmp_path):
+    from fixtures.shrimp_seed import seed
+
+    db = tmp_path / "s.db"
+    apply_migrations(db)
+    conn = write_connection(db)
+    try:
+        seed(conn, FakeClock(datetime.fromisoformat(rehearse_shrimp.START)))
+        for n, (party, number, paise) in enumerate((("Ravi Traders", None, 121_500_000),  # first in the queue
+                                                    ("Sri Lakshmi Aqua Feeds", "SLAF/INV/1042", 64_680_000)), 1):
+            conn.execute("INSERT INTO source_document (id, business_id, kind, external_ref, content_sha256, received_at, "
+                         "status) VALUES (?, 1, 'email', ?, ?, '2026-10-21T11:00:00+05:30', 'PROCESSED')",
+                         (n, f"<m{n}>", f"{n:064d}"))
+            conn.execute("INSERT INTO candidate (source_document_id, record_type, payload_json, status, created_by, "
+                         "created_at) VALUES (?, 'payable', ?, 'AWAITING_OWNER', 'pipeline', '2026-10-21T11:00:00+05:30')",
+                         (n, json.dumps({"record": {"party": party, "invoice_number": number, "amount_paise": paise}})))
+        conn.commit()
+        run = rehearse_shrimp.ShrimpRun.__new__(rehearse_shrimp.ShrimpRun)
+        run.conn = conn
+        second = conn.execute("SELECT id FROM candidate WHERE source_document_id = 2").fetchone()[0]
+        assert rehearse_shrimp.waiting_bill(run, {"amount": "6,46,800", "invoice_number": "SLAF/INV/1042"}) == second
+        assert rehearse_shrimp.waiting_bill(run, {"amount": "6,46,800", "invoice_number": "slaf inv 1042"}) == second
+        with pytest.raises(rehearse_shrimp.StepFailed, match="no waiting bill"):
+            rehearse_shrimp.waiting_bill(run, {"amount": "6,46,800", "invoice_number": "SLAF/INV/9999"})
+    finally:
+        conn.close()
+
+
+def test_the_buyers_records_read_as_bills_are_rejected_and_the_fortnight_holds(tmp_path):
+    import copy
+
+    backend = FixtureBackend(rehearse_shrimp.REPLIES)
+    backend.email_replies = copy.deepcopy(backend.email_replies)
+    backend.email_replies["02-weighment-slip-ravi-traders.eml"] = MISREAD_02
+    misread_06 = copy.deepcopy(MISREAD_02)  # the payment advice read as a bill too: the same rule holds
+    misread_06["InvoiceExtract"].update(invoice_date="2026-10-23", total_text="Rs.9,20,000.00", lines=[
+        {"description": "Harvest balance, net", "amount_text": "Rs.9,20,000.00"}])
+    backend.email_replies["06-payment-advice-ravi-traders.eml"] = misread_06
+    run, found = play(tmp_path, backend)
+    assert all(s.ok for s in run.steps), [(s.action[:8], s.error, [(c.id, c.expected, c.actual) for c in s.checks
+                                                                  if not c.ok]) for s in run.steps if not s.ok]
+    assert found["buyer_bills"] == 0
+    assert found["rejected"] == [("<shrimp-02@ravitraders.example>", "REJECTED"),
+                                 ("<shrimp-06@ravitraders.example>", "REJECTED")]
+    assert "02 sorted as invoice: the owner rejected the ₹12,15,000 bill from Ravi Traders" in run.steps[2].notes
+    assert "06 sorted as invoice: the owner rejected the ₹9,20,000 bill from Ravi Traders" in run.steps[5].notes
+
+
+def test_the_buyers_records_say_so_in_their_first_lines():
+    def first_lines(name, n=4):
+        body = (ROOT / "fixtures" / "shrimp_inbox" / name).read_text(encoding="utf-8").split("\n\n", 1)[1]
+        return " ".join(line.strip() for line in body.strip().splitlines()[:n])
+
+    slip, advice = first_lines("02-weighment-slip-ravi-traders.eml"), first_lines("06-payment-advice-ravi-traders.eml")
+    for text in (slip, advice):
+        assert "Ravi Traders pays Godavari Aqua Farm" in text and "Nothing is payable by the farm" in text
+    assert "Advance Rs.2,00,000 paid today by UPI from ravi.k@okaxis." in slip  # the agent's snippet cut at "Adva"
+    assert "Net paid: Rs.9,20,000.00 by NEFT today." in advice
+    backend = FixtureBackend(rehearse_shrimp.REPLIES)  # the canned replies still answer the reworded mail
+    for name, sorted_as in (("02-weighment-slip-ravi-traders.eml", "payment_confirmation"),
+                            ("06-payment-advice-ravi-traders.eml", "payment_confirmation")):
+        reply = backend.generate(model="fixture-ai", system="s", contents=f"From: x\n\n{backend.texts[name]}",
+                                 thinking="low", json_schema={"title": "SortResult"})
+        assert json.loads(reply.text)["doc_type"] == sorted_as
+
+
+def test_the_real_files_replies_replay_what_live_rehearsal_1_read():
+    replies = load_replies("shrimp_uploads", ROOT / "fixtures" / "shrimp_ai_replies.json")
+    voice, slip = replies["voice-diesel-raju.mp3"]["VoiceBillExtract"], replies["repair-slip-venkat.jpg"]
+    assert voice["transcript"] == "Raju petrol bunk diesel bill generator kosam 3000 rupees 24th October 2026 lopala kattali"
+    checks, record, reading = check_voice(VoiceBillExtract.model_validate(voice), None, lambda key: None)
+    assert record is not None and (reading["party"], reading["amount_paise"], reading["due_date"]) == (
+        "Raju petrol bunk", 300_000, "2026-10-24")
+    assert slip["SortResult"]["doc_type"] == "invoice"
+    checks, record, reading = check_invoice(InvoiceExtract.model_validate(slip["InvoiceExtract"]), None,
+                                            "Godavari Aqua Farm", lambda key: None)
+    assert record is not None and (reading["party"], reading["invoice_number"], reading["amount_paise"],
+                                   reading["due_date"]) == (LIVE_SLIP_VENDOR, "VM/412", 1_800_000, "2026-10-25")
 
 
 def test_a_live_rehearsal_will_not_start_without_yes_spend(tmp_path):

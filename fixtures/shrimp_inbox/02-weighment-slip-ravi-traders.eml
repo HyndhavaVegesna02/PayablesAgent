@@ -1,13 +1,19 @@
 X-Fixture-Note: fictional data; the shrimp profile (CHG-058), move 2: the
- commission agent's weighment slip, the evidence the agent finds for the
- advance
+ commission agent's purchase record and weighment slip, the evidence the agent
+ finds for the advance. Worded as the buyer's record in its first lines
+ (CHG-061: live, a model once read it as a bill to pay)
 From: Ravi Traders <ravi@ravitraders.example>
 To: owner@example.test
-Subject: Weighment slip, harvest 20 Oct - Godavari Aqua Farm
+Subject: Purchase record and weighment slip: your harvest of 20 Oct, advance paid
 Date: Tue, 20 Oct 2026 09:00:00 +0530
 Message-ID: <shrimp-02@ravitraders.example>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
+
+Our purchase record: Ravi Traders pays Godavari Aqua Farm for this harvest.
+Nothing is payable by the farm; this is not a bill.
+Advance Rs.2,00,000 paid today by UPI from ravi.k@okaxis.
+Balance by NEFT within 10 days after processor settlement.
 
 Namaskaram,
 
@@ -18,9 +24,6 @@ Count: 55
 Rate: Rs.270 per kg
 Gross value: Rs.12,15,000.00
 
-Advance Rs.2,00,000 paid today by UPI from ravi.k@okaxis.
-Balance by NEFT within 10 days after processor settlement.
-
 Ravi
-Ravi Traders, commission agent
+Ravi Traders, commission agent (buyer)
 (This is a fictional fixture. No real business, account or person is described.)
