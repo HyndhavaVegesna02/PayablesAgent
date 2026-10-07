@@ -37,6 +37,17 @@ def attention_page(request: Request, conn: sqlite3.Connection, user: User, *, me
                 continue
             q["bills"] = repo.bills_a_debit_could_pay(conn, user.business_id, q["debit"]["amount_paise"])
             q["held_by"] = actions.debit_holder(conn, q["debit"]["id"])
+        if q["kind"] == "explain_credit" and isinstance(q["choices"], dict) \
+                and type(q["choices"].get("bank_txn_id")) is int:
+            try:
+                q["credit"] = repo.credit(conn, user.business_id, q["choices"]["bank_txn_id"])
+            except repo.NotFound:
+                continue
+            ids = [i for i in q["choices"].get("receivable_ids", []) if type(i) is int]
+            q["invoices"] = repo.receivables_a_credit_could_settle(conn, user.business_id, ids,
+                                                                   q["credit"]["amount_paise"])
+            if type(q["choices"].get("case_id")) is int:
+                q["finding"] = repo.case_finding(conn, user.business_id, q["choices"]["case_id"])
     flagged = {c["id"]: f for c in candidates if (f := flagged_fields(c, shown[c["id"]]))}
     return render(request, "attention.html", {
         "questions": questions,
@@ -163,6 +174,12 @@ async def answer(question_id: int, request: Request, user: User = Depends(owner_
     if q["kind"] == "explain_txn":
         try:
             actions.explain_debit(conn, user, q, values, clock=clock)
+        except actions.FieldErrors as e:
+            return attention_page(request, conn, user, message=" ".join(e.errors.values()), status=422)
+        return done(request, "/attention")
+    if q["kind"] == "explain_credit":
+        try:
+            actions.explain_credit(conn, user, q, values, clock=clock)
         except actions.FieldErrors as e:
             return attention_page(request, conn, user, message=" ".join(e.errors.values()), status=422)
         return done(request, "/attention")

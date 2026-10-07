@@ -335,3 +335,32 @@ def test_a_run_the_owner_stops_still_hands_on_the_mail_it_stored(env):
     (doc_id,) = env.conn.execute("SELECT id FROM source_document").fetchone()
     job = env.conn.execute("SELECT payload_json FROM job WHERE kind = 'process_document'").fetchone()
     assert json.loads(job[0]) == {"document_id": doc_id, "found_by": f"agent:case:{cid} via gmail:{msg}"}
+
+
+# --- what the agent concluded is kept for the owner's page (batch 21, CHG-057) ---------------------------
+
+
+def test_a_resolved_answer_is_kept_with_the_messages_it_cited(env):
+    deliver(env, "01-debit-ashirwad-paper.eml")
+    cid = open_unknown_debit_case(env)
+    msg = "01-debit-ashirwad-paper.eml"
+    case = run(env, cid,
+               step("look for the alert", "search_gmail", {"query": "ASHIRWAD"}),
+               step("propose it", "add_candidate", {"record_type": "bank_alert", "message_id": msg,
+                                                    "fields": ALERT_01}),
+               step("done", final=final(summary="The alert was in the mail.", cited=[msg], relied=[1])))
+    assert case.state["final"] == {"outcome": "RESOLVED", "summary": "The alert was in the mail.",
+                                   "cited_message_ids": [msg]}
+
+
+def test_the_answer_passed_to_the_owner_is_kept_and_a_refused_one_is_not(env):
+    deliver(env, "01-debit-ashirwad-paper.eml")
+    cid = open_unknown_debit_case(env)
+    msg = "01-debit-ashirwad-paper.eml"
+    case = run(env, cid,
+               step("look", "search_gmail", {"query": "ASHIRWAD"}),
+               step("claim", final=final(summary="Made up.", cited=["99-made-up.eml"])),
+               step("give up", final=final("NEEDS_OWNER", "It may be Ashirwad's paper.", cited=[msg])))
+    assert case.status == "ASK_OWNER"
+    assert case.state["final"] == {"outcome": "NEEDS_OWNER", "summary": "It may be Ashirwad's paper.",
+                                   "cited_message_ids": [msg]}

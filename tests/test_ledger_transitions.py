@@ -344,8 +344,9 @@ def test_receivable_confirmed_by_a_matched_credit(conn):
     [
         ("COMMITTED", "EXPECTED", "owner:1"),  # Q6: owner re-rating deferred
         ("EXPECTED", "COMMITTED", "owner:1"),
-        ("EXPECTED", "CONFIRMED", "owner:1"),
+        ("EXPECTED", "CONFIRMED", "planner"),  # the owner may now, by linking a credit (CHG-057)
         ("CONFIRMED", "EXPECTED", "reconciler"),
+        ("CONFIRMED", "COMMITTED", "owner:1"),
     ],
 )
 def test_receivable_uncited_moves_are_refused(conn, start, to, actor):

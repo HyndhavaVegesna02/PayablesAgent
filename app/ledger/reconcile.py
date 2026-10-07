@@ -145,6 +145,29 @@ def ask_about_debit(conn: sqlite3.Connection, t: dict[str, Any], case_id: int) -
     ).lastrowid
 
 
+def ask_about_credit(conn: sqlite3.Connection, t: dict[str, Any], case_id: int, receivable_ids: list[int]) -> int:
+    """Asks the owner which invoice a credit the reconciler could not match
+    paid (CHG-057), the mirror of ask_about_debit: an explain_credit question
+    linked to its case, offering `receivable_ids`. One question per case; the
+    text is built by code from the alert's fields."""
+    existing = conn.execute(
+        "SELECT id FROM owner_question WHERE business_id = ? AND kind = 'explain_credit' "
+        "AND json_extract(choices_json, '$.case_id') = ?", (t["business_id"], case_id),
+    ).fetchone()
+    if existing is not None:
+        return existing[0]
+    payer = t["counterparty"] or "an unnamed payer"
+    body = (f"A {format_inr(t['amount_paise'])} credit on {format_day(date.fromisoformat(t['txn_date']))} from "
+            f"{payer}{' (reference ' + t['reference'] + ')' if t['reference'] else ''} was not matched to an "
+            "invoice. Which invoice did it pay, if any?")
+    return conn.execute(
+        "INSERT INTO owner_question (business_id, case_id, kind, body_text, choices_json, status) "
+        "VALUES (?, ?, 'explain_credit', ?, ?, 'OPEN')",
+        (t["business_id"], case_id, body, json.dumps({"case_id": case_id, "bank_txn_id": t["id"],
+                                                       "receivable_ids": receivable_ids})),
+    ).lastrowid
+
+
 # --- matching -----------------------------------------------------------------------
 
 
@@ -314,6 +337,7 @@ def match_credit(conn: sqlite3.Connection, txn_id: int, *, window_days: int, clo
             ],
             unknowns=["Whether this is a part payment, an overpayment or another invoice"], clock=clock,
         )
+        ask_about_credit(conn, t, case, [r["id"] for r in named])
         return Result(f"ambiguous credit ({why})", case_ids=[case])
 
     case = open_case(
@@ -321,6 +345,7 @@ def match_credit(conn: sqlite3.Connection, txn_id: int, *, window_days: int, clo
         goal=f"Find out what credit {ref} was.", facts=_txn_facts(t) + ["No open receivable matches it"],
         unknowns=["Who paid this and for what"], clock=clock,
     )
+    ask_about_credit(conn, t, case, [r["id"] for r in open_rx])
     return Result("no receivable matches: credit stays UNMATCHED", case_ids=[case])
 
 

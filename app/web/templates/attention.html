@@ -157,6 +157,47 @@
         <button type="submit" name="decision" value="not_a_bill" class="secondary outline">Not a bill payment</button>
       </div>
     </form>
+    {% elif q.kind == "explain_credit" and q.get("credit") and q.credit.status != "UNMATCHED" %}
+    <form method="post" action="/questions/{{ q.id }}/answer" hx-post="/questions/{{ q.id }}/answer" hx-target="#main">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <p class="muted">This credit has been settled another way.</p>
+      <button type="submit" name="decision" value="settled" class="secondary outline">Close this question</button>
+    </form>
+    {% elif q.kind == "explain_credit" and q.get("credit") %}
+    {% if q.finding %}
+    <div class="card assistant">
+      <span class="who">{{ icon("note", 14) }}The assistant found</span>
+      <p class="said">{{ q.finding.summary }}</p>
+      {% if q.finding.cited %}
+      <small class="muted">From the messages it cited:</small>
+      <ul>
+        {% for m in q.finding.cited %}<li class="said">{{ m.sender }}: {{ m.subject }} <small class="muted">({{ m.when }})</small></li>{% endfor %}
+      </ul>
+      {% endif %}
+      <small class="muted">The assistant's words. They change nothing: only the invoice you choose does.</small>
+    </div>
+    {% endif %}
+    <form method="post" action="/questions/{{ q.id }}/answer" hx-post="/questions/{{ q.id }}/answer" hx-target="#main">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <fieldset>
+        <legend>This credit paid</legend>
+        {% for r in q.invoices %}
+        <label>
+          <input type="radio" name="receivable_id" value="{{ r.id }}">
+          <span>{{ r.name }} {{ r.amount_paise | inr }}
+          <small class="muted">({{ r.confidence | lower }}{% if r.expected_date %}, expected {{ r.expected_date | day }}{% endif %}{% if r.difference_paise %}; {{ "short" if r.difference_paise < 0 else "over" }} by {{ (r.difference_paise if r.difference_paise > 0 else -r.difference_paise) | inr }}{% endif %})</small></span>
+          <input type="hidden" name="version_{{ r.id }}" value="{{ r.version }}">
+        </label>
+        {% else %}<p class="muted">No open invoice is waiting for a payment.</p>{% endfor %}
+      </fieldset>
+      {% if q.credit.counterparty %}
+      <label><input type="checkbox" name="alias" value="1"> Also treat "{{ q.credit.counterparty }}" as this customer's name in future alerts</label>
+      {% endif %}
+      <div class="actions">
+        {% if q.invoices %}<button type="submit" name="decision" value="invoice">This paid the chosen invoice</button>{% endif %}
+        <button type="submit" name="decision" value="not_an_invoice" class="secondary outline">Not an invoice payment</button>
+      </div>
+    </form>
     {% else %}<p class="muted">Answering this comes with a later change.</p>{% endif %}
   </article>
   {% endfor %}

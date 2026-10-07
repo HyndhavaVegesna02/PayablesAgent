@@ -334,6 +334,70 @@ def debit(conn: sqlite3.Connection, business_id: int, txn_id: int) -> dict[str, 
     )
 
 
+def credit(conn: sqlite3.Connection, business_id: int, txn_id: int) -> dict[str, Any]:
+    return _one(
+        conn,
+        "SELECT t.* FROM bank_txn t JOIN bank_account a ON a.id = t.account_id "
+        "WHERE t.id = ? AND a.business_id = ? AND t.direction = 'credit'",
+        (txn_id, business_id), f"credit {txn_id}",
+    )
+
+
+def receivable(conn: sqlite3.Connection, business_id: int, receivable_id: int) -> dict[str, Any]:
+    return _one(conn, "SELECT * FROM receivable WHERE id = ? AND business_id = ?", (receivable_id, business_id),
+                f"invoice {receivable_id}")
+
+
+def invoice_label(rx: dict[str, Any], names: dict[int, str]) -> str:
+    """How a receivable is named to the owner: its customer and invoice number, when it has both."""
+    name = names.get(rx["id"], f"Invoice {rx['id']}")
+    number = rx.get("invoice_number")
+    return f"{name} {number}" if number and number != name else name
+
+
+def receivables_a_credit_could_settle(conn: sqlite3.Connection, business_id: int, receivable_ids: list[int],
+                                      amount_paise: int) -> list[dict[str, Any]]:
+    """The open invoices an explain_credit question offers (CHG-057), closest amount first."""
+    if not receivable_ids:
+        return []
+    names = receivable_names(conn, business_id)
+    marks = ",".join("?" * len(receivable_ids))
+    rows = _rows(
+        conn,
+        "SELECT id, party_id, invoice_number, amount_paise, expected_date, confidence, version FROM receivable "
+        f"WHERE business_id = ? AND id IN ({marks}) AND confidence != 'CONFIRMED'",
+        (business_id, *receivable_ids),
+    )
+    for r in rows:
+        r["name"] = invoice_label(r, names)
+        r["difference_paise"] = amount_paise - r["amount_paise"]
+        r["expected_date"] = _day(r["expected_date"])
+    return sorted(rows, key=lambda r: (abs(r["difference_paise"]), r["expected_date"] or date.max, r["id"]))
+
+
+def case_finding(conn: sqlite3.Connection, business_id: int, case_id: int) -> dict[str, Any] | None:
+    """What the exception agent concluded about one case, when it has: its final summary and the messages it
+    cited (sender, subject, date, from its own search results). The assistant's words; nothing here acts."""
+    row = conn.execute("SELECT state_json FROM agent_case WHERE id = ? AND business_id = ?",
+                       (case_id, business_id)).fetchone()
+    if row is None:
+        return None
+    state = json.loads(row[0] or "{}")
+    final = state.get("final") or ({"summary": state["summary"]} if state.get("summary") else None)
+    if not final or not final.get("summary"):
+        return None
+    lines = [line for f in state.get("findings", []) for line in f.get("lines", [])]
+    cited = []
+    for mid in final.get("cited_message_ids", []):
+        line = next((x for x in lines if x.startswith(f"message {mid} | ")), None)
+        if line is None:
+            continue
+        parts = [p.strip() for p in line.split(" | ")]
+        cited.append({"sender": parts[2].removeprefix("from ") if len(parts) > 2 else "",
+                      "subject": parts[3] if len(parts) > 3 else "", "when": parts[1] if len(parts) > 1 else ""})
+    return {"summary": final["summary"], "outcome": final.get("outcome"), "cited": cited}
+
+
 def bills_a_debit_could_pay(conn: sqlite3.Connection, business_id: int, amount_paise: int) -> list[dict[str, Any]]:
     """Open bills a debit could have paid (CHG-022): approved or under review,
     or marked PAID with no debit linked yet. Closest amount first."""

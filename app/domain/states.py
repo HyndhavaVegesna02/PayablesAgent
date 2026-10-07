@@ -116,10 +116,12 @@ DRIFT_TRANSITIONS: dict[tuple[str, str], frozenset[Role]] = {
     ("ASK_OWNER", "OK"): frozenset({"owner"}),  # step 6: confirm_balance only
 }
 
+# The owner confirms a receivable by linking a credit the reconciler couldn't match (CHG-057), as the owner
+# links a debit to a bill on the payable side.
 RECEIVABLE_TRANSITIONS: dict[tuple[str, str], frozenset[Role]] = {
-    ("COMMITTED", "CONFIRMED"): frozenset({"reconciler"}),
-    ("EXPECTED", "CONFIRMED"): frozenset({"reconciler"}),
-    ("UNKNOWN", "CONFIRMED"): frozenset({"reconciler"}),
+    ("COMMITTED", "CONFIRMED"): frozenset({"reconciler", "owner"}),
+    ("EXPECTED", "CONFIRMED"): frozenset({"reconciler", "owner"}),
+    ("UNKNOWN", "CONFIRMED"): frozenset({"reconciler", "owner"}),
 }
 
 TRANSITIONS: dict[EntityKind, dict[tuple[str, str], frozenset[Role]]] = {

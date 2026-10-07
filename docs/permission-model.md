@@ -26,6 +26,7 @@ Nobody moves money. The app has no connection to any bank.
 | --- | --- | --- | --- | --- |
 | Approve the payments for a payment day | yes (web) | no | no tool for it | no; it records the owner's approval |
 | Mark a bill paid | yes (web) | no | no tool for it | when a bank debit matches the approved payment (the reconciler) |
+| Say which invoice a bank credit paid | yes (web) | no | no tool for it; its finding is shown as its own words | matches the credit and confirms the invoice the owner chose |
 | Confirm a record read from a document | yes (web) | no | proposes it (a candidate) | applies the owner's confirmation |
 | Add a document or an entry | yes | yes | no | stores it, and queues it to be read |
 | Accept a vendor's new bank details | yes (web) | no | no tool for it | flags the change and asks the owner |

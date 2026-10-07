@@ -167,9 +167,17 @@ def _settle_drift(conn: sqlite3.Connection, case: Case, d: Deps, ctx: JobContext
         to_owner(conn, case, "the findings did not close the gap", d, ctx)
 
 
+def _keep_final(case: Case, final: FinalAnswer) -> None:
+    """What the agent concluded, kept on the case for the owner's page (CHG-057): its words and the messages
+    it cited. Only an answer code accepted is kept, and nothing reads it to act."""
+    case.state["final"] = {"outcome": final.outcome, "summary": final.summary,
+                           "cited_message_ids": list(final.cited_message_ids)}
+
+
 def apply_final(conn: sqlite3.Connection, case: Case, final: FinalAnswer, d: Deps, ctx: JobContext) -> bool:
     """True when the answer is applied; False when code refused it."""
     if final.outcome == "NEEDS_OWNER":
+        _keep_final(case, final)
         to_owner(conn, case, final.summary, d, ctx)
         case.add_note("the agent passed the case to the owner")
         cases.save(conn, case, ctx.clock)
@@ -197,6 +205,7 @@ def apply_final(conn: sqlite3.Connection, case: Case, final: FinalAnswer, d: Dep
             else:
                 done.append(f"candidate {cid}: its message goes to the pipeline, and the owner confirms the bill")
         case.status = "RESOLVED"
+        _keep_final(case, final)
         case.state["summary"] = final.summary
         case.add_note(f"resolved: {final.summary}")
         if case.kind == "drift":

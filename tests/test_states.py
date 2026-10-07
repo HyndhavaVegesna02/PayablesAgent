@@ -53,10 +53,11 @@ def test_drift_table_is_the_tdd_drift_check():
 
 
 def test_receivable_table_has_only_the_cited_rows():
+    # The owner confirms one by linking a credit the reconciler couldn't match (CHG-057).
     assert {k: set(v) for k, v in RECEIVABLE_TRANSITIONS.items()} == {
-        ("COMMITTED", "CONFIRMED"): {"reconciler"},
-        ("EXPECTED", "CONFIRMED"): {"reconciler"},
-        ("UNKNOWN", "CONFIRMED"): {"reconciler"},
+        ("COMMITTED", "CONFIRMED"): {"reconciler", "owner"},
+        ("EXPECTED", "CONFIRMED"): {"reconciler", "owner"},
+        ("UNKNOWN", "CONFIRMED"): {"reconciler", "owner"},
     }
 
 

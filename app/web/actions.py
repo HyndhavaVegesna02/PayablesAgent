@@ -838,6 +838,61 @@ def explain_debit(conn: sqlite3.Connection, user: User, question: dict, values: 
         return _replan(conn, user, clock)
 
 
+def explain_credit(conn: sqlite3.Connection, user: User, question: dict, values: dict[str, Any], *,
+                   clock: Clock) -> int | None:
+    """The owner answers an explain_credit question (CHG-057), the mirror of
+    explain_debit: the credit paid one invoice, or it was not an invoice
+    payment. Linking matches the credit and confirms the invoice as the owner.
+    A different amount is stated in the event, exactly, short or over; the
+    invoice's amount is never edited. Optionally adds the payer as the
+    customer's name, closes the case, and replans."""
+    choices = json.loads(question["choices_json"] or "{}")
+    case_id, txn_id = choices.get("case_id"), choices.get("bank_txn_id")
+    if type(case_id) is not int or type(txn_id) is not int:
+        raise Refused("This question has no credit to explain.")
+    source = f"owner_question:{question['id']}"
+    with writer.atomic(conn):
+        txn = repo.credit(conn, user.business_id, txn_id)
+        if txn["status"] != "UNMATCHED":  # settled another way meanwhile: close the question, link nothing
+            why = f"Settled: this credit is {txn['status'].lower()}"
+            _settle_case(conn, user, case_id, why, f"bank_txn:{txn_id}", clock)
+            _answer(conn, user, question["id"], {"decision": "settled", "why": why}, clock)
+            return None
+        if values.get("decision") == "not_an_invoice":
+            _settle_case(conn, user, case_id, "Owner: this credit was not an invoice payment", source, clock)
+            _answer(conn, user, question["id"], {"decision": "not_an_invoice"}, clock)
+            return _replan(conn, user, clock)
+        rid = int_or_none(values.get("receivable_id"))
+        if rid is None:
+            raise FieldErrors({"receivable_id": "Choose the invoice this credit paid."}, values)
+        rx = repo.receivable(conn, user.business_id, rid)
+        if rid not in (choices.get("receivable_ids") or []):
+            raise Refused("Choose one of the invoices this question offers.")
+        if rx["confidence"] not in ("COMMITTED", "EXPECTED", "UNKNOWN"):
+            raise Refused("That invoice is already settled.")
+        if int_or_none(values.get(f"version_{rid}")) != rx["version"]:
+            raise Stale("This invoice changed since you opened the page. Reload it and try again.")
+        name = repo.invoice_label(rx, repo.receivable_names(conn, user.business_id))
+        why = f"Owner: this {format_inr(txn['amount_paise'])} credit settles {name}"
+        gap = txn["amount_paise"] - rx["amount_paise"]
+        if gap:  # code states the gap, exactly; it never guesses why
+            why += (f", {'short' if gap < 0 else 'over'} by {format_inr(abs(gap))} "
+                    f"({format_inr(rx['amount_paise'])} invoiced)")
+        why += "."
+        writer.transition(EntityRef("bank_txn", txn_id), "MATCHED", user.actor, why, f"receivable:{rid}",
+                          conn=conn, fields={"party_id": rx["party_id"]}, clock=clock)
+        writer.transition(EntityRef("receivable", rid), "CONFIRMED", user.actor, why, f"bank_txn:{txn_id}",
+                          conn=conn, expected_version=rx["version"], fields={"matched_txn_id": txn_id}, clock=clock)
+        if values.get("alias") and (txn["counterparty"] or "").strip() and rx["party_id"] is not None \
+                and not name_matches(txn["counterparty"], party_names(conn, rx["party_id"])):
+            writer.add_party_alias(rx["party_id"], txn["counterparty"], user.actor,
+                                   f"Owner: '{txn['counterparty']}' in a bank alert is {name}", source,
+                                   conn=conn, clock=clock)
+        _settle_case(conn, user, case_id, why, source, clock)
+        _answer(conn, user, question["id"], {"decision": "invoice", "receivable_id": rid}, clock)
+        return _replan(conn, user, clock)
+
+
 def _settle_case(conn: sqlite3.Connection, user: User, case_id: int, why: str, source: str, clock: Clock) -> None:
     """The owner's explanation settles the debit's case. A case has two questions
     (this explain_txn, and the agent's own when it asked), so the agent's goes
