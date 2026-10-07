@@ -5,13 +5,16 @@ goal: "The user's move-4 delta to the shrimp demo (dev only, R011; PO-approved w
 branch: batch-22
 start_tag: null
 started: "2026-10-07T22:00:00+05:30"
-interrupts: []
+interrupts:
+  - "make blocked by Application Control (exit 4551) at the gate; recorded red; the same commands run directly at 1df4c3e, output in docs/batches/2026-10-07-22/direct-gates.txt (all green); evals --ai fixtures --runs 1: 14/14, its raw-runs folder deleted; offline driver 7/7"
 changes:
   - id: CHG-060
     lane: planned
-    board: in_progress
+    board: review
     start_commit: d5c1456
     blocked_question: null
-    gate_evidence: []
-    prepatch: null
+    gate_evidence:
+      - {command: "make test", exit_code: 4551, output_tail: "'C:\\ProgramData\\chocolatey\\bin\\make.exe' was blocked by your organization's Device Guard policy. | Contact your support person for more info.", commit: 1df4c3e, at: 2026-10-07T16:12:29+00:00}
+      - {command: "make check-evidence", exit_code: 4551, output_tail: "'C:\\ProgramData\\chocolatey\\bin\\make.exe' was blocked by your organization's Device Guard policy. | Contact your support person for more info.", commit: 1df4c3e, at: 2026-10-07T16:12:29+00:00}
+    prepatch: "PASS at 1df4c3e: the 5 new or changed tests in tests/test_shrimp_profile.py fail on d5c1456"
     notes_resolved: false
