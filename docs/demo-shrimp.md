@@ -150,9 +150,11 @@ duplicate. As the owner, Needs attention shows both:
 
 Confirm both. Every check passed, so nothing is marked and nothing needs typing. The planner pays both
 today, Thu 22 Oct, the last payment day before they fall due (Sat 24 and Sun 25): "You're approving
-4 payments, ₹51,000", with APSPDCL and Lakshman's wages. The plan is still below the safety amount
-("Lowest balance -₹4,87,800 on Thu 29 Oct"): the gap is the dealer's ₹6,46,800, not these. The floor
-is restored at move 5, when the harvest balance lands.
+4 payments, ₹51,000", with APSPDCL and Lakshman's wages. **Approve Thursday's payments** on This week,
+so the wages and the electricity are paid on time: "You pay them in your bank app; we never move
+money." The plan is still below the safety amount ("Lowest balance -₹4,87,800 on Thu 29 Oct"): the
+gap is the dealer's ₹6,46,800, not these. The floor is restored at move 5, when the harvest balance
+lands.
 
 ### Move 5: `make demo-time-shrimp T=2026-10-23T16:00:00+05:30`
 
@@ -176,11 +178,8 @@ code's words: "Owner: this ₹9,20,000 credit settles Ravi Traders HARVEST-BAL, 
 (₹10,15,000 invoiced)." The invoice's amount is never edited; the event is the record.
 
 The plan is redone: "Covered for 14 days. Lowest: ₹4,32,200 on Thu 29 Oct." Approve Monday's
-payments: the dealer's ₹6,46,800 and ₹25,000, APSPDCL ₹15,000, Lakshman's wages ₹15,000, Raju Petrol
-Bunk's ₹3,000 and Venkat Motors' ₹18,000. Thursday's four weren't approved on Thursday, so the plan
-now pays them on Monday, late: APSPDCL was due Thu 22, the wages Fri 23, the diesel Sat 24 and the repair
-Sun 25. To pay them on time, approve Thursday's payments at move 4 instead. "You pay them in your bank
-app; we never move money."
+payments: the dealer's ₹6,46,800 and ₹25,000. Thursday's four were approved at move 4 and wait for
+their bank alerts.
 
 ### Move 6 (optional): `make demo-time-shrimp T=2026-10-26T11:00:00+05:30`
 

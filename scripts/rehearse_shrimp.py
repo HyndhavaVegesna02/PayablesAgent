@@ -217,6 +217,15 @@ def planned_bill(run: ShrimpRun, said: dict[str, str]) -> tuple:
             PAID_BY_THE_DUE_DATE in reason)
 
 
+def bill_status(run: ShrimpRun, said: dict[str, str]) -> str:
+    """The status of the one bill of the amount and due date `said` gives (found as planned_bill finds it)."""
+    rows = run.rows("SELECT status FROM payable WHERE amount_paise = ? AND due_date = ?",
+                    (parse_inr(said["amount"]), said["due_date"]))
+    if len(rows) != 1:
+        raise StepFailed(f"expected one bill of ₹{said['amount']} due {said['due_date']}, found {len(rows)}")
+    return rows[0][0]
+
+
 def case_kind(run: ShrimpRun, txn_id: int) -> tuple[int, str]:
     row = run.one("SELECT id, kind FROM agent_case WHERE subject_ref = ?", (f"bank_txn:{txn_id}",))
     if row is None:
@@ -303,7 +312,8 @@ def fortnight(run: ShrimpRun) -> None:
 
     with run.step("landowner + helper + owner", "Move 4, Thu 22 Oct 10:00: the lease asked early; the caretaker's "
                                                 "Telugu voice note (₹3,000 diesel) and a photo of Venkat Motors' "
-                                                "₹18,000 repair slip; the owner confirms both bills"):
+                                                "₹18,000 repair slip; the owner confirms both bills and approves "
+                                                "Thursday's payments"):
         run.move_to("2026-10-22T10:00")
         lease = plan(run)["lines"].get("LEASE-OCT26")
         run.expect("lease-not-paid-early", (run.one("SELECT due_date FROM payable WHERE invoice_number = "
@@ -335,6 +345,12 @@ def fortnight(run: ShrimpRun) -> None:
                    f"each is paid today, Thu 22, its '{PAID_BY_THE_DUE_DATE}'; the shortfall is the dealer's "
                    "₹6,46,800 (ESCALATE), not these")
         run.note(f"plan: {plan(run)['lines']}")
+        approve(run)  # Thursday's four, so the wages and the electricity are paid on time (PO)
+        run.expect("thursday-approved", (bill(run, "APSPDCL-OCT26"), bill(run, "WAGES-OCT26"),
+                                         bill_status(run, DIESEL), bill_status(run, REPAIR)),
+                   ("PAYMENT_EXPECTED",) * 4,
+                   "the owner approves the plan's four PAY lines for Thu 22 (APSPDCL, the wages, the diesel and the "
+                   "repair, ₹51,000), so each is paid by its due date; the money moves only in his bank app")
 
     with run.step("bank + agent + owner", "Move 5, Fri 23 Oct 16:00: Ravi Traders pays the balance ₹95,000 short; "
                                           "the owner links it to HARVEST-BAL and approves Monday's payments"):

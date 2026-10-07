@@ -248,7 +248,7 @@ def test_the_rehearsal_passes_every_move_offline(tmp_path):
     assert "## 7. Move 6" in (folder / "report.md").read_text(encoding="utf-8")
     move4 = {c["id"] for c in data["moves"][4]["checks"]}
     assert {"voice-bill", "slip-bill", "two-bills-not-one", "transcript-beside-it", "lease-not-paid-early",
-            "new-bills-in-the-plan"} <= move4
+            "new-bills-in-the-plan", "thursday-approved"} <= move4  # paid on time (PO)
     assert "one-repair-bill" not in move4  # the owner rejects nothing (CHG-060)
 
 
@@ -277,6 +277,7 @@ QUOTED = [
     "Please check this bill from an uploaded photo: Venkat Motors, ₹18,000.",
     "generator kosam, three thousand rupees, twenty-fourth October 2026 lopala kattali.",
     "You're approving 4 payments, ₹51,000",
+    "You pay them in your bank app; we never move money.",
     "Lowest balance -₹4,87,800 on Thu 29 Oct",
     "starting from ₹5,83,200 in your bank accounts",
     "AI replies are canned fixtures.",
