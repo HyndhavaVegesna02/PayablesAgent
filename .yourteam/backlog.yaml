@@ -785,7 +785,7 @@ changes:
   - id: CHG-061
     title: The shrimp rehearsal holds under live variance (live rehearsal 1's findings; PO, batch 23)
     file: docs/changes/CHG-061.md
-    status: ready
+    status: done
     priority: 61
     type: feature
     lane: planned

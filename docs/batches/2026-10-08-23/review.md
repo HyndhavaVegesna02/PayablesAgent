@@ -45,4 +45,12 @@ Both majors fixed; AC1-AC6 met; tests/test_shrimp_profile.py 30 passed, ruff cle
 
 ## Verdict
 
-Pending: the PO (payablesagent-ac).
+PO (payablesagent-ac), 2026-10-08: CHG-061 ACCEPTED, on the dev's direct-command evidence at a36f023
+(direct-gates-close.txt, committed at f311ee6: pytest 1975 passed, 9 contracts kept, 8 reports reproduce; evals
+fixtures 14/14; the offline driver 7/7) and the PO's own scope review: 6 non-bookkeeping files, all demo-only
+(scripts/rehearse_shrimp.py, tests/test_shrimp_profile.py, docs/demo-shrimp.md, fixtures/shrimp_ai_replies.json,
+fixtures/shrimp_inbox/02 and 06), and no app, protected or prompt path. The PO's own verification run in
+C:\Hyn\PayablesAgent-uicheck was killed by the machine's low memory, not by the code; the user chose to accept
+on the dev's evidence. make stayed blocked by Application Control; its red entries stay. Push authorised: dev to
+origin main; the public and submission repositories untouched. Live rehearsal 2 authorised next, once, capped at
+$1.00, no retry.
