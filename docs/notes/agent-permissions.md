@@ -53,7 +53,8 @@ Refusals still count as steps.
   Finding a message never hides it from the pipeline.
 - A candidate that fails the schema is refused with every missing and unknown field named by its
   path (`lines.0.amount_text`), and the record's fields listed, so the agent can fix its call. A found
-  invoice with no due date is VALID evidence: the owner fills the date in when the pipeline reads it.
+  invoice with no due date is VALID evidence if every other check ran (none skipped): the owner fills
+  the date in when the pipeline reads it.
 - A case is saved only over the status it was read with. If the owner closes it, or the gap closes
   during a run, the run stops and keeps nothing from that step.
 - A tool that fails (a mail error, no document store) is a noted step, not a crash. A run that dies
@@ -69,7 +70,13 @@ Refusals still count as steps.
 - A debit's case can hold two questions: the reconciler's "which bill did this debit pay?" and the
   agent's own. When the owner settles the debit through the first, the agent's question goes too,
   and a case the owner already closed through the agent's question doesn't stop the debit being
-  explained (`app/web/actions.py::explain_debit`, CHG-027).
+  explained (`app/web/actions.py::explain_debit`, CHG-027). A credit's case mirrors it: the
+  reconciler's "which invoice did this credit pay?" (`explain_credit`, CHG-057) and the agent's own.
+- Code keeps the final answer it accepted, RESOLVED or NEEDS_OWNER, in the case's state as `final`:
+  the outcome, the summary and the cited message IDs (CHG-057). A refused answer is not kept. Needs
+  attention shows it beside the case's explain_credit question as the assistant's own words, with the
+  sender and subject of each cited message taken from the case's own search results, and nothing
+  pre-selected (`app/web/repo.py::case_finding`). Nothing reads it to act.
 
 ## The attack, run and recorded (TDD Part 1, "Attack to run and document"; AC4)
 

@@ -9,16 +9,18 @@ interrupts: []
 changes:
   - id: CHG-057
     lane: planned
-    board: in_progress
+    board: review
     start_commit: 5f79c32
     blocked_question: null
-    gate_evidence: []
-    prepatch: null
+    gate_evidence:
+      - {command: "make test", exit_code: 0, output_tail: "es, 292 dependencies. | ------------------------------------ | domain is pure: imports nothing else from app KEPT | planner is a pure function: imports only domain KEPT | validate is pure: imports only domain KEPT | agent never imports the ledger writer, web or the pipeline KEPT | the AI and the agent never reach owner email KEPT | notify is pure text and sending: imports only domain KEPT | ai never imports ledger, db or web KEPT | ledger never imports ai, agent, web or ingest KEPT | web never imports ai KEPT (1 ignored import) | Contracts: 9 kept, 0 broken. | Uninstalled 1 package in 1ms | Installed 1 package in 8ms", commit: bb0d51b, at: 2026-10-07T08:32:07+00:00}
+      - {command: "make check-evidence", exit_code: 0, output_tail: "1 passed; report: C:\\Users\\Hyndhava\\AppData\\Local\\Temp\\check-evidence-a_94q724\\6\\workflow-B-2026-10-07.md | checked docs/evals/4-end-to-end-workflows/workflow-B-2026-10-04.json | checked docs/evals/raw-runs/2026-10-04-live-ablation-v1/report.json | all 8 reports reproduce: fixture-mode ones below their commit and date, combined ones exactly (md and json) | C:\\Hyn\\PayablesAgent\\.venv\\Lib\\site-packages\\fastapi\\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead. | from starlette.testclient import TestClient as TestClient  # noqa", commit: bb0d51b, at: 2026-10-07T08:34:18+00:00}
+    prepatch: "PASS at bb0d51b: 22 of the new and changed tests fail on the pre-change tree; the one that passes there is the deliberate guard that an exactly matched credit raises no question"
     notes_resolved: false
   - id: CHG-058
     lane: planned
-    board: todo
-    start_commit: null
+    board: in_progress
+    start_commit: bb0d51b
     blocked_question: null
     gate_evidence: []
     prepatch: null
