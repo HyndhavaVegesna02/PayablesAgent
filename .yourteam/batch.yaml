@@ -1,6 +1,6 @@
 # Active batch. status: none means no batch is running.
 batch: 22
-status: active      # none | active | review | closed | aborted
+status: review      # none | active | review | closed | aborted
 goal: "The user's move-4 delta to the shrimp demo (dev only, R011; PO-approved with E1-E4): two different bills, a Telugu voice note for Raju Petrol Bunk's Rs.3,000 diesel and a photo of Venkat Motors' Rs.18,000 repair slip, in the canned replies, the rehearsal driver and the demo script. Offline only; no Gemini; no prompt file changes."
 branch: batch-22
 start_tag: null
