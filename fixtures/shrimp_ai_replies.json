@@ -1,5 +1,5 @@
 {
-  "_note": "The shrimp profile's canned AI replies (CHG-058; dev only): what the fixture AI answers with DEMO_AI=fixtures and FIXTURE_REPLIES_PATH=fixtures/shrimp_ai_replies.json (make *-shrimp FALLBACK=1), and in the rehearsal driver's offline mode. Written by hand from the fixtures; every value is fictional. An email is matched by its text, an upload by the sha256 of the file of that name in shrimp_uploads (the PLACEHOLDER files until the user's real voice note and photo replace them, with their own entries). fixtures/ai_replies.json is a separate store and is not touched.",
+  "_note": "The shrimp profile's canned AI replies (CHG-058; dev only): what the fixture AI answers with DEMO_AI=fixtures and FIXTURE_REPLIES_PATH=fixtures/shrimp_ai_replies.json (make *-shrimp FALLBACK=1), and in the rehearsal driver's offline mode. Written by hand from the fixtures; every value is fictional. An email is matched by its text, an upload by the sha256 of the file of that name in shrimp_uploads (the PLACEHOLDER files until the user's real voice note and photo replace them, with their own entries). Since batch 22 (CHG-060, the user's delta) the two uploads are two different bills: the caretaker's Telugu voice note about Raju Petrol Bunk's diesel, and Venkat Motors' handwritten repair slip. fixtures/ai_replies.json is a separate store and is not touched.",
   "_email_folders": ["shrimp_inbox"],
   "_upload_folders": ["shrimp_uploads"],
   "shrimp_inbox": {
@@ -35,11 +35,11 @@
   },
   "shrimp_uploads": {
     "PLACEHOLDER-voice-note.wav": {
-      "VoiceBillExtract": {"transcript": "Lakshman here, two aerators ka motor kharab, repair bill atharah hazaar, Sunday tak dena hai.", "vendor_name": null, "amount_spoken": "atharah hazaar", "invoice_number": null, "due_date": null, "uncertain_fields": []}
+      "VoiceBillExtract": {"transcript": "Raju petrol bunk diesel bill, generator kosam, three thousand rupees, twenty-fourth October 2026 lopala kattali.", "vendor_name": "Raju Petrol Bunk", "amount_spoken": "three thousand", "invoice_number": null, "due_date": "2026-10-24", "uncertain_fields": []}
     },
     "PLACEHOLDER-repair-slip.png": {
-      "SortResult": {"doc_type": "invoice", "reason": "A handwritten repair bill."},
-      "InvoiceExtract": {"seller_name": "Sri Sai Motor Rewinding Works", "seller_gstin": null, "buyer_name": "Godavari Aqua Farm", "buyer_gstin": null, "invoice_number": "57", "invoice_date": "2026-10-22", "due_date": null, "lines": [{"description": "Aerator motor rewinding, 2 nos", "amount_text": "18,000"}], "gst_texts": [], "round_off_text": null, "total_text": "18,000", "payee_account_number": null, "payee_ifsc": null, "uncertain_fields": []}
+      "SortResult": {"doc_type": "invoice", "reason": "A handwritten repair bill on a cash-memo pad."},
+      "InvoiceExtract": {"seller_name": "Venkat Motors", "seller_gstin": null, "buyer_name": "Godavari Aqua Farm", "buyer_gstin": null, "invoice_number": "VM/412", "invoice_date": "2026-10-22", "due_date": "2026-10-25", "lines": [{"description": "Aerator motor rewinding (2 nos)", "amount_text": "Rs. 14,000"}, {"description": "Bearings & gearbox oil (2 sets)", "amount_text": "Rs. 4,000"}], "gst_texts": [], "round_off_text": null, "total_text": "Rs. 18,000", "payee_account_number": null, "payee_ifsc": null, "uncertain_fields": []}
     }
   },
   "_agent_scripts_note": "What the fixture AI answers for an AgentStep in the shrimp profile, read as in fixtures/ai_replies.json (the first script whose `case` text is in the case file; its first rule whose `if` texts are all there). Each credit case searches the mailbox, then ends RESOLVED citing the message that explains the credit, with nothing to write: the credit stays UNMATCHED until the owner links it on the explain_credit question, where this summary is shown as the assistant's own words.",

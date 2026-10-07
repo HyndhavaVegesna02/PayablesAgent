@@ -13,6 +13,7 @@ from datetime import datetime
 import pytest
 
 from app import worker
+from app.ai.extract import InvoiceExtract, VoiceBillExtract
 from app.ai.fixture_backend import FixtureBackend, load_replies
 from app.clock import FakeClock
 from app.config import Settings, load_app_config
@@ -20,6 +21,8 @@ from app.db.connection import write_connection
 from app.db.migrate import apply_migrations
 from app.jobs.replan import replan
 from app.main import create_app
+from app.validate.invoice import check_invoice
+from app.validate.voice import check_voice
 from evals.workflow import ROOT, _text
 from fixtures import shrimp_seed
 from scripts import rehearse_shrimp, with_env
@@ -96,6 +99,33 @@ def test_every_shrimp_email_and_upload_has_a_canned_reply_and_the_worked_example
     assert sorted(load_replies("shrimp_uploads", store)) == sorted(rehearse_shrimp.PLACEHOLDER.values())
     assert len(backend.file_replies) == 2
     assert not set(FixtureBackend().texts) & set(emails)
+
+
+# The user's delta (batch 22, CHG-060): move 4 is two different bills, one per input path. The caretaker's Telugu
+# voice note (amount and date said in English: the parser reads no Telugu numbers) and Venkat Motors' slip.
+DIESEL_SCRIPT = ("Raju petrol bunk diesel bill, generator kosam, three thousand rupees, twenty-fourth October 2026 "
+                 "lopala kattali.")
+
+
+def test_the_placeholder_voice_note_reads_as_raju_petrol_bunks_diesel_bill_and_passes_every_check():
+    reply = load_replies("shrimp_uploads", ROOT / "fixtures" / "shrimp_ai_replies.json")[
+        rehearse_shrimp.PLACEHOLDER["voice"]]["VoiceBillExtract"]
+    assert reply["transcript"] == DIESEL_SCRIPT
+    checks, record, reading = check_voice(VoiceBillExtract.model_validate(reply), None, lambda key: None)
+    assert record is not None, checks  # nothing for the owner to type
+    assert (reading["party"], reading["amount_paise"], reading["due_date"]) == ("Raju Petrol Bunk", 300_000,
+                                                                              "2026-10-24")
+
+
+def test_the_placeholder_slip_reads_as_venkat_motors_repair_bill_and_passes_every_check():
+    reply = load_replies("shrimp_uploads", ROOT / "fixtures" / "shrimp_ai_replies.json")[
+        rehearse_shrimp.PLACEHOLDER["photo"]]["InvoiceExtract"]
+    checks, record, reading = check_invoice(InvoiceExtract.model_validate(reply), None, "Godavari Aqua Farm",
+                                            lambda key: None)
+    assert record is not None, checks
+    assert (reading["party"], reading["invoice_number"], reading["amount_paise"], reading["due_date"]) == (
+        "Venkat Motors", "VM/412", 1_800_000, "2026-10-25")  # 14,000 rewinding + 4,000 bearings and oil
+    assert checks["gstin"] == "not_applicable" and checks["invoice_arithmetic"] == "passed"
 
 
 def test_the_scripted_agent_cites_the_message_that_explains_each_credit():
@@ -216,6 +246,10 @@ def test_the_rehearsal_passes_every_move_offline(tmp_path):
     assert all(c["why"] for m in data["moves"] for c in m["checks"])
     assert data["meta"]["uploads"] == ["voice: PLACEHOLDER-voice-note.wav", "photo: PLACEHOLDER-repair-slip.png"]
     assert "## 7. Move 6" in (folder / "report.md").read_text(encoding="utf-8")
+    move4 = {c["id"] for c in data["moves"][4]["checks"]}
+    assert {"voice-bill", "slip-bill", "two-bills-not-one", "transcript-beside-it", "lease-not-paid-early",
+            "new-bills-in-the-plan"} <= move4
+    assert "one-repair-bill" not in move4  # the owner rejects nothing (CHG-060)
 
 
 # What docs/demo-shrimp.md quotes, each as the owner's pages render it in the offline fortnight (AC5).
@@ -237,7 +271,13 @@ QUOTED = [
     "Asked by Wed 21 Oct; not received",
     "A ₹9,20,000 credit on Fri 23 Oct from RAVI TRADERS (reference N296271234567) was not matched to an invoice.",
     "Ravi Traders HARVEST-BAL ₹10,15,000 (not counted in the plan, expected on Fri 30 Oct; short by ₹95,000)",
-    "Lowest: ₹4,35,200 on Thu 29 Oct.",
+    "Lowest: ₹4,32,200 on Thu 29 Oct.",
+    # move 4, the user's delta (CHG-060): two bills, both confirmed
+    "Please check this bill from an uploaded voice note: Raju Petrol Bunk, ₹3,000.",
+    "Please check this bill from an uploaded photo: Venkat Motors, ₹18,000.",
+    "generator kosam, three thousand rupees, twenty-fourth October 2026 lopala kattali.",
+    "You're approving 4 payments, ₹51,000",
+    "Lowest balance -₹4,87,800 on Thu 29 Oct",
     "starting from ₹5,83,200 in your bank accounts",
     "AI replies are canned fixtures.",
 ]
@@ -248,8 +288,8 @@ def test_what_the_demo_script_quotes_is_what_the_pages_render(tmp_path):
     pages = []
 
     class Watching(rehearse_shrimp.ShrimpRun):
-        def move_to(self, when):
-            super().move_to(when)
+        def drain(self):  # after every worker run: each move, and each confirm, link and approval within one
+            super().drain()
             pages.extend(html.unescape(_text(self.owner.get(p))) for p in ("/", "/attention"))
 
     run = Watching(tmp_path, FixtureBackend(rehearse_shrimp.REPLIES), load_app_config(rehearse_shrimp.CONFIG),
@@ -273,10 +313,13 @@ def test_the_users_real_files_replace_the_placeholders_live_and_offline_only_onc
     monkeypatch.setattr(rehearse_shrimp, "UPLOADS", tmp_path)
     for name in rehearse_shrimp.PLACEHOLDER.values():
         (tmp_path / name).write_bytes(b"placeholder")
-    (tmp_path / "voice-note-lakshman.ogg").write_bytes(b"OggS real")
+    (tmp_path / "voice-diesel-raju.wav").write_bytes(b"RIFF real")  # the delta's names (CHG-060)
+    (tmp_path / "voice-note-lakshman.ogg").write_bytes(b"OggS the earlier name")  # no longer picked up
     live, _ = rehearse_shrimp.uploads_for(True)
     offline, said = rehearse_shrimp.uploads_for(False)
-    assert (live["voice"].name, live["photo"].name) == ("voice-note-lakshman.ogg", "PLACEHOLDER-repair-slip.png")
+    assert (live["voice"].name, live["photo"].name) == ("voice-diesel-raju.wav", "PLACEHOLDER-repair-slip.png")
+    (tmp_path / "repair-slip-venkat.jpg").write_bytes(b"\xff\xd8\xff real")
+    assert rehearse_shrimp.uploads_for(True)[0]["photo"].name == "repair-slip-venkat.jpg"
     assert offline["voice"].name == "PLACEHOLDER-voice-note.wav"  # no canned reply for the real file yet
     assert said == ["voice: PLACEHOLDER-voice-note.wav", "photo: PLACEHOLDER-repair-slip.png"]
 

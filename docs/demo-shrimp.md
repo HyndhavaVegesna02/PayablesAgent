@@ -128,21 +128,31 @@ received".
 
 ### Move 4: `make demo-time-shrimp T=2026-10-22T10:00:00+05:30`, then the uploads
 
-**Say:** "The landowner wants the lease early. The caretaker sends a voice note and a photo of the
-repair bill."
+**Say:** "The landowner wants the lease early. Harvest week means the generator runs: the caretaker
+sends a Telugu voice note about the diesel bill and a photo of the aerator repair slip."
 
 **Show:** the landowner's email ("Please send the lease instalment this week if possible") is not a
 bill, so nothing changes: the lease, ₹75,000, stays due Sat 31 Oct and planned for Thu 29 Oct.
 Paying it now would deepen the gap the dealer's bill opened.
 
 Log in as the helper (`helper@example.test` / `helper-demo-pass`) and upload, on Add, the voice note
-and then the photo of the repair slip. As the owner, on Needs attention: the voice entry shows
-"Transcribed by the assistant. What was said: …" beside the bill. Offline, the placeholder's canned
-transcript is "Lakshman here, two aerators ka motor kharab, repair bill atharah hazaar, Sunday tak
-dena hai." Code reads the amount from the words said, never the model's figure. The page marks what
-was not said: type who the bill is from (Sri Sai Motor Rewinding Works, from the slip) and the due
-date (Sun 25 Oct), then Confirm. The photo's entry is the same ₹18,000 bill: **Reject** it. Rejecting
-writes nothing to the books.
+and then the photo of the repair slip. They are two different bills, so neither is flagged as a
+duplicate. As the owner, Needs attention shows both:
+
+- the voice note, with "Transcribed by the assistant", "What was said:" and the transcript beside it,
+  and "Please check this bill from an uploaded voice note: Raju Petrol Bunk, ₹3,000." The Telugu note
+  says the amount and the date in English ("three thousand rupees, twenty-fourth October 2026"),
+  because code reads the amount from the words said, never the model's figure, and it reads no Telugu
+  number words yet. Offline, the placeholder's canned transcript is "Raju petrol bunk diesel bill,
+  generator kosam, three thousand rupees, twenty-fourth October 2026 lopala kattali.";
+- the photo: "Please check this bill from an uploaded photo: Venkat Motors, ₹18,000." That is slip
+  VM/412, ₹14,000 rewinding plus ₹4,000 bearings and gearbox oil, pay by 25 Oct.
+
+Confirm both. Every check passed, so nothing is marked and nothing needs typing. The planner pays both
+today, Thu 22 Oct, the last payment day before they fall due (Sat 24 and Sun 25): "You're approving
+4 payments, ₹51,000", with APSPDCL and Lakshman's wages. The plan is still below the safety amount
+("Lowest balance -₹4,87,800 on Thu 29 Oct"): the gap is the dealer's ₹6,46,800, not these. The floor
+is restored at move 5, when the harvest balance lands.
 
 ### Move 5: `make demo-time-shrimp T=2026-10-23T16:00:00+05:30`
 
@@ -165,16 +175,17 @@ Fri 30 Oct; short by ₹95,000)**. Choose it and press **This paid the chosen in
 code's words: "Owner: this ₹9,20,000 credit settles Ravi Traders HARVEST-BAL, short by ₹95,000
 (₹10,15,000 invoiced)." The invoice's amount is never edited; the event is the record.
 
-The plan is redone: "Covered for 14 days. Lowest: ₹4,35,200 on Thu 29 Oct." Approve Monday's
-payments: the dealer's ₹6,46,800 and ₹25,000, APSPDCL ₹15,000, Lakshman's wages ₹15,000 and the
-repair ₹18,000. "You pay them in your bank app; we never move money."
+The plan is redone: "Covered for 14 days. Lowest: ₹4,32,200 on Thu 29 Oct." Approve Monday's
+payments: the dealer's ₹6,46,800 and ₹25,000, APSPDCL ₹15,000, Lakshman's wages ₹15,000, Raju Petrol
+Bunk's ₹3,000 and Venkat Motors' ₹18,000 (Thursday's four moved to Monday when they weren't approved
+on Thursday). "You pay them in your bank app; we never move money."
 
 ### Move 6 (optional): `make demo-time-shrimp T=2026-10-26T11:00:00+05:30`
 
 **Say:** "The dealer's NEFT lands, to the account on record, and the bill is paid."
 
 **Show:** the ₹6,46,800 NEFT to SRI LAKSHMI AQUA FEEDS matches the approved bill: PAID. The plan is
-"starting from ₹5,83,200 in your bank accounts", the bank's own figure. "Lowest: ₹4,35,200 on Thu 29 Oct." The other approved
+"starting from ₹5,83,200 in your bank accounts", the bank's own figure. "Lowest: ₹4,32,200 on Thu 29 Oct." The other approved
 payments wait for their bank alerts.
 
 ## If something reads differently live
@@ -185,8 +196,10 @@ payments wait for their bank alerts.
   ends NEEDS_OWNER, its question appears too, and linking the credit answers both.
 - If the move-5 payer is read as something other than "RAVI TRADERS", the case is unknown_txn instead
   of ambiguous_match, and the question offers every open invoice. Choose HARVEST-BAL all the same.
-- The voice note's amount: code reads "atharah hazaar", "18 hazaar" and "eighteen thousand", but not
-  "athaara hazaar". An amount it can't read is marked for the farmer to type: say so.
+- The voice note's amount: code reads English, Hindi and Hinglish number words, not Telugu ones, so
+  the note says "three thousand rupees" in English. If the amount is marked "type it in", read the
+  transcript to see what Gemini wrote for the number words before changing anything, then type ₹3,000
+  and say "the model hears, code checks, the farmer confirms."
 
 ## Files to supply
 
@@ -195,8 +208,8 @@ reply is added for each, the offline fallback keeps using the placeholders (D7).
 
 | File | What | Formats the app takes | Limit |
 | --- | --- | --- | --- |
-| `voice-note-lakshman.<ext>` | about 5 seconds, Telugu or Hinglish: "Lakshman here, two aerators ka motor kharab, repair bill atharah hazaar, Sunday tak dena hai" | .ogg or .opus (a WhatsApp voice note as is), .wav, .mp3, .m4a | 10 MB |
-| `repair-slip-photo.<ext>` | a real photo of a handwritten repair slip: Sri Sai Motor Rewinding Works, No. 57, 22-10-2026, aerator motor rewinding, 2 nos, ₹18,000 | .jpg or .png (an iPhone's HEIC must be exported as JPEG) | 10 MB |
+| `voice-diesel-raju.wav` | a real recording by a Telugu speaker, about 6 seconds, phone held close, no background noise, exactly one amount: "Raju petrol bunk diesel bill, generator kosam, three thousand rupees, twenty-fourth October 2026 lopala kattali." (రాజు పెట్రోల్ బంక్ డీజిల్ బిల్, జనరేటర్ కోసం, three thousand rupees, twenty-fourth October 2026 లోపల కట్టాలి.) | .wav as named; .ogg or .opus (a WhatsApp voice note as is), .mp3 or .m4a also read | 10 MB |
+| `repair-slip-venkat.jpg` | a real photo of a handwritten slip on a cash-memo pad, blue ballpoint, daylight, slightly angled: VENKAT MOTORS, Aerator & Pump Repairs, Bhimavaram; Bill No: VM/412; Date: 22/10/2026; To: Godavari Aqua Farm; 1. Aerator motor rewinding (2 nos) Rs. 14,000; 2. Bearings & gearbox oil (2 sets) Rs. 4,000; Total Rs. 18,000; Pay by 25/10/2026; signed Venkat. No GST line. | .jpg as named, or .png (an iPhone's HEIC must be exported as JPEG) | 10 MB |
 
 The Add page takes the type the browser names, or the one the extension implies; the worker then
 reads the type from the file's first bytes, so the extension has to be honest.

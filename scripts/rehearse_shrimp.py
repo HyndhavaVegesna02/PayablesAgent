@@ -66,13 +66,19 @@ OUT = ROOT / "rehearsals"
 SAFETY = parse_inr("50,000")
 # The user's real voice note and photo go in fixtures/shrimp_uploads under these names (any extension the
 # upload page takes); until then, and offline unless the store has their replies, the placeholders are used.
-REAL = {"voice": "voice-note-lakshman", "photo": "repair-slip-photo"}
+REAL = {"voice": "voice-diesel-raju", "photo": "repair-slip-venkat"}  # the user's delta (CHG-060)
 PLACEHOLDER = {"voice": "PLACEHOLDER-voice-note.wav", "photo": "PLACEHOLDER-repair-slip.png"}
 MIME = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".wav": "audio/wav", ".ogg": "audio/ogg",
         ".opus": "audio/ogg", ".mp3": "audio/mpeg", ".m4a": "audio/mp4"}
-# What the caretaker's voice note and the repair slip say, as the owner reads them: typed into whatever the
-# page marks (PO D28), as evals/workflow_runs.py does for the worked example's voice note.
-REPAIR_SAID = {"party": "Sri Sai Motor Rewinding Works", "amount": "18,000", "due_date": "2026-10-25"}
+# Move 4's two bills (the user's delta, CHG-060): the caretaker's Telugu voice note about the generator's diesel,
+# with the amount and date said in English, and Venkat Motors' handwritten repair slip.
+DIESEL = {"party": "Raju Petrol Bunk", "amount_paise": parse_inr("3,000"), "due_date": "2026-10-24"}
+REPAIR = {"party": "Venkat Motors", "invoice_number": "VM/412", "amount_paise": parse_inr("18,000"),
+          "due_date": "2026-10-25"}
+# What the owner types if the page marks a field (PO D28): the value the recording or the slip gives. Offline every
+# check passes, so nothing is marked and nothing is typed.
+DIESEL_SAID = {"party": "Raju Petrol Bunk", "amount": "3,000", "due_date": "2026-10-24"}
+REPAIR_SAID = {"party": "Venkat Motors", "invoice_number": "VM/412", "amount": "18,000", "due_date": "2026-10-25"}
 
 
 @dataclass
@@ -194,6 +200,15 @@ def link_credit(run: ShrimpRun, qid: int, invoice: str, *, alias: bool) -> None:
     run.drain()
 
 
+def bill_of(run: ShrimpRun, party: str) -> tuple | None:
+    """The one bill in the ledger from `party`: (invoice number, amount in paise, due date)."""
+    rows = run.rows("SELECT p.invoice_number, p.amount_paise, p.due_date FROM payable p JOIN party pt "
+                    "ON pt.id = p.party_id WHERE pt.name = ?", (party,))
+    if len(rows) != 1:
+        raise StepFailed(f"expected one bill from {party}, found {len(rows)}")
+    return rows[0]
+
+
 def case_kind(run: ShrimpRun, txn_id: int) -> tuple[int, str]:
     row = run.one("SELECT id, kind FROM agent_case WHERE subject_ref = ?", (f"bank_txn:{txn_id}",))
     if row is None:
@@ -279,8 +294,8 @@ def fortnight(run: ShrimpRun) -> None:
                    "D13: asking a customer to pay early changes no ledger row; the money counts when it lands")
 
     with run.step("landowner + helper + owner", "Move 4, Thu 22 Oct 10:00: the lease asked early; the caretaker's "
-                                                "voice note and photo of the ₹18,000 repair; the owner confirms "
-                                                "one bill"):
+                                                "Telugu voice note (₹3,000 diesel) and a photo of Venkat Motors' "
+                                                "₹18,000 repair slip; the owner confirms both bills"):
         run.move_to("2026-10-22T10:00")
         lease = plan(run)["lines"].get("LEASE-OCT26")
         run.expect("lease-not-paid-early", (run.one("SELECT due_date FROM payable WHERE invoice_number = "
@@ -289,18 +304,29 @@ def fortnight(run: ShrimpRun) -> None:
         run.note(f"lease: {lease}")
         voice_doc, photo_doc = run.upload("voice"), run.upload("photo")
         voice = candidate_from(run, "d.id = ?", (voice_doc,))
+        photo = candidate_from(run, "d.id = ?", (photo_doc,))
+        duplicates = [json.loads(run.one("SELECT checks_json FROM candidate WHERE id = ?", (c,))).get("duplicates")
+                      for c in (voice, photo)]
+        run.expect("two-bills-not-one", duplicates, ["passed", "passed"],
+                   "the delta: a ₹3,000 diesel bill and an ₹18,000 repair are two bills, so neither is a duplicate")
         transcript = run.one("SELECT transcript FROM candidate WHERE id = ?", (voice,)) or ""
         run.expect("transcript-beside-it", bool(transcript) and str(escape(transcript)) in run.owner.get("/attention"),
                    True, "the voice entry shows what was said beside the bill")
         run.note(f"transcript: {transcript}")
-        confirm(run, voice, REPAIR_SAID)
-        photo = candidate_from(run, "d.id = ?", (photo_doc,))
-        run.owner.submit("/attention", f"/candidates/{photo}/reject")
-        run.drain()
-        run.expect("one-repair-bill", run.one("SELECT COUNT(*) FROM payable WHERE amount_paise = ?",
-                                              (parse_inr("18,000"),)), 1,
-                   "the voice note and the slip are one ₹18,000 bill: the owner confirms the voice note's and "
-                   "rejects the photo's entry as the same bill")
+        confirm(run, voice, DIESEL_SAID)
+        confirm(run, photo, REPAIR_SAID)
+        run.expect("voice-bill", bill_of(run, DIESEL["party"]), (None, DIESEL["amount_paise"], DIESEL["due_date"]),
+                   "the delta: 'Raju petrol bunk diesel bill ... three thousand rupees, twenty-fourth October 2026'")
+        run.expect("slip-bill", bill_of(run, REPAIR["party"]),
+                   (REPAIR["invoice_number"], REPAIR["amount_paise"], REPAIR["due_date"]),
+                   "the delta's slip: VM/412, Rs. 14,000 + Rs. 4,000 = Rs. 18,000, pay by 25/10/2026")
+        lines = plan(run)["lines"]
+        run.expect("new-bills-in-the-plan", (lines.get(DIESEL["party"]), lines.get(REPAIR["invoice_number"])),
+                   ("PAY 2026-10-22", "PAY 2026-10-22"),
+                   "the planner's own decision (PO): both fall due before the next payment day, Mon 26, so each is paid "
+                   "today, Thu 22, the last payment day before Sat 24 and Sun 25; the shortfall is the dealer's "
+                   "₹6,46,800 (ESCALATE), not these")
+        run.note(f"plan: {lines}")
 
     with run.step("bank + agent + owner", "Move 5, Fri 23 Oct 16:00: Ravi Traders pays the balance ₹95,000 short; "
                                           "the owner links it to HARVEST-BAL and approves Monday's payments"):
