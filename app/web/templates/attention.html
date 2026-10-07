@@ -185,7 +185,7 @@
         <label>
           <input type="radio" name="receivable_id" value="{{ r.id }}">
           <span>{{ r.name }} {{ r.amount_paise | inr }}
-          <small class="muted">({{ "counted in the plan" if r.confidence == "COMMITTED" else "not counted yet" }}{% if r.expected_date %}, expected on {{ r.expected_date | day }}{% endif %}{% if r.difference_paise %}; {{ "short" if r.difference_paise < 0 else "over" }} by {{ (r.difference_paise if r.difference_paise > 0 else -r.difference_paise) | inr }}{% endif %})</small></span>
+          <small class="muted">({{ "counted in the plan" if r.counted else "not counted in the plan" }}{% if r.expected_date %}, expected on {{ r.expected_date | day }}{% endif %}{% if r.difference_paise %}; {{ "short" if r.difference_paise < 0 else "over" }} by {{ (r.difference_paise if r.difference_paise > 0 else -r.difference_paise) | inr }}{% endif %})</small></span>
           <input type="hidden" name="version_{{ r.id }}" value="{{ r.version }}">
         </label>
         {% else %}<p class="muted">No open invoice is waiting for a payment.</p>{% endfor %}

@@ -5,9 +5,9 @@ business, its people and every figure are fictional.
 
 Like fixtures/seed.py (whose helpers it shares and which it leaves alone),
 ledger rows go through app.ledger.writer and seeding never deletes. It only
-ever writes ./data/shrimp.db: `make reseed-shrimp` sets that path, and any
-other DATABASE_PATH is refused, so it can never replace the worked example's
-database."""
+ever writes ./data/shrimp.db and ./data/shrimp-files: `make reseed-shrimp`
+sets those paths, and any other DATABASE_PATH or DATA_DIR is refused, so it
+can never replace the worked example's database or reset its demo clock."""
 
 from __future__ import annotations
 
@@ -39,6 +39,7 @@ from fixtures.seed import (
 
 ROOT = Path(__file__).resolve().parent.parent
 SHRIMP_DB = ROOT / "data" / "shrimp.db"
+SHRIMP_FILES = ROOT / "data" / "shrimp-files"  # its documents and its demo clock
 WHY = dict(reason="seed: the shrimp-farm demo profile (CHG-058)", source_ref="fixture:shrimp_seed")
 
 DEALER, AGENT, LANDOWNER, POWER, CARETAKER = 1, 2, 3, 4, 5
@@ -109,6 +110,10 @@ def main(argv: list[str] | None = None) -> int:
     if db_path.resolve() != SHRIMP_DB:
         print(f"shrimp seed: refusing DATABASE_PATH={settings.database_path}: this profile only writes "
               "./data/shrimp.db (run `make reseed-shrimp`)", file=sys.stderr)
+        return 2
+    if Path(settings.data_dir).resolve() != SHRIMP_FILES:
+        print(f"shrimp seed: refusing DATA_DIR={settings.data_dir}: this profile's documents and demo clock live in "
+              "./data/shrimp-files (run `make reseed-shrimp`)", file=sys.stderr)
         return 2
     clock = clock_for(settings.demo_now, settings.data_dir)
     if not isinstance(clock, DemoClock):

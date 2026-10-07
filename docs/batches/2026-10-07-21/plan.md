@@ -50,4 +50,5 @@ check-evidence; the driver green offline. Then the PO's live authorisation.
   "challan" is a tax challan, which is not extracted; the placeholder transcript says "atharah hazaar", which
   the parser reads ("athaara" it does not).
 - A fifth make target, rehearse-shrimp; R011's line names the profile's files; CLAUDE.md names the targets.
-- The explain_credit card says "counted in the plan" or "not counted yet" for each offered invoice (46ea2a2).
+- The explain_credit card says "counted in the plan" or "not counted in the plan" for each offered invoice
+  (46ea2a2; by the planner's own snapshot since fix round 1).

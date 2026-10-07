@@ -1,4 +1,5 @@
-.PHONY: setup db seed reseed run worker demo-time test smoke-gemini evals ablation workflow check-evidence \n	run-shrimp worker-shrimp reseed-shrimp demo-time-shrimp rehearse-shrimp
+.PHONY: setup db seed reseed run worker demo-time test smoke-gemini evals ablation workflow check-evidence
+.PHONY: run-shrimp worker-shrimp reseed-shrimp demo-time-shrimp rehearse-shrimp
 
 setup:
 	uv sync --all-groups

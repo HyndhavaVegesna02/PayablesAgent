@@ -6,7 +6,8 @@ confirms the receivable as the owner; a different amount is stated in the
 event, never edited into the receivable."""
 
 import json
-from datetime import date
+import re
+from datetime import date, timedelta
 
 import pytest
 
@@ -303,7 +304,20 @@ def test_needs_attention_shows_the_credit_the_invoices_and_none_preselected(web)
     assert "The assistant found" not in form  # no finding yet
     text = " ".join(form.split())
     assert "(counted in the plan, expected on Tue 13 Oct; over by ₹1,17,000)" in text  # Kaveri: 1,50,000 - 33,000
-    assert "(not counted yet, expected on Wed 28 Oct; short by ₹50,000)" in text  # Nandi: 2,00,000 - 1,50,000
+    assert "(not counted in the plan, expected on Wed 28 Oct; short by ₹50,000)" in text  # Nandi: EXPECTED
+
+
+def test_a_committed_invoice_past_its_date_is_shown_as_not_counted(web):
+    # The planner counts a COMMITTED invoice only from today to the horizon's end (app/db/read.py): Kaveri's
+    # Tue 13 Oct has passed by Sat 17, so the plan no longer counts it, and the card must not say it does.
+    env, client, _ = web
+    env.clock.advance(timedelta(days=5))  # Sat 17 Oct
+    _credit(env, 3_000_000, "KAVERI TRADERS", day=17)  # named, ₹3,000 short: ambiguous_match
+    page = client.get("/attention").text
+    card = page.split("A ₹30,000 credit on Sat 17 Oct")[1].split("</article>")[0]
+    text = " ".join(re.sub(r"<[^>]+>", " ", card).split())
+    assert "Kaveri Traders KAVERI-001 ₹33,000 (not counted in the plan, expected on Tue 13 Oct; short by ₹3,000)" \
+        in text
 
 
 def test_needs_attention_shows_the_agents_finding_as_its_own_words(web):

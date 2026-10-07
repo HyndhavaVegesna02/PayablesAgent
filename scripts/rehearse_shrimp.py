@@ -383,7 +383,12 @@ def main(argv: list[str] | None = None) -> int:
     uploads, said = uploads_for(live)
     stamp = SystemClock().now()
     folder = args.out / f"{stamp:%Y-%m-%dT%H%M%S}-{args.ai}"
-    folder.mkdir(parents=True)
+    for n in range(2, 100):
+        try:
+            folder.mkdir(parents=True)
+            break
+        except FileExistsError:  # another rehearsal started in the same second
+            folder = args.out / f"{stamp:%Y-%m-%dT%H%M%S}-{args.ai}-{n}"
     run = ShrimpRun(folder, backend, config, fixtures_mode=not live, uploads=uploads)
     if guard is not None:
         run.should_stop = guard.should_stop

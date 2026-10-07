@@ -32,7 +32,7 @@ def attention_page(request: Request, conn: sqlite3.Connection, user: User, *, me
     for q in questions:
         if q["kind"] == "explain_txn" and isinstance(q["choices"], dict) and type(q["choices"].get("bank_txn_id")) is int:
             try:
-                q["debit"] = repo.debit(conn, user.business_id, q["choices"]["bank_txn_id"])
+                q["debit"] = repo.bank_txn(conn, user.business_id, q["choices"]["bank_txn_id"], "debit")
             except repo.NotFound:
                 continue
             q["bills"] = repo.bills_a_debit_could_pay(conn, user.business_id, q["debit"]["amount_paise"])
@@ -40,12 +40,13 @@ def attention_page(request: Request, conn: sqlite3.Connection, user: User, *, me
         if q["kind"] == "explain_credit" and isinstance(q["choices"], dict) \
                 and type(q["choices"].get("bank_txn_id")) is int:
             try:
-                q["credit"] = repo.credit(conn, user.business_id, q["choices"]["bank_txn_id"])
+                q["credit"] = repo.bank_txn(conn, user.business_id, q["choices"]["bank_txn_id"], "credit")
             except repo.NotFound:
                 continue
             ids = [i for i in q["choices"].get("receivable_ids", []) if type(i) is int]
             q["invoices"] = repo.receivables_a_credit_could_settle(conn, user.business_id, ids,
-                                                                   q["credit"]["amount_paise"])
+                                                                   q["credit"]["amount_paise"],
+                                                                   request.app.state.clock.today())
             if type(q["choices"].get("case_id")) is int:
                 q["finding"] = repo.case_finding(conn, user.business_id, q["choices"]["case_id"])
     flagged = {c["id"]: f for c in candidates if (f := flagged_fields(c, shown[c["id"]]))}

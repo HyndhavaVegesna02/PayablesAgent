@@ -182,6 +182,21 @@ def test_the_shrimp_seed_refuses_any_database_but_its_own(tmp_path, monkeypatch,
     assert "only writes ./data/shrimp.db" in capsys.readouterr().err
 
 
+def test_the_shrimp_seed_refuses_another_data_dir_so_no_other_demo_clock_is_reset(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    before = shrimp_seed.SHRIMP_DB.stat().st_mtime_ns if shrimp_seed.SHRIMP_DB.exists() else None
+    worked_example_clock = tmp_path / "files" / "demo_clock.txt"
+    worked_example_clock.parent.mkdir()
+    worked_example_clock.write_text("2026-10-15T09:00:00+05:30", encoding="utf-8")
+    monkeypatch.setenv("DATABASE_PATH", str(shrimp_seed.SHRIMP_DB))
+    monkeypatch.setenv("DATA_DIR", str(tmp_path / "files"))
+    monkeypatch.setenv("DEMO_NOW", rehearse_shrimp.START)
+    assert shrimp_seed.main(["--fresh"]) == 2
+    assert worked_example_clock.read_text(encoding="utf-8") == "2026-10-15T09:00:00+05:30"
+    assert (shrimp_seed.SHRIMP_DB.stat().st_mtime_ns if shrimp_seed.SHRIMP_DB.exists() else None) == before
+    assert "./data/shrimp-files" in capsys.readouterr().err
+
+
 # --- AC4: the rehearsal driver ---------------------------------------------------------------------------
 
 
@@ -218,7 +233,7 @@ QUOTED = [
     "Split Sri Lakshmi Aqua Feeds: ₹2,05,000 now, ₹4,41,800 due Wed 4 Nov",
     "Asked by Wed 21 Oct; not received",
     "A ₹9,20,000 credit on Fri 23 Oct from RAVI TRADERS (reference N296271234567) was not matched to an invoice.",
-    "Ravi Traders HARVEST-BAL ₹10,15,000 (not counted yet, expected on Fri 30 Oct; short by ₹95,000)",
+    "Ravi Traders HARVEST-BAL ₹10,15,000 (not counted in the plan, expected on Fri 30 Oct; short by ₹95,000)",
     "Lowest: ₹4,35,200 on Thu 29 Oct.",
     "starting from ₹5,83,200 in your bank accounts",
     "AI replies are canned fixtures.",

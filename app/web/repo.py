@@ -13,7 +13,7 @@ from datetime import date
 from typing import Any
 
 from app.domain.money import format_inr
-from app.db.read import bill_names, missing_tax_warnings  # bill_names: moved here (CHG-018)
+from app.db.read import bill_names, build_snapshot, missing_tax_warnings  # bill_names: moved here (CHG-018)
 from app.ledger.reconcile import early_receipt_requests
 from app.ledger.writer import calculated_balance
 from app.validate.bank import describe, normalise_ifsc
@@ -325,21 +325,13 @@ def active_overrides(conn: sqlite3.Connection, business_id: int) -> list[dict[st
     return rows
 
 
-def debit(conn: sqlite3.Connection, business_id: int, txn_id: int) -> dict[str, Any]:
+def bank_txn(conn: sqlite3.Connection, business_id: int, txn_id: int, direction: str) -> dict[str, Any]:
+    """This business's debit or credit (`direction`), or NotFound."""
     return _one(
         conn,
         "SELECT t.* FROM bank_txn t JOIN bank_account a ON a.id = t.account_id "
-        "WHERE t.id = ? AND a.business_id = ? AND t.direction = 'debit'",
-        (txn_id, business_id), f"debit {txn_id}",
-    )
-
-
-def credit(conn: sqlite3.Connection, business_id: int, txn_id: int) -> dict[str, Any]:
-    return _one(
-        conn,
-        "SELECT t.* FROM bank_txn t JOIN bank_account a ON a.id = t.account_id "
-        "WHERE t.id = ? AND a.business_id = ? AND t.direction = 'credit'",
-        (txn_id, business_id), f"credit {txn_id}",
+        "WHERE t.id = ? AND a.business_id = ? AND t.direction = ?",
+        (txn_id, business_id, direction), f"{direction} {txn_id}",
     )
 
 
@@ -356,10 +348,12 @@ def invoice_label(rx: dict[str, Any], names: dict[int, str]) -> str:
 
 
 def receivables_a_credit_could_settle(conn: sqlite3.Connection, business_id: int, receivable_ids: list[int],
-                                      amount_paise: int) -> list[dict[str, Any]]:
-    """The open invoices an explain_credit question offers (CHG-057), closest amount first."""
+                                      amount_paise: int, today: date) -> list[dict[str, Any]]:
+    """The open invoices an explain_credit question offers (CHG-057), closest amount first. `counted` is
+    whether the plan counts the invoice today, by the planner's own snapshot (its date, its horizon)."""
     if not receivable_ids:
         return []
+    counted = {i.receivable_id for i in build_snapshot(conn, business_id, today).inflows}
     names = receivable_names(conn, business_id)
     marks = ",".join("?" * len(receivable_ids))
     rows = _rows(
@@ -370,6 +364,7 @@ def receivables_a_credit_could_settle(conn: sqlite3.Connection, business_id: int
     )
     for r in rows:
         r["name"] = invoice_label(r, names)
+        r["counted"] = r["id"] in counted
         r["difference_paise"] = amount_paise - r["amount_paise"]
         r["expected_date"] = _day(r["expected_date"])
     return sorted(rows, key=lambda r: (abs(r["difference_paise"]), r["expected_date"] or date.max, r["id"]))

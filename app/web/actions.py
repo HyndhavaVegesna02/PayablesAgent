@@ -330,7 +330,8 @@ def mark_paid(conn: sqlite3.Connection, user: User, payable_id: int, version: in
             # still expected, and its question is settled (no second link later).
             _release_held(conn, user, txn_id, except_id=payable_id, why="the owner marked another bill paid with it",
                           clock=clock)
-            _settle_debit_question(conn, user, txn_id, "Owner marked a bill paid with this debit", clock)
+            _settle_txn_questions(conn, user, "explain_txn", txn_id, "Owner marked a bill paid with this debit",
+                                  clock)
         return _replan(conn, user, clock)
 
 
@@ -377,12 +378,14 @@ def _release_held(conn: sqlite3.Connection, user: User, txn_id: int, *, except_i
                               f"bank_txn:{txn_id}", conn=conn, expected_version=bill_version, clock=clock)
 
 
-def _settle_debit_question(conn: sqlite3.Connection, user: User, txn_id: int, why: str, clock: Clock) -> None:
-    """Closes the open case and answers the open explain_txn question about a
-    debit that has been settled another way."""
+def _settle_txn_questions(conn: sqlite3.Connection, user: User, kind: str, txn_id: int, why: str,
+                          clock: Clock) -> None:
+    """Closes the open case and answers the open question of `kind` (explain_txn
+    for a debit, explain_credit for a credit) about a transaction that has been
+    settled another way."""
     for (question_id, case_id) in conn.execute(
-        "SELECT id, case_id FROM owner_question WHERE business_id = ? AND kind = 'explain_txn' AND status = 'OPEN' "
-        "AND json_extract(choices_json, '$.bank_txn_id') = ?", (user.business_id, txn_id),
+        "SELECT id, case_id FROM owner_question WHERE business_id = ? AND kind = ? AND status = 'OPEN' "
+        "AND json_extract(choices_json, '$.bank_txn_id') = ?", (user.business_id, kind, txn_id),
     ).fetchall():
         if case_id is not None:
             _settle_case(conn, user, case_id, why, f"bank_txn:{txn_id}", clock)
@@ -788,14 +791,14 @@ def explain_debit(conn: sqlite3.Connection, user: User, question: dict, values: 
         raise Refused("This question has no debit to explain.")
     source = f"owner_question:{question['id']}"
     with writer.atomic(conn):
-        txn = repo.debit(conn, user.business_id, txn_id)
+        txn = repo.bank_txn(conn, user.business_id, txn_id, "debit")
         holder = debit_holder(conn, txn_id)
         if txn["status"] != "UNMATCHED" or holder is not None:
             # Settled another way meanwhile (matched, reversed, or a bill marked paid
             # with it): the question is closed; a second link would pay two bills.
             why = (f"this debit already pays bill {holder}" if holder is not None
                    else f"this debit is {txn['status'].lower()}")
-            _settle_debit_question(conn, user, txn_id, f"Settled: {why}", clock)
+            _settle_txn_questions(conn, user, "explain_txn", txn_id, f"Settled: {why}", clock)
             return None
         if values.get("decision") == "not_a_bill":
             _release_held(conn, user, txn_id, except_id=None, why="not a bill payment", clock=clock)
@@ -828,11 +831,8 @@ def explain_debit(conn: sqlite3.Connection, user: User, question: dict, values: 
             writer.transition(EntityRef("payable", bill_id), "PAID", user.actor, why, ref, conn=conn,
                               expected_version=bill["version"], fields={"matched_txn_id": txn_id}, clock=clock)
         _release_held(conn, user, txn_id, except_id=bill_id, why=f"it paid {name}", clock=clock)
-        if values.get("alias") and (txn["counterparty"] or "").strip() and bill["party_id"] is not None \
-                and not name_matches(txn["counterparty"], party_names(conn, bill["party_id"])):
-            writer.add_party_alias(bill["party_id"], txn["counterparty"], user.actor,
-                                   f"Owner: '{txn['counterparty']}' in a bank alert is {name}", source,
-                                   conn=conn, clock=clock)
+        if values.get("alias"):
+            _alias_payer(conn, user, bill["party_id"], txn["counterparty"], name, source, clock)
         _settle_case(conn, user, case_id, why, source, clock)
         _answer(conn, user, question["id"], {"decision": "paid", "payable_id": bill_id}, clock)
         return _replan(conn, user, clock)
@@ -852,11 +852,10 @@ def explain_credit(conn: sqlite3.Connection, user: User, question: dict, values:
         raise Refused("This question has no credit to explain.")
     source = f"owner_question:{question['id']}"
     with writer.atomic(conn):
-        txn = repo.credit(conn, user.business_id, txn_id)
+        txn = repo.bank_txn(conn, user.business_id, txn_id, "credit")
         if txn["status"] != "UNMATCHED":  # settled another way meanwhile: close the question, link nothing
-            why = f"Settled: this credit is {txn['status'].lower()}"
-            _settle_case(conn, user, case_id, why, f"bank_txn:{txn_id}", clock)
-            _answer(conn, user, question["id"], {"decision": "settled", "why": why}, clock)
+            _settle_txn_questions(conn, user, "explain_credit", txn_id,
+                                  f"Settled: this credit is {txn['status'].lower()}", clock)
             return None
         if values.get("decision") == "not_an_invoice":
             _settle_case(conn, user, case_id, "Owner: this credit was not an invoice payment", source, clock)
@@ -883,21 +882,30 @@ def explain_credit(conn: sqlite3.Connection, user: User, question: dict, values:
                           conn=conn, fields={"party_id": rx["party_id"]}, clock=clock)
         writer.transition(EntityRef("receivable", rid), "CONFIRMED", user.actor, why, f"bank_txn:{txn_id}",
                           conn=conn, expected_version=rx["version"], fields={"matched_txn_id": txn_id}, clock=clock)
-        if values.get("alias") and (txn["counterparty"] or "").strip() and rx["party_id"] is not None \
-                and not name_matches(txn["counterparty"], party_names(conn, rx["party_id"])):
-            writer.add_party_alias(rx["party_id"], txn["counterparty"], user.actor,
-                                   f"Owner: '{txn['counterparty']}' in a bank alert is {name}", source,
-                                   conn=conn, clock=clock)
+        if values.get("alias"):
+            _alias_payer(conn, user, rx["party_id"], txn["counterparty"], name, source, clock)
         _settle_case(conn, user, case_id, why, source, clock)
         _answer(conn, user, question["id"], {"decision": "invoice", "receivable_id": rid}, clock)
         return _replan(conn, user, clock)
 
 
+def _alias_payer(conn: sqlite3.Connection, user: User, party_id: int | None, counterparty: str | None, name: str,
+                 source: str, clock: Clock) -> None:
+    """The owner ticked "also treat this name as theirs": the alert's payer or payee becomes an alias of the
+    party, so its next alert matches by itself. Nothing to add for a blank name, a bill or invoice with no
+    party, or a name that already matches."""
+    if not (counterparty or "").strip() or party_id is None or name_matches(counterparty, party_names(conn, party_id)):
+        return
+    writer.add_party_alias(party_id, counterparty, user.actor, f"Owner: '{counterparty}' in a bank alert is {name}",
+                           source, conn=conn, clock=clock)
+
+
 def _settle_case(conn: sqlite3.Connection, user: User, case_id: int, why: str, source: str, clock: Clock) -> None:
-    """The owner's explanation settles the debit's case. A case has two questions
-    (this explain_txn, and the agent's own when it asked), so the agent's goes
-    too; and a case the owner already closed through the agent's question stays
-    closed while the debit is still explained (CHG-027)."""
+    """The owner's explanation settles a transaction's case. A case has two
+    questions (the reconciler's explain_txn or explain_credit, and the agent's
+    own when it asked), so the agent's goes too; and a case the owner already
+    closed through the agent's question stays closed while the transaction is
+    still explained (CHG-027, CHG-057)."""
     if agent_cases.load(conn, case_id).status in ("OPEN", "ASK_OWNER"):
         writer.close_case(case_id, user.actor, why, source, conn=conn, clock=clock)
     _close_open(conn, user, "agent_question", "case_id", case_id, {"choice": f"settled: {why}"}, clock)

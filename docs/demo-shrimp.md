@@ -18,8 +18,9 @@ documents are read right, and marked for the farmer when they aren't.
 
 - **`.env`** (the user's, never read or edited by the build): `GEMINI_API_KEY` for live runs;
   `SESSION_SECRET`, without which the web app refuses to start; and `FERNET_KEY`, without which mail
-  and uploads can't be stored. On 7 Oct `make run-shrimp` refused to start: `SESSION_SECRET is not set`.
-  Each error message names the command that makes the value. Add the lines to `.env` yourself.
+  and uploads can't be stored. If `make run-shrimp` says `SESSION_SECRET is not set`, or the worker
+  names `FERNET_KEY`, the message names the command that makes the value. Add the lines to `.env`
+  yourself.
 - **The real uploads** (see "Files to supply" below). Until they are in place the placeholders are
   used, and only offline.
 - **Billing headroom** on the Gemini project, checked the day before and the morning of. Google's
@@ -159,8 +160,8 @@ re-grading ₹22,500, soft shell ₹24,300, ice and crew ₹20,000 and commissio
 and pays ₹9,20,000. It looks like HARVEST-BAL, short by ₹95,000; please link it." It cites "Payment
 advice - harvest balance, Godavari Aqua Farm".
 
-The one invoice offered: **Ravi Traders HARVEST-BAL ₹10,15,000 (not counted yet, expected on Fri 30
-Oct; short by ₹95,000)**. Choose it and press **This paid the chosen invoice**. The event says, in
+The one invoice offered: **Ravi Traders HARVEST-BAL ₹10,15,000 (not counted in the plan, expected on
+Fri 30 Oct; short by ₹95,000)**. Choose it and press **This paid the chosen invoice**. The event says, in
 code's words: "Owner: this ₹9,20,000 credit settles Ravi Traders HARVEST-BAL, short by ₹95,000
 (₹10,15,000 invoiced)." The invoice's amount is never edited; the event is the record.
 
