@@ -382,12 +382,13 @@ def main(argv: list[str] | None = None) -> int:
     backend = guard if guard is not None else FixtureBackend(REPLIES)
     uploads, said = uploads_for(live)
     stamp = SystemClock().now()
-    folder = args.out / f"{stamp:%Y-%m-%dT%H%M%S}-{args.ai}"
-    for n in range(2, 100):
+    folder, n = args.out / f"{stamp:%Y-%m-%dT%H%M%S}-{args.ai}", 1
+    while True:
         try:
             folder.mkdir(parents=True)
             break
         except FileExistsError:  # another rehearsal started in the same second
+            n += 1
             folder = args.out / f"{stamp:%Y-%m-%dT%H%M%S}-{args.ai}-{n}"
     run = ShrimpRun(folder, backend, config, fixtures_mode=not live, uploads=uploads)
     if guard is not None:

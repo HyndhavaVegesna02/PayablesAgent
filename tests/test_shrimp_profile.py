@@ -183,17 +183,20 @@ def test_the_shrimp_seed_refuses_any_database_but_its_own(tmp_path, monkeypatch,
 
 
 def test_the_shrimp_seed_refuses_another_data_dir_so_no_other_demo_clock_is_reset(tmp_path, monkeypatch, capsys):
+    # The profile's own paths point into tmp, so even a broken guard can't touch the real ./data/shrimp.db.
     monkeypatch.chdir(tmp_path)
-    before = shrimp_seed.SHRIMP_DB.stat().st_mtime_ns if shrimp_seed.SHRIMP_DB.exists() else None
+    profile_db = tmp_path / "shrimp.db"
+    monkeypatch.setattr(shrimp_seed, "SHRIMP_DB", profile_db)
+    monkeypatch.setattr(shrimp_seed, "SHRIMP_FILES", tmp_path / "shrimp-files")
     worked_example_clock = tmp_path / "files" / "demo_clock.txt"
     worked_example_clock.parent.mkdir()
     worked_example_clock.write_text("2026-10-15T09:00:00+05:30", encoding="utf-8")
-    monkeypatch.setenv("DATABASE_PATH", str(shrimp_seed.SHRIMP_DB))
+    monkeypatch.setenv("DATABASE_PATH", str(profile_db))
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "files"))
     monkeypatch.setenv("DEMO_NOW", rehearse_shrimp.START)
     assert shrimp_seed.main(["--fresh"]) == 2
     assert worked_example_clock.read_text(encoding="utf-8") == "2026-10-15T09:00:00+05:30"
-    assert (shrimp_seed.SHRIMP_DB.stat().st_mtime_ns if shrimp_seed.SHRIMP_DB.exists() else None) == before
+    assert not profile_db.exists()  # refused before any database was made
     assert "./data/shrimp-files" in capsys.readouterr().err
 
 
