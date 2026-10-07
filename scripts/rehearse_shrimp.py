@@ -46,9 +46,11 @@ from app.config import AppConfig, Settings, load_app_config  # noqa: E402
 from app.db.connection import write_connection  # noqa: E402
 from app.db.migrate import apply_migrations  # noqa: E402
 from app.domain.money import format_inr, parse_inr  # noqa: E402
+from app.domain.names import normalise_name  # noqa: E402
 from app.jobs import alerts  # noqa: E402
 from app.jobs.replan import replan  # noqa: E402
 from app.main import create_app  # noqa: E402
+from app.validate.duplicates import normalise_invoice_number  # noqa: E402
 from app.web import repo  # noqa: E402
 from app.worker import default_handlers  # noqa: E402
 from evals import budget, report  # noqa: E402
@@ -72,13 +74,11 @@ MIME = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".wav"
         ".opus": "audio/ogg", ".mp3": "audio/mpeg", ".m4a": "audio/mp4"}
 # Move 4's two bills (the user's delta, CHG-060): the caretaker's Telugu voice note about the generator's diesel,
 # with the amount and date said in English, and Venkat Motors' handwritten repair slip.
-DIESEL = {"party": "Raju Petrol Bunk", "amount_paise": parse_inr("3,000"), "due_date": "2026-10-24"}
-REPAIR = {"party": "Venkat Motors", "invoice_number": "VM/412", "amount_paise": parse_inr("18,000"),
-          "due_date": "2026-10-25"}
-# What the owner types if the page marks a field (PO D28): the value the recording or the slip gives. Offline every
-# check passes, so nothing is marked and nothing is typed.
-DIESEL_SAID = {"party": "Raju Petrol Bunk", "amount": "3,000", "due_date": "2026-10-24"}
-REPAIR_SAID = {"party": "Venkat Motors", "invoice_number": "VM/412", "amount": "18,000", "due_date": "2026-10-25"}
+# Each is what the recording or the slip says, in the form fields' names: the checks read them, and the owner
+# types one only if the page marks it (PO D28; offline every check passes, so nothing is marked).
+DIESEL = {"party": "Raju Petrol Bunk", "amount": "3,000", "due_date": "2026-10-24"}
+REPAIR = {"party": "Venkat Motors", "invoice_number": "VM/412", "amount": "18,000", "due_date": "2026-10-25"}
+PAID_BY_THE_DUE_DATE = "latest payment day on or before the due date"  # the planner's reason (app/planner)
 
 
 @dataclass
@@ -200,13 +200,21 @@ def link_credit(run: ShrimpRun, qid: int, invoice: str, *, alias: bool) -> None:
     run.drain()
 
 
-def bill_of(run: ShrimpRun, party: str) -> tuple | None:
-    """The one bill in the ledger from `party`: (invoice number, amount in paise, due date)."""
-    rows = run.rows("SELECT p.invoice_number, p.amount_paise, p.due_date FROM payable p JOIN party pt "
-                    "ON pt.id = p.party_id WHERE pt.name = ?", (party,))
+def planned_bill(run: ShrimpRun, said: dict[str, str]) -> tuple:
+    """The one bill of the amount and due date `said` gives, with the current plan's line for it: (vendor and
+    invoice number as the app compares them, decision and day, the planner's reason). Found by amount and date,
+    never by the name a model read (as evals/workflow_runs.py finds the voice bill, CHG-045): live, the slip says
+    "VENKAT MOTORS" and the transcript "Raju petrol bunk"."""
+    rows = run.rows(
+        "SELECT pt.name, p.invoice_number, l.decision, l.pay_on, l.reason FROM payable p "
+        "JOIN party pt ON pt.id = p.party_id JOIN plan_line l ON l.payable_id = p.id "
+        "JOIN plan_run r ON r.id = l.plan_run_id WHERE r.is_current = 1 AND p.amount_paise = ? AND p.due_date = ?",
+        (parse_inr(said["amount"]), said["due_date"]))
     if len(rows) != 1:
-        raise StepFailed(f"expected one bill from {party}, found {len(rows)}")
-    return rows[0]
+        raise StepFailed(f"expected one planned bill of ₹{said['amount']} due {said['due_date']}, found {len(rows)}")
+    name, number, decision, pay_on, reason = rows[0]
+    return (normalise_name(name), normalise_invoice_number(number), f"{decision} {pay_on}" if pay_on else decision,
+            PAID_BY_THE_DUE_DATE in reason)
 
 
 def case_kind(run: ShrimpRun, txn_id: int) -> tuple[int, str]:
@@ -313,20 +321,20 @@ def fortnight(run: ShrimpRun) -> None:
         run.expect("transcript-beside-it", bool(transcript) and str(escape(transcript)) in run.owner.get("/attention"),
                    True, "the voice entry shows what was said beside the bill")
         run.note(f"transcript: {transcript}")
-        confirm(run, voice, DIESEL_SAID)
-        confirm(run, photo, REPAIR_SAID)
-        run.expect("voice-bill", bill_of(run, DIESEL["party"]), (None, DIESEL["amount_paise"], DIESEL["due_date"]),
-                   "the delta: 'Raju petrol bunk diesel bill ... three thousand rupees, twenty-fourth October 2026'")
-        run.expect("slip-bill", bill_of(run, REPAIR["party"]),
-                   (REPAIR["invoice_number"], REPAIR["amount_paise"], REPAIR["due_date"]),
+        confirm(run, voice, DIESEL)
+        confirm(run, photo, REPAIR)
+        diesel, repair = planned_bill(run, DIESEL), planned_bill(run, REPAIR)
+        run.expect("voice-bill", diesel[:2], (normalise_name(DIESEL["party"]), None),
+                   "the delta: 'Raju petrol bunk diesel bill ... three thousand rupees, twenty-fourth October 2026'; "
+                   "found by its ₹3,000 and 24 Oct, the vendor compared as the app compares names")
+        run.expect("slip-bill", repair[:2], (normalise_name(REPAIR["party"]), normalise_invoice_number("VM/412")),
                    "the delta's slip: VM/412, Rs. 14,000 + Rs. 4,000 = Rs. 18,000, pay by 25/10/2026")
-        lines = plan(run)["lines"]
-        run.expect("new-bills-in-the-plan", (lines.get(DIESEL["party"]), lines.get(REPAIR["invoice_number"])),
-                   ("PAY 2026-10-22", "PAY 2026-10-22"),
-                   "the planner's own decision (PO): both fall due before the next payment day, Mon 26, so each is paid "
-                   "today, Thu 22, the last payment day before Sat 24 and Sun 25; the shortfall is the dealer's "
+        run.expect("new-bills-in-the-plan", (diesel[2:], repair[2:]),
+                   (("PAY 2026-10-22", True), ("PAY 2026-10-22", True)),
+                   "the planner's own decision and reason (PO): both fall due before the next payment day, Mon 26, so "
+                   f"each is paid today, Thu 22, its '{PAID_BY_THE_DUE_DATE}'; the shortfall is the dealer's "
                    "₹6,46,800 (ESCALATE), not these")
-        run.note(f"plan: {lines}")
+        run.note(f"plan: {plan(run)['lines']}")
 
     with run.step("bank + agent + owner", "Move 5, Fri 23 Oct 16:00: Ravi Traders pays the balance ₹95,000 short; "
                                           "the owner links it to HARVEST-BAL and approves Monday's payments"):

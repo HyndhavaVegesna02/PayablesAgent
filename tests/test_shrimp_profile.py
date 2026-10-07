@@ -324,6 +324,29 @@ def test_the_users_real_files_replace_the_placeholders_live_and_offline_only_onc
     assert said == ["voice: PLACEHOLDER-voice-note.wav", "photo: PLACEHOLDER-repair-slip.png"]
 
 
+def test_move_4_finds_the_two_bills_however_the_model_spells_their_vendors(tmp_path):
+    # Live, the slip's header is in capitals and the transcript in lower case (batch 22 review): the ledger treats
+    # "VENKAT MOTORS" and "Venkat Motors" as one name, so the rehearsal's checks must too.
+    import copy
+
+    backend = FixtureBackend(rehearse_shrimp.REPLIES)
+    backend.file_replies = copy.deepcopy(backend.file_replies)
+    for replies in backend.file_replies.values():
+        if "InvoiceExtract" in replies:
+            replies["InvoiceExtract"]["seller_name"] = "VENKAT MOTORS"
+        if "VoiceBillExtract" in replies:
+            replies["VoiceBillExtract"]["vendor_name"] = "raju petrol bunk"
+    run = rehearse_shrimp.ShrimpRun(tmp_path, backend, load_app_config(rehearse_shrimp.CONFIG), fixtures_mode=True,
+                                    uploads=rehearse_shrimp.uploads_for(False)[0])
+    try:
+        rehearse_shrimp.fortnight(run)
+    finally:
+        run.close()
+    move4 = run.steps[4]
+    assert move4.ok, (move4.error, [(c.id, c.expected, c.actual) for c in move4.checks if not c.ok])
+    assert all(s.ok for s in run.steps)
+
+
 def test_a_live_rehearsal_will_not_start_without_yes_spend(tmp_path):
     with pytest.raises(SystemExit, match="--yes-spend"):
         rehearse_shrimp.main(["--ai", "live", "--out", str(tmp_path)])

@@ -177,8 +177,10 @@ code's words: "Owner: this ₹9,20,000 credit settles Ravi Traders HARVEST-BAL, 
 
 The plan is redone: "Covered for 14 days. Lowest: ₹4,32,200 on Thu 29 Oct." Approve Monday's
 payments: the dealer's ₹6,46,800 and ₹25,000, APSPDCL ₹15,000, Lakshman's wages ₹15,000, Raju Petrol
-Bunk's ₹3,000 and Venkat Motors' ₹18,000 (Thursday's four moved to Monday when they weren't approved
-on Thursday). "You pay them in your bank app; we never move money."
+Bunk's ₹3,000 and Venkat Motors' ₹18,000. Thursday's four weren't approved on Thursday, so the plan
+now pays them on Monday, late: APSPDCL was due Thu 22, the wages Fri 23, the diesel Sat 24 and the repair
+Sun 25. To pay them on time, approve Thursday's payments at move 4 instead. "You pay them in your bank
+app; we never move money."
 
 ### Move 6 (optional): `make demo-time-shrimp T=2026-10-26T11:00:00+05:30`
 
