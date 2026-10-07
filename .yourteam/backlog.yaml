@@ -763,7 +763,7 @@ changes:
     depends_on: CHG-057
     batch: 21
   - id: CHG-059
-    title: The shrimp profile's deferred review minors (case_finding's line parsing and 20-line cut, a RESOLVED summary shown twice on Needs attention, ShrimpRun copying Run.__init__) and the driver's `shortfall` check, which expects plan valid == False and reads backwards in the report (rename it plan-valid, or expect shortfall True), and move 4's slip-bill check taking VM/412 from REPAIR rather than a literal (batch 21 and 22 reviews and verdict; PO)
+    title: The shrimp profile's deferred review minors (case_finding's line parsing and 20-line cut, a RESOLVED summary shown twice on Needs attention, ShrimpRun copying Run.__init__) and the driver's `shortfall` check, which expects plan valid == False and reads backwards in the report (rename it plan-valid, or expect shortfall True), and the demo-quote test copying pipeline.py's confirm_record sentence rather than calling it (batch 21, 22 and 23 reviews and verdict; PO; batch 22's slip-bill literal was fixed in CHG-061)
     file: docs/batches/2026-10-07-21/review.md
     status: draft
     priority: 59
