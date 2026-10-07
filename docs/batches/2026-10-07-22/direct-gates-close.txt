@@ -1,0 +1,32 @@
+# Direct gate run (make blocked by Application Control, exit 4551)
+commit: cc606dd   tree clean: yes
+started: 2026-10-07T21:57:50+05:30
+
+$ uv run --no-sync python -m pytest -q -p no:warnings
+........................................................................ [ 87%]
+........................................................................ [ 91%]
+........................................................................ [ 95%]
+........................................................................ [ 98%]
+........................                                                 [100%]
+1968 passed in 116.73s (0:01:56)
+exit: 0
+
+$ uv run --no-sync lint-imports
+notify is pure text and sending: imports only domain KEPT
+ai never imports ledger, db or web KEPT
+ledger never imports ai, agent, web or ingest KEPT
+web never imports ai KEPT (1 ignored import)
+
+Contracts: 9 kept, 0 broken.
+exit: 0
+
+$ uv run --no-sync python scripts/check_evidence.py
+run A: 1/1 passed; report: C:\Users\Hyndhava\AppData\Local\Temp\check-evidence-x3jisfs3\5\workflow-A-2026-10-07.md
+checked docs/evals/4-end-to-end-workflows/workflow-A-2026-10-04.json
+run B: 1/1 passed; report: C:\Users\Hyndhava\AppData\Local\Temp\check-evidence-x3jisfs3\6\workflow-B-2026-10-07.md
+checked docs/evals/4-end-to-end-workflows/workflow-B-2026-10-04.json
+checked docs/evals/raw-runs/2026-10-04-live-ablation-v1/report.json
+all 8 reports reproduce: fixture-mode ones below their commit and date, combined ones exactly (md and json)
+exit: 0
+
+finished: 2026-10-07T22:00:43+05:30
