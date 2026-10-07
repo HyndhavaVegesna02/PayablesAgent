@@ -1,0 +1,20 @@
+X-Fixture-Note: fictional data; format modelled on HDFC InstaAlerts. The
+ shrimp profile (CHG-058), move 2: the advance, paid from a personal UPI
+From: HDFC Bank InstaAlerts <alerts@hdfcbank.example>
+To: owner@example.test
+Subject: Credit alert: Rs.2,00,000.00 credited to your account ending 7310
+Date: Tue, 20 Oct 2026 09:40:12 +0530
+Message-ID: <instaalert-20261020-094012-7310-03@hdfcbank.example>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+
+Dear Customer,
+
+Rs.2,00,000.00 has been credited to account **7310 on 20-10-26 by UPI from RAVI K (ravi.k@okaxis).
+
+UPI Reference Number: 629312345678
+Available balance: Rs.3,10,000.00
+
+Warm Regards,
+HDFC Bank
+(This is a fictional fixture. No real bank, account or person is described.)

@@ -1,0 +1,27 @@
+X-Fixture-Note: fictional data; the shrimp profile (CHG-058), move 1: the
+ crop's last feed delivery, billed by the dealer
+From: Sri Lakshmi Aqua Feeds <accounts@srilakshmiaquafeeds.example>
+To: owner@example.test
+Subject: Invoice SLAF/INV/0931 - 10 bags grower feed delivered today
+Date: Mon, 19 Oct 2026 10:30:00 +0530
+Message-ID: <shrimp-01@srilakshmiaquafeeds.example>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+
+Dear Sir,
+
+Sri Lakshmi Aqua Feeds, GSTIN 37ZZZSZ0007Z1ZW, Bhimavaram.
+
+Invoice SLAF/INV/0931 dated 19-10-2026
+To: Godavari Aqua Farm
+
+Grower feed 2mm, 10 bags x Rs.2,500.00 = Rs.25,000.00
+Exempt supply, no GST charged (HSN 2309).
+Total: Rs.25,000.00
+Due: 26-10-2026 (7 days)
+
+Bank: A/c 50100 7788 2201, IFSC SBIN0004321.
+
+Regards,
+Accounts, Sri Lakshmi Aqua Feeds
+(This is a fictional fixture. No real business, account or person is described.)

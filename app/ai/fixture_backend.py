@@ -10,7 +10,11 @@ a fall-back to Gemini.
 An email is matched by its text (a demo delivers mail by copying files from
 fixtures/test_inbox into its own TEST_INBOX_PATH, as the tests do); an
 uploaded photo, PDF or voice note by the sha256 of its bytes against the
-files in fixtures/uploads (batch 5 plan, S2 and Q6)."""
+files in fixtures/uploads (batch 5 plan, S2 and Q6).
+
+Another demo profile brings its own store (FIXTURE_REPLIES_PATH, CHG-058). Its
+`_email_folders` and `_upload_folders` name the folders under fixtures/ that its
+replies are for; this store's are test_inbox and agent_inbox, and uploads."""
 
 from __future__ import annotations
 
@@ -31,11 +35,15 @@ FIXTURE_AGENT_INBOX = FIXTURES / "agent_inbox"  # mail only the agent tests and 
 FIXTURE_UPLOADS = FIXTURES / "uploads"
 
 
-def load_replies(folder: str) -> dict[str, dict[str, Any]]:
+def _store(path: Path | None) -> dict[str, Any]:
+    return json.loads((path or REPLIES_FILE).read_text(encoding="utf-8"))
+
+
+def load_replies(folder: str, store: Path | None = None) -> dict[str, dict[str, Any]]:
     """File name -> {schema title: reply} for one fixture folder ("test_inbox"
     or "uploads"). A string entry names the file whose replies it shares (a
     re-sent alert)."""
-    raw = json.loads(REPLIES_FILE.read_text(encoding="utf-8")).get(folder, {})
+    raw = _store(store).get(folder, {})
     return {name: raw[entry] if isinstance(entry, str) else entry for name, entry in raw.items()}
 
 
@@ -44,9 +52,9 @@ NO_SCRIPT = {"notes": "the demo assistant has no script for this case", "final":
     "cited_message_ids": [], "relied_on_candidate_ids": []}}
 
 
-def load_agent_scripts() -> list[dict[str, Any]]:
-    """The exception agent's scripted steps, from the one replies store."""
-    return json.loads(REPLIES_FILE.read_text(encoding="utf-8")).get("agent_scripts", [])
+def load_agent_scripts(store: Path | None = None) -> list[dict[str, Any]]:
+    """The exception agent's scripted steps, from the replies store."""
+    return _store(store).get("agent_scripts", [])
 
 
 def agent_step(scripts: list[dict[str, Any]], case_file: str) -> dict[str, Any]:
@@ -67,23 +75,31 @@ def agent_step(scripts: list[dict[str, Any]], case_file: str) -> dict[str, Any]:
     return NO_SCRIPT
 
 
+def _folders(raw: dict[str, Any], key: str, default: list[Path]) -> list[Path]:
+    """The fixture folders a store's replies are for: its own list under fixtures/, or this store's."""
+    return [FIXTURES / name for name in raw[key]] if key in raw else default
+
+
 NO_CANNED_REPLY = "the demo fixture AI has no canned"  # a gap in the script, not a model that was down
 
 class FixtureBackend:
-    def __init__(self) -> None:
-        emails = {**load_replies("test_inbox"), **load_replies("agent_inbox")}
-        uploads = load_replies("uploads")
+    def __init__(self, store: Path | None = None) -> None:
+        raw = _store(store)
+        email_folders = _folders(raw, "_email_folders", [FIXTURE_INBOX, FIXTURE_AGENT_INBOX])
+        upload_folders = _folders(raw, "_upload_folders", [FIXTURE_UPLOADS])
+        emails = {n: r for f in email_folders for n, r in load_replies(f.name, store).items()}
+        uploads = {n: r for f in upload_folders for n, r in load_replies(f.name, store).items()}
         # What the model is shown of each fixture email; a request is matched to
         # the fixture whose text it contains.
         self.texts = {
             f.name: email_text_from_bytes(f.read_bytes())
-            for f in sorted([*FIXTURE_INBOX.glob("*.eml"), *FIXTURE_AGENT_INBOX.glob("*.eml")]) if f.name in emails
+            for f in sorted(f for folder in email_folders for f in folder.glob("*.eml")) if f.name in emails
         }
         self.email_replies = emails
-        self.scripts = load_agent_scripts()
+        self.scripts = load_agent_scripts(store)
         self.file_replies = {
             hashlib.sha256(f.read_bytes()).hexdigest(): uploads[f.name]
-            for f in sorted(FIXTURE_UPLOADS.glob("*")) if f.name in uploads
+            for folder in upload_folders for f in sorted(folder.glob("*")) if f.name in uploads
         }
 
     def _replies_for(self, contents: Contents) -> list[dict[str, Any]]:

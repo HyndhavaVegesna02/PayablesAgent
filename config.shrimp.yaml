@@ -1,0 +1,32 @@
+# The shrimp-farm demo profile's config (CHG-058; dev only): config.yaml with the profile's mail
+# senders. Applied by APP_CONFIG_PATH in .env.shrimp; config.yaml itself is unchanged.
+model:
+  id: gemini-3.8-flash
+  thinking: {sort: low, extract: medium, voice: medium, exception: medium, explain: low}
+  # $0.75 / $3.75 per million input / output tokens; output includes thinking
+  pricing: {input_micro_usd_per_mtok: 750000, output_micro_usd_per_mtok: 3750000}
+ai:
+  timeout_ms: 60000
+prompts:
+  version: 2026-10-04.2   # CHG-030 extract_voice; CHG-031 exception_agent
+escalation:
+  max_steps: 6
+  default_stake_paise: 5000000  # ₹50,000; the owner can change it in Settings
+  max_validation_failures: 2
+matching:
+  window_days: 3
+  statutory_payees:                # a challan debit's payee words per tax type (D27); without them every
+                                   # statutory debit waits for the owner's link
+    PF: [EPFO]
+    ESI: [ESIC]
+    GST: [GST, CBIC, GSTN]
+    TDS: [CBDT, ITD, TIN-NSDL, OLTAS]
+    ADVANCE_TAX: [CBDT, ITD, TIN-NSDL, OLTAS]
+mail:
+  poll_minutes: 5
+  vendor_senders:   # the shrimp profile's senders (fixtures/shrimp_inbox): feed dealer, commission agent, landowner
+    - accounts@srilakshmiaquafeeds.example
+    - ravi@ravitraders.example
+    - subbarao@example.test
+alerts:
+  min_minutes_between_emails: 30

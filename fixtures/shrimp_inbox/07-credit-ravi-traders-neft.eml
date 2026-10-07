@@ -1,0 +1,20 @@
+X-Fixture-Note: fictional data; format modelled on HDFC InstaAlerts. The
+ shrimp profile (CHG-058), move 5: the harvest balance, paid short
+From: HDFC Bank InstaAlerts <alerts@hdfcbank.example>
+To: owner@example.test
+Subject: Credit alert: Rs.9,20,000.00 credited to your account ending 7310
+Date: Fri, 23 Oct 2026 15:10:31 +0530
+Message-ID: <instaalert-20261023-151031-7310-07@hdfcbank.example>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+
+Dear Customer,
+
+Rs.9,20,000.00 has been credited to account **7310 on 23-10-26 by NEFT from RAVI TRADERS.
+
+NEFT Reference Number: N296271234567
+Available balance: Rs.12,30,000.00
+
+Warm Regards,
+HDFC Bank
+(This is a fictional fixture. No real bank, account or person is described.)

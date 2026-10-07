@@ -1,0 +1,31 @@
+X-Fixture-Note: fictional data; the shrimp profile (CHG-058), move 3: the
+ season's settlement invoice, with bank details that differ from the ones on
+ record
+From: Sri Lakshmi Aqua Feeds <accounts@srilakshmiaquafeeds.example>
+To: owner@example.test
+Subject: Invoice SLAF/INV/1042 - season settlement, please pay within 5 days
+Date: Wed, 21 Oct 2026 11:00:00 +0530
+Message-ID: <shrimp-04@srilakshmiaquafeeds.example>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+
+Dear Sir,
+
+Congratulations on the harvest. Please find the season's settlement.
+
+Sri Lakshmi Aqua Feeds, GSTIN 37ZZZSZ0007Z1ZW, Bhimavaram.
+
+Invoice SLAF/INV/1042 dated 21-10-2026
+To: Godavari Aqua Farm
+
+Grower feed 3mm, 72 bags x Rs.7,400.00 = Rs.5,32,800.00
+Vannamei seed PL-12, balance on account = Rs.1,14,000.00
+Exempt supply, no GST charged (HSN 2309, 0306).
+Total: Rs.6,46,800.00
+Please pay within 5 days, by 26-10-2026.
+
+Please note our new bank account: A/c 50200 9911 8876, IFSC ICIC0007788.
+
+Regards,
+Accounts, Sri Lakshmi Aqua Feeds
+(This is a fictional fixture. No real business, account or person is described.)

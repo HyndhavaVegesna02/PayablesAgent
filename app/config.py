@@ -60,6 +60,11 @@ class Settings(BaseSettings):
     # DEMO_AI=fixtures: in a demo, the worker answers from the test inbox's canned
     # replies instead of Gemini (batch 3 plan, D15). Needs DEMO_NOW.
     demo_ai: Literal["", "fixtures"] = ""
+    # A second demo profile's files (CHG-058): its config (its mail senders) and,
+    # with DEMO_AI=fixtures, its canned replies. Blank replies means the test
+    # inbox's own store (fixtures/ai_replies.json).
+    app_config_path: str = "config.yaml"
+    fixture_replies_path: str = ""
 
     @field_validator("demo_now")
     @classmethod

@@ -18,3 +18,5 @@ yourteam.skill
 *.egg-info/
 dist/
 build/
+# the shrimp profile's rehearsal reports, traces and databases (scripts/rehearse_shrimp.py; CHG-058)
+/rehearsals/

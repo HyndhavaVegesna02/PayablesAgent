@@ -240,7 +240,8 @@ def build_backend(settings: Settings, app_config: AppConfig):
         free = app_config.model.pricing.model_copy(update={"input_micro_usd_per_mtok": 0,
                                                             "output_micro_usd_per_mtok": 0})
         model = app_config.model.model_copy(update={"id": FIXTURE_MODEL, "pricing": free})
-        return FixtureBackend(), app_config.model_copy(update={"model": model})
+        store = Path(settings.fixture_replies_path) if settings.fixture_replies_path.strip() else None
+        return FixtureBackend(store), app_config.model_copy(update={"model": model})
     if settings.gemini_api_key.strip():
         from app.ai.client import GeminiBackend
 
@@ -253,7 +254,7 @@ def main() -> int:
 
     settings = Settings()
     clock = clock_for(settings.demo_now, settings.data_dir)
-    backend, app_config = build_backend(settings, load_app_config())
+    backend, app_config = build_backend(settings, load_app_config(settings.app_config_path))
     if backend is None:
         print("worker: GEMINI_API_KEY is not set, so mail is not polled or processed", file=sys.stderr)
     handlers = default_handlers(backend)

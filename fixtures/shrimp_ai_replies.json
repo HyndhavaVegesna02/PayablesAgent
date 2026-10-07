@@ -1,0 +1,74 @@
+{
+  "_note": "The shrimp profile's canned AI replies (CHG-058; dev only): what the fixture AI answers with DEMO_AI=fixtures and FIXTURE_REPLIES_PATH=fixtures/shrimp_ai_replies.json (make *-shrimp FALLBACK=1), and in the rehearsal driver's offline mode. Written by hand from the fixtures; every value is fictional. An email is matched by its text, an upload by the sha256 of the file of that name in shrimp_uploads (the PLACEHOLDER files until the user's real voice note and photo replace them, with their own entries). fixtures/ai_replies.json is a separate store and is not touched.",
+  "_email_folders": ["shrimp_inbox"],
+  "_upload_folders": ["shrimp_uploads"],
+  "shrimp_inbox": {
+    "01-invoice-sri-lakshmi-0931.eml": {
+      "SortResult": {"doc_type": "invoice", "reason": "A feed dealer's invoice."},
+      "InvoiceExtract": {"seller_name": "Sri Lakshmi Aqua Feeds", "seller_gstin": "37ZZZSZ0007Z1ZW", "buyer_name": "Godavari Aqua Farm", "buyer_gstin": null, "invoice_number": "SLAF/INV/0931", "invoice_date": "2026-10-19", "due_date": "2026-10-26", "lines": [{"description": "Grower feed 2mm, 10 bags x Rs.2,500.00", "amount_text": "Rs.25,000.00"}], "gst_texts": [], "round_off_text": null, "total_text": "Rs.25,000.00", "payee_account_number": "50100 7788 2201", "payee_ifsc": "SBIN0004321", "uncertain_fields": []}
+    },
+    "02-weighment-slip-ravi-traders.eml": {
+      "SortResult": {"doc_type": "payment_confirmation", "reason": "A buyer's weighment slip saying an advance was paid."}
+    },
+    "03-credit-ravi-k-upi.eml": {
+      "SortResult": {"doc_type": "bank_alert", "reason": "A bank alert for a credit."},
+      "BankAlertExtract": {"account_last4": "7310", "direction": "credit", "amount_text": "Rs.2,00,000.00", "txn_date": "2026-10-20", "counterparty": "RAVI K (ravi.k@okaxis)", "reference": "629312345678", "available_balance_text": "Rs.3,10,000.00", "uncertain_fields": []}
+    },
+    "04-invoice-sri-lakshmi-1042-new-bank.eml": {
+      "SortResult": {"doc_type": "invoice", "reason": "A feed dealer's settlement invoice."},
+      "InvoiceExtract": {"seller_name": "Sri Lakshmi Aqua Feeds", "seller_gstin": "37ZZZSZ0007Z1ZW", "buyer_name": "Godavari Aqua Farm", "buyer_gstin": null, "invoice_number": "SLAF/INV/1042", "invoice_date": "2026-10-21", "due_date": "2026-10-26", "lines": [{"description": "Grower feed 3mm, 72 bags x Rs.7,400.00", "amount_text": "Rs.5,32,800.00"}, {"description": "Vannamei seed PL-12, balance on account", "amount_text": "Rs.1,14,000.00"}], "gst_texts": [], "round_off_text": null, "total_text": "Rs.6,46,800.00", "payee_account_number": "50200 9911 8876", "payee_ifsc": "ICIC0007788", "uncertain_fields": []}
+    },
+    "05-lease-reminder-subba-rao.eml": {
+      "SortResult": {"doc_type": "irrelevant", "reason": "A personal reminder, not a bill or a payment."}
+    },
+    "06-payment-advice-ravi-traders.eml": {
+      "SortResult": {"doc_type": "payment_confirmation", "reason": "A buyer's payment advice for the harvest balance."}
+    },
+    "07-credit-ravi-traders-neft.eml": {
+      "SortResult": {"doc_type": "bank_alert", "reason": "A bank alert for a credit."},
+      "BankAlertExtract": {"account_last4": "7310", "direction": "credit", "amount_text": "Rs.9,20,000.00", "txn_date": "2026-10-23", "counterparty": "RAVI TRADERS", "reference": "N296271234567", "available_balance_text": "Rs.12,30,000.00", "uncertain_fields": []}
+    },
+    "08-debit-sri-lakshmi-neft.eml": {
+      "SortResult": {"doc_type": "bank_alert", "reason": "A bank alert for a debit."},
+      "BankAlertExtract": {"account_last4": "7310", "direction": "debit", "amount_text": "Rs.6,46,800.00", "txn_date": "2026-10-26", "counterparty": "SRI LAKSHMI AQUA FEEDS", "reference": "N300261234567", "available_balance_text": "Rs.5,83,200.00", "uncertain_fields": []}
+    }
+  },
+  "shrimp_uploads": {
+    "PLACEHOLDER-voice-note.wav": {
+      "VoiceBillExtract": {"transcript": "Lakshman here, two aerators ka motor kharab, repair bill atharah hazaar, Sunday tak dena hai.", "vendor_name": null, "amount_spoken": "atharah hazaar", "invoice_number": null, "due_date": null, "uncertain_fields": []}
+    },
+    "PLACEHOLDER-repair-slip.png": {
+      "SortResult": {"doc_type": "invoice", "reason": "A handwritten repair bill."},
+      "InvoiceExtract": {"seller_name": "Sri Sai Motor Rewinding Works", "seller_gstin": null, "buyer_name": "Godavari Aqua Farm", "buyer_gstin": null, "invoice_number": "57", "invoice_date": "2026-10-22", "due_date": null, "lines": [{"description": "Aerator motor rewinding, 2 nos", "amount_text": "18,000"}], "gst_texts": [], "round_off_text": null, "total_text": "18,000", "payee_account_number": null, "payee_ifsc": null, "uncertain_fields": []}
+    }
+  },
+  "_agent_scripts_note": "What the fixture AI answers for an AgentStep in the shrimp profile, read as in fixtures/ai_replies.json (the first script whose `case` text is in the case file; its first rule whose `if` texts are all there). Each credit case searches the mailbox, then ends RESOLVED citing the message that explains the credit, with nothing to write: the credit stays UNMATCHED until the owner links it on the explain_credit question, where this summary is shown as the assistant's own words.",
+  "agent_scripts": [
+    {
+      "name": "the harvest advance from a personal UPI",
+      "case": "Credit of ₹2,00,000",
+      "rules": [
+        {
+          "if": ["message 02-weighment-slip-ravi-traders.eml"],
+          "step": {"notes": "the weighment slip names this advance", "final": {"outcome": "RESOLVED", "summary": "The ₹2,00,000 UPI credit from RAVI K (ravi.k@okaxis) on Tue 20 Oct is Ravi Traders' harvest advance: their weighment slip, emailed at 09:00 that day, says 'Advance Rs.2,00,000 paid today by UPI from ravi.k@okaxis'. It looks like HARVEST-ADV; please link it.", "cited_message_ids": ["02-weighment-slip-ravi-traders.eml"], "relied_on_candidate_ids": []}}
+        },
+        {
+          "step": {"notes": "look for mail about the UPI payer", "tool": {"name": "search_gmail", "args": {"query": "ravi.k@okaxis"}}}
+        }
+      ]
+    },
+    {
+      "name": "the harvest balance paid short",
+      "case": "Credit of ₹9,20,000",
+      "rules": [
+        {
+          "if": ["message 06-payment-advice-ravi-traders.eml"],
+          "step": {"notes": "the payment advice explains the gap", "final": {"outcome": "RESOLVED", "summary": "The ₹9,20,000 NEFT from RAVI TRADERS on Fri 23 Oct is the harvest balance, paid short: Ravi Traders' payment advice, emailed at 15:00, takes ₹10,15,000 less re-grading ₹22,500, soft shell ₹24,300, ice and crew ₹20,000 and commission ₹28,200 (₹95,000 in all) and pays ₹9,20,000. It looks like HARVEST-BAL, short by ₹95,000; please link it.", "cited_message_ids": ["06-payment-advice-ravi-traders.eml"], "relied_on_candidate_ids": []}}
+        },
+        {
+          "step": {"notes": "look for Ravi Traders' payment advice", "tool": {"name": "search_gmail", "args": {"query": "Ravi Traders payment advice"}}}
+        }
+      ]
+    }
+  ]
+}

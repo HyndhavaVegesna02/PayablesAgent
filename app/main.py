@@ -30,7 +30,7 @@ def create_app(
     app = FastAPI(title="PayablesAgent", docs_url=None, redoc_url=None, openapi_url=None)
     app.state.settings = settings
     app.state.clock = clock or clock_for(settings.demo_now, settings.data_dir)
-    app.state.app_config = app_config or load_app_config()
+    app.state.app_config = app_config or load_app_config(settings.app_config_path)
 
     @app.get("/api/health")
     def health() -> dict:
