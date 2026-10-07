@@ -772,3 +772,13 @@ changes:
     expected_paths: ['app/web/repo.py', 'app/web/templates/attention.html', 'scripts/rehearse_shrimp.py', 'evals/workflow.py']
     depends_on: CHG-058
     batch: null
+  - id: CHG-060
+    title: The shrimp demo's move 4 as two bills, one per input path (the user's delta, PO-approved with E1-E4)
+    file: docs/changes/CHG-060.md
+    status: ready
+    priority: 60
+    type: feature
+    lane: planned
+    expected_paths: ['fixtures/shrimp_ai_replies.json', 'scripts/rehearse_shrimp.py', 'docs/demo-shrimp.md', 'tests/test_shrimp_profile.py']
+    depends_on: CHG-058
+    batch: 22
