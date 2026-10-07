@@ -775,7 +775,7 @@ changes:
   - id: CHG-060
     title: The shrimp demo's move 4 as two bills, one per input path (the user's delta, PO-approved with E1-E4)
     file: docs/changes/CHG-060.md
-    status: ready
+    status: done
     priority: 60
     type: feature
     lane: planned
