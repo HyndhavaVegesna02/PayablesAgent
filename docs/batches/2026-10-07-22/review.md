@@ -32,3 +32,10 @@ The spelling test fails on dff9eaf's driver with the round-1 message and passes 
 app/planner/plan.py:197; approving Thursday's payments at the end of move 4 was probed in-process (303; the four
 go to PAYMENT_EXPECTED; the fortnight still passes 7/7), so the doc's claim is true. One minor left, to CHG-059:
 the slip-bill check writes normalise_invoice_number("VM/412") instead of REPAIR's field.
+
+## After the review: the PO's narrative choice (06f41e8)
+
+On the reviewer's minor about Thursday's four being paid late, the PO chose: the owner approves Thursday's
+payments at move 4 (APSPDCL, the wages, the diesel and the repair, ₹51,000), so they are paid on time and the
+approval card is seen on stage. The driver checks all four PAYMENT_EXPECTED; move 5 approves only the dealer's
+two; the floor (₹4,32,200) and move 6 are unchanged. Close gates rerun at 06f41e8 (direct-gates-final.txt).

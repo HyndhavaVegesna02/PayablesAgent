@@ -18,5 +18,7 @@ changes:
       - {command: "make check-evidence", exit_code: 4551, output_tail: "'C:\\ProgramData\\chocolatey\\bin\\make.exe' was blocked by your organization's Device Guard policy. | Contact your support person for more info.", commit: 1df4c3e, at: 2026-10-07T16:12:29+00:00}
       - {command: "make test", exit_code: 4551, output_tail: "'C:\\ProgramData\\chocolatey\\bin\\make.exe' was blocked by your organization's Device Guard policy. | Contact your support person for more info.", commit: cc606dd, at: 2026-10-07T16:27:49+00:00}
       - {command: "make check-evidence", exit_code: 4551, output_tail: "'C:\\ProgramData\\chocolatey\\bin\\make.exe' was blocked by your organization's Device Guard policy. | Contact your support person for more info.", commit: cc606dd, at: 2026-10-07T16:27:49+00:00}
+      - {command: "make test", exit_code: 4551, output_tail: "'C:\\ProgramData\\chocolatey\\bin\\make.exe' was blocked by your organization's Device Guard policy. | Contact your support person for more info.", commit: 06f41e8, at: 2026-10-07T16:32:26+00:00}
+      - {command: "make check-evidence", exit_code: 4551, output_tail: "'C:\\ProgramData\\chocolatey\\bin\\make.exe' was blocked by your organization's Device Guard policy. | Contact your support person for more info.", commit: 06f41e8, at: 2026-10-07T16:32:26+00:00}
     prepatch: "PASS at 1df4c3e: the 5 new or changed tests in tests/test_shrimp_profile.py fail on d5c1456"
     notes_resolved: false
