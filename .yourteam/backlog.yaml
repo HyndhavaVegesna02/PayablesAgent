@@ -741,3 +741,24 @@ changes:
     expected_paths: ['tests/test_evidence_docs.py', 'tests/test_combined_report.py', 'tests/test_ablation_combine.py', 'docs/evals/']
     depends_on: CHG-055
     batch: null
+  - id: CHG-057
+    title: The owner links a credit to an invoice (explain_credit), mirroring the debit side (PO, batch 21)
+    file: docs/changes/CHG-057.md
+    status: ready
+    priority: 57
+    type: feature
+    lane: planned
+    expected_paths: ['app/domain/states.py', 'app/ledger/reconcile.py', 'app/web/actions.py', 'app/web/repo.py', 'app/web/routes/attention.py', 'app/web/templates/attention.html', 'app/jobs/run_case.py', 'docs/permission-model.md', 'tests/']
+    depends_on: null
+    batch: 21
+
+  - id: CHG-058
+    title: The shrimp-farm live demo profile, its offline fallback and a rehearsal driver (PO, batch 21)
+    file: docs/changes/CHG-058.md
+    status: ready
+    priority: 58
+    type: feature
+    lane: planned
+    expected_paths: ['app/config.py', 'app/ai/fixture_backend.py', 'app/worker.py', 'app/main.py', 'app/demo.py', 'fixtures/shrimp_*', 'config.shrimp.yaml', '.env.shrimp', 'Makefile', 'scripts/', 'docs/demo-shrimp.md', 'tests/']
+    depends_on: CHG-057
+    batch: 21
