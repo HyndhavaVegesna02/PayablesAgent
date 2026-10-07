@@ -782,3 +782,13 @@ changes:
     expected_paths: ['fixtures/shrimp_ai_replies.json', 'scripts/rehearse_shrimp.py', 'docs/demo-shrimp.md', 'tests/test_shrimp_profile.py']
     depends_on: CHG-058
     batch: 22
+  - id: CHG-061
+    title: The shrimp rehearsal holds under live variance (live rehearsal 1's findings; PO, batch 23)
+    file: docs/changes/CHG-061.md
+    status: ready
+    priority: 61
+    type: feature
+    lane: planned
+    expected_paths: ['scripts/rehearse_shrimp.py', 'fixtures/shrimp_inbox/', 'fixtures/shrimp_ai_replies.json', 'docs/demo-shrimp.md', 'tests/test_shrimp_profile.py']
+    depends_on: CHG-060
+    batch: 23

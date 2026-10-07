@@ -1,25 +1,17 @@
 # Active batch. status: none means no batch is running.
-batch: 22
-status: closed      # none | active | review | closed | aborted
-goal: "The user's move-4 delta to the shrimp demo (dev only, R011; PO-approved with E1-E4): two different bills, a Telugu voice note for Raju Petrol Bunk's Rs.3,000 diesel and a photo of Venkat Motors' Rs.18,000 repair slip, in the canned replies, the rehearsal driver and the demo script. Offline only; no Gemini; no prompt file changes."
-branch: batch-22
+batch: 23
+status: active      # none | active | review | closed | aborted
+goal: "The shrimp rehearsal holds under live variance (live rehearsal 1's findings; PO): bills and questions found by content, a misread buyer's slip rejected through the real form, emails 02 and 06 worded plainly as the buyer's records, vendor names compared as the app compares them, canned replies for the user's real files. Offline only; dev only; no Gemini."
+branch: batch-23
 start_tag: null
-started: "2026-10-07T22:00:00+05:30"
-interrupts:
-  - "PO accepted CHG-060 on direct-command evidence at 73abb8a (C:/Hyn/PayablesAgent-uicheck: pytest 1968 passed, the offline driver 7/7), because Windows Application Control blocked make; the red make entries stay on the record"
-  - "make blocked by Application Control (exit 4551) at the gate; recorded red; the same commands run directly at 1df4c3e, output in docs/batches/2026-10-07-22/direct-gates.txt (all green); evals --ai fixtures --runs 1: 14/14, its raw-runs folder deleted; offline driver 7/7"
+started: "2026-10-08T00:30:00+05:30"
+interrupts: []
 changes:
-  - id: CHG-060
+  - id: CHG-061
     lane: planned
-    board: done
-    start_commit: d5c1456
+    board: in_progress
+    start_commit: 9feec65
     blocked_question: null
-    gate_evidence:
-      - {command: "make test", exit_code: 4551, output_tail: "'C:\\ProgramData\\chocolatey\\bin\\make.exe' was blocked by your organization's Device Guard policy. | Contact your support person for more info.", commit: 1df4c3e, at: 2026-10-07T16:12:29+00:00}
-      - {command: "make check-evidence", exit_code: 4551, output_tail: "'C:\\ProgramData\\chocolatey\\bin\\make.exe' was blocked by your organization's Device Guard policy. | Contact your support person for more info.", commit: 1df4c3e, at: 2026-10-07T16:12:29+00:00}
-      - {command: "make test", exit_code: 4551, output_tail: "'C:\\ProgramData\\chocolatey\\bin\\make.exe' was blocked by your organization's Device Guard policy. | Contact your support person for more info.", commit: cc606dd, at: 2026-10-07T16:27:49+00:00}
-      - {command: "make check-evidence", exit_code: 4551, output_tail: "'C:\\ProgramData\\chocolatey\\bin\\make.exe' was blocked by your organization's Device Guard policy. | Contact your support person for more info.", commit: cc606dd, at: 2026-10-07T16:27:49+00:00}
-      - {command: "make test", exit_code: 4551, output_tail: "'C:\\ProgramData\\chocolatey\\bin\\make.exe' was blocked by your organization's Device Guard policy. | Contact your support person for more info.", commit: 06f41e8, at: 2026-10-07T16:32:26+00:00}
-      - {command: "make check-evidence", exit_code: 4551, output_tail: "'C:\\ProgramData\\chocolatey\\bin\\make.exe' was blocked by your organization's Device Guard policy. | Contact your support person for more info.", commit: 06f41e8, at: 2026-10-07T16:32:26+00:00}
-    prepatch: "PASS at 1df4c3e: the 5 new or changed tests in tests/test_shrimp_profile.py fail on d5c1456"
+    gate_evidence: []
+    prepatch: null
     notes_resolved: false
