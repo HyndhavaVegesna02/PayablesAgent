@@ -118,3 +118,12 @@ outside any test this repo runs. Approved by the PO (user's direction).
 2026-10-07, extended by the PO with batch 21's direction (user-approved): nothing from the shrimp demo profile
 (CHG-058) goes to the public tree without the PO's explicit go. The demo script lives on dev only, as
 docs/demo-shrimp.md. CLAUDE.md, which names the *-shrimp targets, is already on batch 19's list.
+
+2026-10-08, amended by the PO with the user's decision. Before committing the user's real uploads, the dev found
+that `origin` (HyndhavaVegesna02/PayablesAgent) is a public repository (the GitHub API answers an anonymous
+request with "private": false; the PO confirmed it), so batches 21 to 23 had already published the shrimp
+profile there, then without personal data. Offered a private origin or keeping the personal files out, the
+user chose: "no problem let it be public". The caretaker's Telugu voice note, the repair-slip photo, both live
+rehearsals' reports and traces, and the presenter handoff are committed to dev and pushed to origin main. The
+clean public repository (`public`, PayableAgent) and the hackathon submission branch still receive nothing of
+the shrimp profile without the user's go.

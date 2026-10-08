@@ -1,0 +1,396 @@
+{
+  "meta": {
+    "mode": "live",
+    "model": "gemini-3.8-flash",
+    "prompt_version": "2026-10-04.2",
+    "commit": "9feec65+uncommitted",
+    "date": "2026-10-07T23:55:55+05:30",
+    "uploads": [
+      "voice: voice-diesel-raju.mp3",
+      "photo: repair-slip-venkat.jpg"
+    ],
+    "budget": {
+      "calls": 45,
+      "micro_usd": 217417,
+      "rate_limited": 0,
+      "caps": {
+        "calls": 600,
+        "micro_usd": 1000000
+      },
+      "stopped": null
+    }
+  },
+  "ok": false,
+  "moves": [
+    {
+      "n": 1,
+      "at": "Mon 19 Oct 09:00",
+      "actor": "owner",
+      "action": "Start, Mon 19 Oct 09:00: the plan before the harvest",
+      "ok": true,
+      "error": null,
+      "notes": [
+        "plan: {'LEASE-OCT26': 'PAY 2026-10-29', 'APSPDCL-OCT26': 'PAY 2026-10-22', 'WAGES-OCT26': 'PAY 2026-10-22'}"
+      ],
+      "checks": [
+        {
+          "id": "balance",
+          "expected": 11000000,
+          "actual": 11000000,
+          "ok": true,
+          "why": "seed: ₹1,10,000 in HDFC **7310"
+        },
+        {
+          "id": "no-shortfall-yet",
+          "expected": [
+            true,
+            11000000
+          ],
+          "actual": [
+            true,
+            11000000
+          ],
+          "ok": true,
+          "why": "the ₹2,00,000 advance (COMMITTED, Tue) covers the three bills; the lowest is today's ₹1,10,000"
+        },
+        {
+          "id": "balance-not-counted",
+          "expected": "EXPECTED",
+          "actual": "EXPECTED",
+          "ok": true,
+          "why": "seed: the ₹10,15,000 balance counts only when it lands or the owner asks for it early"
+        }
+      ]
+    },
+    {
+      "n": 2,
+      "at": "Mon 19 Oct 12:00",
+      "actor": "vendor + owner",
+      "action": "Move 1, Mon 19 Oct 12:00: the last feed delivery's invoice; the owner confirms ₹25,000",
+      "ok": true,
+      "error": null,
+      "notes": [],
+      "checks": [
+        {
+          "id": "bill-in-the-ledger",
+          "expected": 2500000,
+          "actual": 2500000,
+          "ok": true,
+          "why": "fixture 01: 10 bags x Rs.2,500.00 = Rs.25,000.00, to the dealer"
+        },
+        {
+          "id": "details-match-the-record",
+          "expected": "verified",
+          "actual": "verified",
+          "ok": true,
+          "why": "fixture 01's account ending 2201 is the one on record: nothing to ask"
+        }
+      ]
+    },
+    {
+      "n": 3,
+      "at": "Tue 20 Oct 10:01",
+      "actor": "bank + agent + owner",
+      "action": "Move 2, Tue 20 Oct 10:00: the advance from RAVI K's personal UPI; the owner links it to HARVEST-ADV",
+      "ok": true,
+      "error": null,
+      "notes": [
+        "agent (RESOLVED): The credit of ₹2,00,000 on 2026-10-20 (bank_txn:1, ref 629312345678) is an advance payment from customer Ravi Traders (Ravi K, ravi.k@okaxis, party ID 2). It corresponds to the harvest weighment slip sent by ravi@ravitraders.example on the morning of 2026-10-20 for pond 2 at Godavari Aqua Farm (4,500 kg at Rs.270/kg, gross value Rs.12,15,000.00), for which Ravi K transferred ₹2,00,000 via UPI shortly after.",
+        "cited: ravi@ravitraders.example: Weighment slip, harvest 20 Oct - Godavari Aqua Farm; alerts@hdfcbank.example: Credit alert: Rs.2,00,000.00 credited to your account ending 7310"
+      ],
+      "checks": [
+        {
+          "id": "payer-unknown",
+          "expected": "unknown_txn",
+          "actual": "unknown_txn",
+          "ok": true,
+          "why": "RAVI K (ravi.k@okaxis) names no party"
+        },
+        {
+          "id": "agent-finding-shown",
+          "expected": true,
+          "actual": true,
+          "ok": true,
+          "why": "PO: the explain_credit card shows what the agent found for its case, labelled as its words"
+        },
+        {
+          "id": "nothing-preselected",
+          "expected": false,
+          "actual": false,
+          "ok": true,
+          "why": "PO: the AI informs and the owner decides: no invoice is chosen for him"
+        },
+        {
+          "id": "checklist-5-advance-matched",
+          "expected": [
+            "MATCHED",
+            2
+          ],
+          "actual": [
+            "MATCHED",
+            2
+          ],
+          "ok": true,
+          "why": "handoff checklist 5: the ₹2,00,000 credit is MATCHED to Ravi Traders"
+        },
+        {
+          "id": "checklist-5-advance-confirmed",
+          "expected": "CONFIRMED",
+          "actual": "CONFIRMED",
+          "ok": true,
+          "why": "handoff checklist 5: HARVEST-ADV is CONFIRMED"
+        },
+        {
+          "id": "linked-to-this-credit",
+          "expected": 1,
+          "actual": 1,
+          "ok": true,
+          "why": "the receivable names the credit that paid it"
+        },
+        {
+          "id": "balance",
+          "expected": 31000000,
+          "actual": 31000000,
+          "ok": true,
+          "why": "1,10,000 + 2,00,000; the alert shows Rs.3,10,000.00"
+        }
+      ]
+    },
+    {
+      "n": 4,
+      "at": "Wed 21 Oct 12:00",
+      "actor": "vendor + owner",
+      "action": "Move 3, Wed 21 Oct 12:00: the ₹6,46,800 settlement with new bank details; the owner confirms the bill, rejects the details, and asks Ravi Traders to pay early",
+      "ok": false,
+      "error": "the page marks due_date on entry 2, and the step gives the owner no value for it",
+      "notes": [],
+      "checks": [
+        {
+          "id": "details-held",
+          "expected": "change_pending",
+          "actual": "change_pending",
+          "ok": true,
+          "why": "fixture 04's account 8876 differs from 2201 on record: code holds the old details and asks"
+        }
+      ]
+    },
+    {
+      "n": 5,
+      "at": "Thu 22 Oct 10:00",
+      "actor": "landowner + helper + owner",
+      "action": "Move 4, Thu 22 Oct 10:00: the lease asked early; the caretaker's Telugu voice note (₹3,000 diesel) and a photo of Venkat Motors' ₹18,000 repair slip; the owner confirms both bills and approves Thursday's payments",
+      "ok": false,
+      "error": null,
+      "notes": [
+        "lease: PAY 2026-10-29",
+        "transcript: Raju petrol bunk diesel bill generator kosam 3000 rupees 24th October 2026 lopala kattali",
+        "plan: {'LEASE-OCT26': 'PAY 2026-10-29', 'APSPDCL-OCT26': 'PAY 2026-10-22', 'WAGES-OCT26': 'PAY 2026-10-22', 'SLAF/INV/0931': 'PAY 2026-10-26', 'Raju petrol bunk': 'PAY 2026-10-22', 'VM/412': 'PAY 2026-10-22'}"
+      ],
+      "checks": [
+        {
+          "id": "lease-not-paid-early",
+          "expected": [
+            "2026-10-31",
+            false
+          ],
+          "actual": [
+            "2026-10-31",
+            false
+          ],
+          "ok": true,
+          "why": "the landowner's email changes no bill: the lease stays due Sat 31 Oct"
+        },
+        {
+          "id": "two-bills-not-one",
+          "expected": [
+            "passed",
+            "passed"
+          ],
+          "actual": [
+            "passed",
+            "passed"
+          ],
+          "ok": true,
+          "why": "the delta: a ₹3,000 diesel bill and an ₹18,000 repair are two bills, so neither is a duplicate"
+        },
+        {
+          "id": "transcript-beside-it",
+          "expected": true,
+          "actual": true,
+          "ok": true,
+          "why": "the voice entry shows what was said beside the bill"
+        },
+        {
+          "id": "voice-bill",
+          "expected": [
+            "RAJU PETROL BUNK",
+            null
+          ],
+          "actual": [
+            "RAJU PETROL BUNK",
+            null
+          ],
+          "ok": true,
+          "why": "the delta: 'Raju petrol bunk diesel bill ... three thousand rupees, twenty-fourth October 2026'; found by its ₹3,000 and 24 Oct, the vendor compared as the app compares names"
+        },
+        {
+          "id": "slip-bill",
+          "expected": [
+            "VENKAT MOTORS",
+            "VM412"
+          ],
+          "actual": [
+            "VENKAT MOTORS AERATOR PUMP REPAIRS BHIMAVARAM",
+            "VM412"
+          ],
+          "ok": false,
+          "why": "the delta's slip: VM/412, Rs. 14,000 + Rs. 4,000 = Rs. 18,000, pay by 25/10/2026"
+        },
+        {
+          "id": "new-bills-in-the-plan",
+          "expected": [
+            [
+              "PAY 2026-10-22",
+              true
+            ],
+            [
+              "PAY 2026-10-22",
+              true
+            ]
+          ],
+          "actual": [
+            [
+              "PAY 2026-10-22",
+              true
+            ],
+            [
+              "PAY 2026-10-22",
+              true
+            ]
+          ],
+          "ok": true,
+          "why": "the planner's own decision and reason (PO): both fall due before the next payment day, Mon 26, so each is paid today, Thu 22, its 'latest payment day on or before the due date'; the shortfall is the dealer's ₹6,46,800 (ESCALATE), not these"
+        },
+        {
+          "id": "thursday-approved",
+          "expected": [
+            "PAYMENT_EXPECTED",
+            "PAYMENT_EXPECTED",
+            "PAYMENT_EXPECTED",
+            "PAYMENT_EXPECTED"
+          ],
+          "actual": [
+            "PAYMENT_EXPECTED",
+            "PAYMENT_EXPECTED",
+            "PAYMENT_EXPECTED",
+            "PAYMENT_EXPECTED"
+          ],
+          "ok": true,
+          "why": "the owner approves the plan's four PAY lines for Thu 22 (APSPDCL, the wages, the diesel and the repair, ₹51,000), so each is paid by its due date; the money moves only in his bank app"
+        }
+      ]
+    },
+    {
+      "n": 6,
+      "at": "Fri 23 Oct 16:00",
+      "actor": "bank + agent + owner",
+      "action": "Move 5, Fri 23 Oct 16:00: Ravi Traders pays the balance ₹95,000 short; the owner links it to HARVEST-BAL and approves Monday's payments",
+      "ok": false,
+      "error": null,
+      "notes": [
+        "agent (RESOLVED): Bank transaction bank_txn:2 (credit of ₹9,20,000 on 2026-10-23, reference N296271234567 from RAVI TRADERS) settles receivable 2 (invoice HARVEST-BAL, ₹10,15,000). Payment advice 06-payment-advice-ravi-traders.eml confirms settlement for the harvest balance (Rs.12,15,000.00 less advance Rs.2,00,000.00 = Rs.10,15,000.00). Bank credit alert 07-credit-ravi-traders-neft.eml confirms the NEFT credit of Rs.9,20,000.00 with reference N296271234567 arrived immediately after, settling receivable 2 as a part payment.",
+        "cited: ravi@ravitraders.example: Payment advice - harvest balance, Godavari Aqua Farm; alerts@hdfcbank.example: Credit alert: Rs.9,20,000.00 credited to your account ending 7310",
+        "event: Owner: this ₹9,20,000 credit settles Ravi Traders HARVEST-BAL, short by ₹95,000 (₹10,15,000 invoiced).",
+        "plan: lowest ₹10,79,000 on 2026-10-29; {'LEASE-OCT26': 'PAY 2026-10-29', 'SLAF/INV/0931': 'PAY 2026-10-26'}"
+      ],
+      "checks": [
+        {
+          "id": "payer-matches-amount-doesnt",
+          "expected": "ambiguous_match",
+          "actual": "ambiguous_match",
+          "ok": true,
+          "why": "RAVI TRADERS names Ravi Traders, but ₹9,20,000 is no open invoice's amount"
+        },
+        {
+          "id": "agent-finding-shown",
+          "expected": true,
+          "actual": true,
+          "ok": true,
+          "why": "PO: the explain_credit card shows what the agent found for its case, labelled as its words"
+        },
+        {
+          "id": "nothing-preselected",
+          "expected": false,
+          "actual": false,
+          "ok": true,
+          "why": "PO: the AI informs and the owner decides: no invoice is chosen for him"
+        },
+        {
+          "id": "checklist-5-balance-confirmed",
+          "expected": [
+            "CONFIRMED",
+            2
+          ],
+          "actual": [
+            "CONFIRMED",
+            2
+          ],
+          "ok": true,
+          "why": "handoff checklist 5: HARVEST-BAL is CONFIRMED with the ₹9,20,000 credit"
+        },
+        {
+          "id": "checklist-5-gap-named",
+          "expected": true,
+          "actual": true,
+          "ok": true,
+          "why": "handoff checklist 5: the event names the gap: 10,15,000 - 9,20,000 = 95,000"
+        },
+        {
+          "id": "checklist-5-floor-holds",
+          "expected": [
+            true,
+            true
+          ],
+          "actual": [
+            true,
+            true
+          ],
+          "ok": true,
+          "why": "handoff checklist 5: the plan's lowest balance is at or above the ₹50,000 safety amount"
+        },
+        {
+          "id": "dealer-approved",
+          "expected": "PAYMENT_EXPECTED",
+          "actual": null,
+          "ok": false,
+          "why": "the owner approves Monday's payments, the dealer's settlement among them"
+        }
+      ]
+    },
+    {
+      "n": 7,
+      "at": "Mon 26 Oct 11:00",
+      "actor": "bank",
+      "action": "Move 6, Mon 26 Oct 11:00: the dealer's NEFT lands; the bill is paid",
+      "ok": false,
+      "error": null,
+      "notes": [],
+      "checks": [
+        {
+          "id": "dealer-paid",
+          "expected": "PAID",
+          "actual": null,
+          "ok": false,
+          "why": "fixture 08's ₹6,46,800 NEFT to SRI LAKSHMI AQUA FEEDS matches the approved bill"
+        },
+        {
+          "id": "balance",
+          "expected": 58320000,
+          "actual": 58320000,
+          "ok": true,
+          "why": "12,30,000 - 6,46,800; the alert shows Rs.5,83,200.00"
+        }
+      ]
+    }
+  ]
+}

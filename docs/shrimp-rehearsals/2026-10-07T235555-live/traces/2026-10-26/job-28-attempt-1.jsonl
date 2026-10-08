@@ -1,0 +1,1 @@
+{"run_id": "job-28-attempt-1", "step": 1, "timestamp": "2026-10-26T11:00:00+05:30", "wall_time": "2026-10-08T00:03:48.363325+05:30", "tool": "poll_mail", "arguments": {"since": "2026-10-22", "senders": ["accounts@srilakshmiaquafeeds.example", "alerts@hdfcbank.example", "ravi@ravitraders.example", "subbarao@example.test"]}, "result": "1 stored, 3 already seen"}

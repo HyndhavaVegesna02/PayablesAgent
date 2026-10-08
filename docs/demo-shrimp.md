@@ -1,7 +1,8 @@
 # Demo script: the shrimp farm's harvest fortnight
 
-Dev only (R011, extended by the PO for the shrimp profile: nothing here goes to the public tree
-without the PO's explicit go). About 12 minutes with talk. CHG-058.
+Kept to this repository, which is public by the user's choice (R011): nothing here goes to the clean
+public repository (PayableAgent) or the hackathon submission branch without the user's go. About 12
+minutes with talk. CHG-058.
 
 Godavari Aqua Farm is a vannamei shrimp farmer in coastal Andhra Pradesh. The farm, its people, its
 bank and every figure are fictional. The fortnight is weeks 15 to 16 of a 110-day crop: the final
@@ -10,7 +11,7 @@ commission agent who sells the harvest (Ravi Traders), the landowner (K. Subba R
 electricity board (APSPDCL). The caretaker, Lakshman, is paid wages.
 
 The quotes below are what the pages render in the offline rehearsal (`make rehearse-shrimp`) on the
-placeholder uploads. With the user's real voice note and photo in place (this machine), offline, the
+placeholder uploads. With the user's real voice note and photo, which are committed, offline, the
 rehearsal and `FALLBACK=1` alike, replays what live rehearsal 1 read from them instead: move 4 quotes both.
 Live, Gemini's own words differ: the assistant's findings, the sort of each email, and the voice
 note's transcript. The figures, the plan and every state change are code's: the same whenever the
@@ -23,8 +24,8 @@ documents are read right, and marked for the farmer when they aren't.
   and uploads can't be stored. If `make run-shrimp` says `SESSION_SECRET is not set`, or the worker
   names `FERNET_KEY`, the message names the command that makes the value. Add the lines to `.env`
   yourself.
-- **The real uploads** (see "Files to supply" below). Until they are in place the placeholders are
-  used, and only offline.
+- **The real uploads**, committed in `fixtures/shrimp_uploads/` (see "Files to supply" below). Without
+  them the placeholders are used, and only offline.
 - **Billing headroom** on the Gemini project, checked the day before and the morning of. Google's
   monthly spending cap stopped a live run on 4 Oct.
 
@@ -150,7 +151,7 @@ duplicate. As the owner, Needs attention shows both:
 - the photo: "Please check this bill from an uploaded photo: Venkat Motors, ₹18,000." That is slip
   VM/412, ₹14,000 rewinding plus ₹4,000 bearings and gearbox oil, pay by 25 Oct.
 
-With the real files (live, and offline on this machine), live rehearsal 1 read them as: "Please check
+With the real files (live, and offline on any clone), live rehearsal 1 read them as: "Please check
 this bill from an uploaded voice note: Raju petrol bunk, ₹3,000.", with the transcript "Raju petrol
 bunk diesel bill generator kosam 3000 rupees 24th October 2026 lopala kattali" (Latin script, digits);
 and "Please check this bill from an uploaded photo: VENKAT MOTORS/Aerator & Pump Repairs, Bhimavaram,
@@ -219,14 +220,14 @@ payments wait for their bank alerts.
 
 ## Files to supply
 
-Drop them in `fixtures/shrimp_uploads/`; the rehearsal driver picks them up by name. They are personal
-data: never committed (git-excluded on this machine), backed up in `C:\Hyn\shrimp-uploads-backup\`. Their
-canned replies are live rehearsal 1's readings, so offline uses them wherever the files are present, and
-the placeholders anywhere else (D7). Both have been supplied: the voice note as `voice-diesel-raju.mp3`.
+Both are supplied and committed in `fixtures/shrimp_uploads/`: the voice note as
+`voice-diesel-raju.mp3` and the photo as `repair-slip-venkat.jpg`; the rehearsal driver picks them up by
+name. Their canned replies are live rehearsal 1's readings, so offline uses them on any clone; the
+`PLACEHOLDER-*` files stay for the tests (D7).
 
 | File | What | Formats the app takes | Limit |
 | --- | --- | --- | --- |
-| `voice-diesel-raju.wav` | a real recording by a Telugu speaker, about 6 seconds, phone held close, no background noise, exactly one amount: "Raju petrol bunk diesel bill, generator kosam, three thousand rupees, twenty-fourth October 2026 lopala kattali." (రాజు పెట్రోల్ బంక్ డీజిల్ బిల్, జనరేటర్ కోసం, three thousand rupees, twenty-fourth October 2026 లోపల కట్టాలి.) | .wav as named; .ogg or .opus (a WhatsApp voice note as is), .mp3 or .m4a also read | 10 MB |
+| `voice-diesel-raju.mp3` | a real recording by a Telugu speaker, about 6 seconds, phone held close, no background noise, exactly one amount: "Raju petrol bunk diesel bill, generator kosam, three thousand rupees, twenty-fourth October 2026 lopala kattali." (రాజు పెట్రోల్ బంక్ డీజిల్ బిల్, జనరేటర్ కోసం, three thousand rupees, twenty-fourth October 2026 లోపల కట్టాలి.) | .mp3 as supplied; .wav, .ogg or .opus (a WhatsApp voice note as is), or .m4a also read | 10 MB |
 | `repair-slip-venkat.jpg` | a real photo of a handwritten slip on a cash-memo pad, blue ballpoint, daylight, slightly angled: VENKAT MOTORS, Aerator & Pump Repairs, Bhimavaram; Bill No: VM/412; Date: 22/10/2026; To: Godavari Aqua Farm; 1. Aerator motor rewinding (2 nos) Rs. 14,000; 2. Bearings & gearbox oil (2 sets) Rs. 4,000; Total Rs. 18,000; Pay by 25/10/2026; signed Venkat. No GST line. | .jpg as named, or .png (an iPhone's HEIC must be exported as JPEG) | 10 MB |
 
 The Add page takes the type the browser names, or the one the extension implies; the worker then
@@ -239,3 +240,15 @@ clock, and checks each move's end state (the handoff's checklist items 4 and 5) 
 assistant's finding is on each credit's card with nothing pre-selected. Live, only when the PO
 authorises it: `make rehearse-shrimp ARGS="--ai live --yes-spend --max-usd 1.00"`, under the budget
 guard. Each rehearsal writes its report, traces and database to `rehearsals/` (git-ignored).
+
+The two live rehearsals are kept under `docs/shrimp-rehearsals/`, their `report.md`, `report.json` and
+`traces/` only (not their databases or stored uploads):
+
+- [2026-10-07T235555-live](shrimp-rehearsals/2026-10-07T235555-live/report.md): the start and moves 1
+  and 2 pass, moves 3 to 6 don't. Gemini sorted the buyer's weighment slip (inbox 02) as a ₹12,15,000
+  bill and the driver took it for the dealer's; CHG-061 fixed the driver and reworded 02 and 06.
+- [2026-10-08T025927-live](shrimp-rehearsals/2026-10-08T025927-live/report.md): every move passes. 02
+  and 06 sorted as payment confirmations; the slip's vendor read as "VENKAT MOTORS / Aerator & Pump
+  Repairs, Bhimavaram", spaced differently from rehearsal 1.
+
+Each report gives its calls and cost.
