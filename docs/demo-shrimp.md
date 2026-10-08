@@ -8,7 +8,9 @@ Godavari Aqua Farm is a vannamei shrimp farmer in coastal Andhra Pradesh. The fa
 bank and every figure are fictional. The fortnight is weeks 15 to 16 of a 110-day crop: the final
 harvest and the settlement. Four counterparties matter: the feed dealer (Sri Lakshmi Aqua Feeds), the
 commission agent who sells the harvest (Ravi Traders), the landowner (K. Subba Rao) and the
-electricity board (APSPDCL). The caretaker, Lakshman, is paid wages.
+electricity board (APSPDCL). The caretaker, Lakshman, is paid wages. The crop's life cycle, the actors,
+the short payment's arithmetic and a one-minute opening are in
+[shrimp-business-context.md](shrimp-business-context.md).
 
 The quotes below are what the pages render in the offline rehearsal (`make rehearse-shrimp`) on the
 placeholder uploads. With the user's real voice note and photo, which are committed, offline, the

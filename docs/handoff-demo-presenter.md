@@ -2,8 +2,9 @@
 
 For a fresh Claude Code session, or an engineer, working from a clone of the repository
 `github.com/HyndhavaVegesna02/PayablesAgent` (public), branch `main`. It is self-contained: read it, then
-[CLAUDE.md](../CLAUDE.md) and [docs/demo-shrimp.md](demo-shrimp.md), and you can start building the
-Demo Presenter page (part 4).
+[CLAUDE.md](../CLAUDE.md), [docs/demo-shrimp.md](demo-shrimp.md) and
+[docs/shrimp-business-context.md](shrimp-business-context.md) (the crop, the actors, the short payment), and
+you can start building the Demo Presenter page (part 4).
 
 **Where this material may go.** This repository is public, and the user has accepted that the shrimp
 profile, its uploads and its rehearsals are public here. Nothing in this document, the shrimp profile or
